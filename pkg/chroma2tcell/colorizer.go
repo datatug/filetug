@@ -37,8 +37,8 @@ func Colorize(text, styleName string, lexer chroma.Lexer) (string, error) {
 	return sb.String(), nil
 }
 
-func ColorizeYAMLForTview(yamlStr string) (string, error) {
-	lexer := lexers.Get("yaml")
+func ColorizeYAMLForTview(yamlStr string, getLexer func(string) chroma.Lexer) (string, error) {
+	lexer := getLexer("yaml")
 	if lexer == nil {
 		lexer = lexers.Fallback
 	}

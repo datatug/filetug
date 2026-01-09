@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	filetug.Main()
+	filetug.Main(nil)
 }

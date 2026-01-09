@@ -64,6 +64,10 @@ func TestNavigator(t *testing.T) {
 		nav.GetInputCapture()(altKey('r'))
 		nav.GetInputCapture()(altKey('h'))
 		nav.GetInputCapture()(altKey('?'))
+
+		// Test moveFocusUp in navigator
+		nav.o.moveFocusUp(nav.files)
+
 		nav.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
 	})
 }
@@ -119,6 +123,9 @@ func TestPreviewer(t *testing.T) {
 
 		event = tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
 		p.GetInputCapture()(event)
+
+		event = tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone)
+		p.GetInputCapture()(event)
 	})
 
 	t.Run("PreviewFile_NoName", func(t *testing.T) {
@@ -131,6 +138,30 @@ func TestPreviewer(t *testing.T) {
 		p.PreviewFile("", tmpFile.Name())
 	})
 
+	t.Run("PreviewFile_NoLexer", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		err := os.WriteFile(tmpFile.Name(), []byte("hello world"), 0644)
+		assert.NoError(t, err)
+
+		p.PreviewFile("noext", tmpFile.Name())
+		assert.Contains(t, p.textView.GetText(false), "hello world")
+	})
+
+	t.Run("PreviewFile_JSON_Invalid_Pretty", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*.json")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		err := os.WriteFile(tmpFile.Name(), []byte(`{invalid}`), 0644)
+		assert.NoError(t, err)
+
+		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		assert.Contains(t, p.textView.GetText(true), "{invalid}")
+	})
+
 	t.Run("prettyJSON_Error", func(t *testing.T) {
 		_, err := prettyJSON("{invalid}")
 		assert.Error(t, err)
@@ -139,7 +170,10 @@ func TestPreviewer(t *testing.T) {
 
 func TestMainFunc(t *testing.T) {
 	app := tview.NewApplication()
-	SetupApp(app)
+	go func() {
+		Main(app)
+	}()
+	app.Stop()
 }
 
 func TestFiles(t *testing.T) {
@@ -179,6 +213,11 @@ func TestFiles(t *testing.T) {
 		f.GetInputCapture()(tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone))
 		f.GetInputCapture()(tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone))
 		f.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
+
+		// Test KeyUp at row 0
+		f.Select(0, 0)
+		f.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
+
 		f.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
 	})
 }
@@ -224,5 +263,58 @@ func TestLeft(t *testing.T) {
 		nav.dirs.SetCurrentNode(tview.NewTreeNode("test").SetReference("."))
 		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
 		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
+
+		// Test KeyUp at root
+		nav.dirs.SetCurrentNode(nav.dirs.GetRoot())
+		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
+
+		// Test KeyDown at last favorite node
+		favNodes := nav.favorites.GetRoot().GetChildren()
+		nav.favorites.SetCurrentNode(favNodes[len(favNodes)-1])
+		nav.favorites.GetInputCapture()(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone))
+	})
+
+	t.Run("TreeViewInputCapture_NoRef", func(t *testing.T) {
+		nav.dirs.SetCurrentNode(tview.NewTreeNode("test"))
+		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
+	})
+
+	t.Run("onLeftTreeViewFocus_NoChildren", func(t *testing.T) {
+		nav.favorites.GetRoot().SetChildren(nil)
+		nav.favoritesFocusFunc()
+	})
+
+	t.Run("onLeftTreeViewFocus_WithChildren", func(t *testing.T) {
+		nav.favorites.SetCurrentNode(nil)
+		nav.favoritesFocusFunc()
+	})
+
+	t.Run("NavigatorInputCapture_Enter", func(t *testing.T) {
+		nav.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
+	})
+
+	t.Run("Left_BlurFunc", func(t *testing.T) {
+		nav.leftBlurFunc()
+	})
+
+	t.Run("Dirs_BlurFunc", func(t *testing.T) {
+		nav.dirsBlurFunc()
+	})
+
+	t.Run("Favorites_BlurFunc", func(t *testing.T) {
+		nav.favoritesBlurFunc()
+	})
+}
+
+func TestNavigator_goDir(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
+
+	t.Run("goDir_Success", func(t *testing.T) {
+		nav.goDir(".")
+	})
+
+	t.Run("goDir_NonExistent", func(t *testing.T) {
+		nav.goDir("/non-existent-path-12345")
 	})
 }

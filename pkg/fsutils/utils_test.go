@@ -129,6 +129,28 @@ func TestReadJSONFile(t *testing.T) {
 		var a A
 		_ = ReadJSONFile(tmpFile.Name(), true, &a)
 	})
+
+	t.Run("ReadFile_OpenError_Required", func(t *testing.T) {
+		var a A
+		err := ReadFile("non_existent.json", true, &a, nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("ReadFile_DecodeError", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "test*.json")
+		assert.NoError(t, err)
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		_, _ = tmpFile.WriteString(`{}`)
+		_ = tmpFile.Close()
+
+		var a A
+		err = ReadFile(tmpFile.Name(), true, &a, func(r io.Reader) Decoder {
+			return mockDecoder{err: io.EOF}
+		})
+		assert.Error(t, err)
+	})
 }
 
 type mockDecoder struct {

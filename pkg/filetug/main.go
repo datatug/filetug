@@ -6,8 +6,10 @@ import (
 	"github.com/rivo/tview"
 )
 
-func Main() {
-	app := tview.NewApplication()
+func Main(app *tview.Application) {
+	if app == nil {
+		app = tview.NewApplication()
+	}
 	SetupApp(app)
 	err := app.Run()
 	if err != nil {
