@@ -66,7 +66,7 @@ brews:
 
     install: |
       bin.install "filetug"
-      bin.symlink "filetug" => "ft"
+      (bin/"filetug").install_symlink "ft"
 
     test: |
       system "#{bin}/filetug", "--version"
