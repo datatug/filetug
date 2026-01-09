@@ -1,0 +1,34 @@
+name: Build
+
+on:
+  push:
+    branches-ignore:
+      - renovate/**
+    paths:
+      - 'go.*'
+      - '**/*.go'
+      - 'src/**'
+      - 'build.yml'
+  #    tags:
+  #      - 'v[0-9]+\.[0-9]+\.[0-9]+' # Push events to matching v*, i.e. v20.15.10
+  pull_request:
+    branches:
+      - '**'
+    paths:
+      - 'go.*'
+      - '**/*.go'
+      - 'src/**'
+      - '.github/workflows/*.yml'
+
+jobs:
+
+  strongo_workflow:
+    permissions:
+      contents: write
+    uses: strongo/go-ci-action/.github/workflows/workflow.yml@main
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      #      disable-version-bumping: true
+      code_coverage: true
+#      min_test_coverage_percent: 6.6
