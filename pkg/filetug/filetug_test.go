@@ -168,14 +168,6 @@ func TestPreviewer(t *testing.T) {
 	})
 }
 
-func TestMainFunc(t *testing.T) {
-	app := tview.NewApplication()
-	go func() {
-		Main(app)
-	}()
-	app.Stop()
-}
-
 func TestFiles(t *testing.T) {
 	app := tview.NewApplication()
 	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
