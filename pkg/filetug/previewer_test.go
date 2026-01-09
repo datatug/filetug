@@ -1,0 +1,107 @@
+package filetug
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/alecthomas/assert/v2"
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+)
+
+func TestPreviewer(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
+	p := nav.previewer
+
+	t.Run("FocusBlur", func(t *testing.T) {
+		nav.previewerFocusFunc()
+		nav.previewerBlurFunc()
+	})
+
+	t.Run("TextViewFocus", func(t *testing.T) {
+		// p.textView.GetFocusFunc()() // Not available
+	})
+
+	t.Run("PreviewFile_NotFound", func(t *testing.T) {
+		p.PreviewFile("non-existent.txt", "non-existent.txt")
+		assert.Contains(t, p.textView.GetText(false), "Error reading file")
+	})
+
+	t.Run("PreviewFile_PlainText", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*.txt")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		err := os.WriteFile(tmpFile.Name(), []byte("hello world"), 0644)
+		assert.NoError(t, err)
+
+		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		assert.Contains(t, p.textView.GetText(false), "hello world")
+	})
+
+	t.Run("PreviewFile_JSON", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*.json")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		err := os.WriteFile(tmpFile.Name(), []byte(`{"a":1}`), 0644)
+		assert.NoError(t, err)
+
+		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		// Colorized output will have tags, but GetText(false) should strip them or show them depending on dynamic colors
+		// tview.TextView.GetText(false) returns the text without tags if dynamic colors are enabled.
+		assert.Contains(t, p.textView.GetText(false), "a")
+	})
+
+	t.Run("InputCapture", func(t *testing.T) {
+		event := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
+		p.GetInputCapture()(event)
+
+		event = tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+		p.GetInputCapture()(event)
+
+		event = tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone)
+		p.GetInputCapture()(event)
+	})
+
+	t.Run("PreviewFile_NoName", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*.txt")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		err := os.WriteFile(tmpFile.Name(), []byte("hello world"), 0644)
+		assert.NoError(t, err)
+		p.PreviewFile("", tmpFile.Name())
+	})
+
+	t.Run("PreviewFile_NoLexer", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		err := os.WriteFile(tmpFile.Name(), []byte("hello world"), 0644)
+		assert.NoError(t, err)
+
+		p.PreviewFile("noext", tmpFile.Name())
+		assert.Contains(t, p.textView.GetText(false), "hello world")
+	})
+
+	t.Run("PreviewFile_JSON_Invalid_Pretty", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*.json")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		err := os.WriteFile(tmpFile.Name(), []byte(`{invalid}`), 0644)
+		assert.NoError(t, err)
+
+		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		assert.Contains(t, p.textView.GetText(true), "{invalid}")
+	})
+
+	t.Run("prettyJSON_Error", func(t *testing.T) {
+		_, err := prettyJSON("{invalid}")
+		assert.Error(t, err)
+	})
+}
