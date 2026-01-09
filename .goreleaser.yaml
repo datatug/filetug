@@ -51,12 +51,13 @@ release:
     owner: datatug
     name: filetug
 
-brews:
+homebrew_casks:
   - name: filetug
     ids:
       - tarball
+
     description: "FileTug – modern CLI file browser/picker with neat UI"
-    homepage: https://github.com/datatug/filetug-cli
+    homepage: https://github.com/datatug/filetug
     license: MIT
 
     repository:
