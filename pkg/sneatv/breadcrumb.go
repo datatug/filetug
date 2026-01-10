@@ -1,13 +1,18 @@
 package sneatv
 
+import "github.com/gdamore/tcell/v2"
+
 type Breadcrumb interface {
 	GetTitle() string
-	SetTitle(string)
+	SetTitle(string) Breadcrumb
+	SetColor(color tcell.Color) Breadcrumb
+	GetColor() tcell.Color
 	Action() error
 }
 
 type breadcrumb struct {
 	title  string
+	color  tcell.Color
 	action func() error
 }
 
@@ -15,8 +20,18 @@ func (b *breadcrumb) GetTitle() string {
 	return b.title
 }
 
-func (b *breadcrumb) SetTitle(title string) {
+func (b *breadcrumb) GetColor() tcell.Color {
+	return b.color
+}
+
+func (b *breadcrumb) SetTitle(title string) Breadcrumb {
 	b.title = title
+	return b
+}
+
+func (b *breadcrumb) SetColor(color tcell.Color) Breadcrumb {
+	b.color = color
+	return b
 }
 
 func (b *breadcrumb) Action() error {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/datatug/filetug/pkg/fsutils"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -17,7 +18,10 @@ type Navigator struct {
 	app *tview.Application
 	o   navigatorOptions
 
+	breadcrumbs *sneatv.Breadcrumbs
+
 	*tview.Flex
+	main *tview.Flex
 
 	currentDir  string
 	activeCol   int
@@ -64,11 +68,20 @@ func OnMoveFocusUp(f func(source tview.Primitive)) NavigatorOption {
 func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator {
 
 	nav := &Navigator{
-		app:         app,
+		app: app,
+		breadcrumbs: sneatv.NewBreadcrumbs(
+			sneatv.NewBreadcrumb("FileTug: ", func() error {
+				return nil
+			}).SetColor(tcell.ColorWhiteSmoke),
+			sneatv.WithSeparator("/"),
+		),
+		Flex:        tview.NewFlex().SetDirection(tview.FlexRow),
 		dirs:        NewTree(),
 		favorites:   newFavorites(),
 		proportions: make([]int, 3),
 	}
+	nav.AddItem(nav.breadcrumbs, 1, 0, false)
+
 	copy(nav.proportions, defaultProportions)
 
 	nav.files = newFiles(nav)
@@ -90,10 +103,13 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 var defaultProportions = []int{6, 10, 8}
 
 func (nav *Navigator) createColumns() {
-	nav.Flex = tview.NewFlex()
-	nav.AddItem(nav.left, 0, nav.proportions[0], true)
-	nav.AddItem(nav.files, 0, nav.proportions[1], true)
-	nav.AddItem(nav.previewer, 0, nav.proportions[2], true)
+	nav.main = tview.NewFlex()
+	nav.AddItem(nav.main, 0, 1, true)
+
+	nav.main.AddItem(nav.left, 0, nav.proportions[0], true)
+	nav.main.AddItem(nav.files, 0, nav.proportions[1], true)
+	nav.main.AddItem(nav.previewer, 0, nav.proportions[2], true)
+
 	nav.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Modifiers()&tcell.ModAlt != 0 {
 			if event.Key() == tcell.KeyRune {
@@ -187,6 +203,16 @@ func (nav *Navigator) goDir(dir string) {
 	}
 
 	nav.currentDir = fsutils.ExpandHome(nodePath)
+
+	nav.breadcrumbs.Clear()
+
+	for _, p := range strings.Split(nav.currentDir, "/") {
+		if p == "" {
+			continue
+		}
+		nav.breadcrumbs.Push(sneatv.NewBreadcrumb(p, nil))
+	}
+
 	children, err := os.ReadDir(nav.currentDir)
 	if err != nil {
 		parentNode.AddChild(tview.NewTreeNode(fmt.Sprintf("Error for %s: %s", nav.currentDir, err.Error())))

@@ -94,7 +94,11 @@ func (b *Breadcrumbs) Draw(screen tcell.Screen) {
 			// Dim for unfocused items.
 			text = "[::d]" + label + "[-:-:-]"
 		}
-		_, printed := tview.Print(screen, text, cursorX, y, maxX-cursorX, tview.AlignLeft, tcell.ColorYellow)
+		color := item.GetColor()
+		if color == 0 {
+			color = tcell.ColorYellow
+		}
+		_, printed := tview.Print(screen, text, cursorX, y, maxX-cursorX, tview.AlignLeft, color)
 		cursorX += printed
 		// Add a separator between items if there is still room.
 		if i < len(b.items)-1 && cursorX < maxX {
