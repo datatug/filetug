@@ -44,13 +44,13 @@ func TestLeft(t *testing.T) {
 
 	t.Run("DirsInputCapture", func(t *testing.T) {
 		// Mock current node to avoid nil dereference in GetCurrentNode().GetReference()
-		nav.dirs.SetCurrentNode(tview.NewTreeNode("test").SetReference("."))
-		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
-		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
+		nav.dirsTree.SetCurrentNode(tview.NewTreeNode("test").SetReference("."))
+		nav.dirsTree.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
+		nav.dirsTree.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
 
 		// Test KeyUp at root
-		nav.dirs.SetCurrentNode(nav.dirs.GetRoot())
-		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
+		nav.dirsTree.SetCurrentNode(nav.dirsTree.GetRoot())
+		nav.dirsTree.GetInputCapture()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone))
 
 		// Test KeyDown at last favorite node
 		favNodes := nav.favorites.GetRoot().GetChildren()
@@ -59,8 +59,8 @@ func TestLeft(t *testing.T) {
 	})
 
 	t.Run("TreeViewInputCapture_NoRef", func(t *testing.T) {
-		nav.dirs.SetCurrentNode(tview.NewTreeNode("test"))
-		nav.dirs.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
+		nav.dirsTree.SetCurrentNode(tview.NewTreeNode("test"))
+		nav.dirsTree.GetInputCapture()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone))
 	})
 
 	t.Run("onLeftTreeViewFocus_NoChildren", func(t *testing.T) {

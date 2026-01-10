@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +42,7 @@ type Navigator struct {
 	previewerBlurFunc  func()
 
 	left      *left
-	dirs      *Tree
+	dirsTree  *Tree
 	favorites *favorites
 
 	files *tview.Table
@@ -50,7 +51,7 @@ type Navigator struct {
 }
 
 func (nav *Navigator) SetFocus() {
-	nav.app.SetFocus(nav.dirs.TreeView)
+	nav.app.SetFocus(nav.dirsTree.TreeView)
 }
 
 type navigatorOptions struct {
@@ -76,10 +77,11 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 			sneatv.WithSeparator("/"),
 		),
 		Flex:        tview.NewFlex().SetDirection(tview.FlexRow),
-		dirs:        NewTree(),
+		main:        tview.NewFlex(),
 		favorites:   newFavorites(),
 		proportions: make([]int, 3),
 	}
+	nav.dirsTree = NewTree(nav)
 	nav.AddItem(nav.breadcrumbs, 1, 0, false)
 
 	copy(nav.proportions, defaultProportions)
@@ -93,6 +95,8 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 
 	createLeft(nav)
 
+	nav.AddItem(nav.main, 0, 1, true)
+
 	nav.createColumns()
 
 	nav.goDir("~")
@@ -103,9 +107,8 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 var defaultProportions = []int{6, 10, 8}
 
 func (nav *Navigator) createColumns() {
-	nav.main = tview.NewFlex()
-	nav.AddItem(nav.main, 0, 1, true)
 
+	nav.main.Clear()
 	nav.main.AddItem(nav.left, 0, nav.proportions[0], true)
 	nav.main.AddItem(nav.files, 0, nav.proportions[1], true)
 	nav.main.AddItem(nav.previewer, 0, nav.proportions[2], true)
@@ -173,17 +176,28 @@ func (nav *Navigator) createColumns() {
 func (nav *Navigator) goDir(dir string) {
 
 	nav.favorites.SetCurrentNode(nil)
+	nav.showDir(dir, nil)
+}
 
-	t := nav.dirs
-	t.currDirRoot.ClearChildren()
+func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 
-	parentNode := t.currDirRoot
-
+	var parentNode *tview.TreeNode
 	var nodePath string
+
+	isTreeDirChanges := selectedNode == nil
+
+	if isTreeDirChanges {
+		nav.favorites.SetCurrentNode(nil)
+		nav.dirsTree.currDirRoot.ClearChildren()
+		parentNode = nav.dirsTree.currDirRoot
+	} else {
+		nav.dirsTree.selectedDirNode = selectedNode
+		parentNode = selectedNode
+	}
 
 	if strings.HasPrefix(dir, "~") || strings.HasPrefix(dir, "/") {
 		nodePath = dir[:1]
-		t.currDirRoot.SetText(nodePath).SetReference(nodePath)
+		nav.dirsTree.currDirRoot.SetText(nodePath).SetReference(nodePath)
 	}
 
 	dirRelPath := strings.TrimPrefix(strings.TrimPrefix(dir, "~"), "/")
@@ -197,11 +211,16 @@ func (nav *Navigator) goDir(dir string) {
 				nodePath = nodePath + "/" + p
 			}
 			n := tview.NewTreeNode("📁" + p).SetReference(nodePath)
-			parentNode.AddChild(n)
-			parentNode = n
+			if isTreeDirChanges {
+				parentNode.AddChild(n)
+				parentNode = n
+			}
 		}
 	}
 
+	if isTreeDirChanges {
+		nav.dirsTree.selectedDirNode = parentNode
+	}
 	nav.currentDir = fsutils.ExpandHome(nodePath)
 
 	nav.breadcrumbs.Clear()
@@ -215,31 +234,62 @@ func (nav *Navigator) goDir(dir string) {
 
 	children, err := os.ReadDir(nav.currentDir)
 	if err != nil {
+		parentNode.ClearChildren()
 		parentNode.AddChild(tview.NewTreeNode(fmt.Sprintf("Error for %s: %s", nav.currentDir, err.Error())))
 		return
 	}
 	fileIndex := 0
 
-	nav.files.SetTitle(fmt.Sprintf(" Files: %s ", dir))
+	if isTreeDirChanges {
+		nav.files.SetTitle(fmt.Sprintf(" Files: %s ", dir))
+	} else {
+		nav.files.SetTitle(dir)
+	}
 	nav.files.Clear()
-	nav.files.SetCell(0, 0, tview.NewTableCell("File name").SetTextColor(Style.TableHeaderColor).SetExpansion(1))
+	nav.files.SetCell(0, 0, tview.NewTableCell("Name").SetTextColor(Style.TableHeaderColor).SetExpansion(1))
 	nav.files.SetCell(0, 1, tview.NewTableCell("Size").SetTextColor(Style.TableHeaderColor).SetAlign(tview.AlignRight))
 	nav.files.SetCell(0, 2, tview.NewTableCell("Modified").SetTextColor(Style.TableHeaderColor).SetAlign(tview.AlignRight))
 	nav.files.SetFixed(1, 0)
 	nav.files.SetSelectable(true, false)
 	//nav.files.Select(1, 0)
 
+	sort.Slice(children, func(i, j int) bool {
+		if children[i].IsDir() && !children[j].IsDir() {
+			return true
+		} else if !children[i].IsDir() && children[j].IsDir() {
+			return false
+		}
+		return children[i].Name() < children[j].Name()
+	})
+
 	fileIndex++
+
+	td := func(col int, text string) {
+		nav.files.SetCell(fileIndex, col, tview.NewTableCell(text).SetTextColor(tcell.ColorLightBlue))
+	}
+	td(0, "..")
+	td(1, "")
+	td(2, "")
+	fileIndex++
+
 	for _, child := range children {
 		name := child.Name()
 		if strings.HasPrefix(name, ".") {
 			continue
 		}
 		if child.IsDir() {
-			n := tview.NewTreeNode("📁" + name).SetReference(path.Join(nodePath, name))
-			parentNode.AddChild(n)
+			if isTreeDirChanges {
+				n := tview.NewTreeNode("📁" + name).SetReference(path.Join(nodePath, name))
+				parentNode.AddChild(n)
+			} else {
+				td(0, " 📁"+name)
+				td(1, "")
+				td(2, "")
+				fileIndex++
+				continue
+			}
 		} else {
-			tdName := tview.NewTableCell(" " + name)
+			tdName := tview.NewTableCell("   " + name)
 			color := GetColorByFileName(name)
 			tdName.SetTextColor(color)
 			nav.files.SetCell(fileIndex, 0, tdName)
@@ -259,6 +309,10 @@ func (nav *Navigator) goDir(dir string) {
 			fileIndex++
 		}
 	}
-	t.SetCurrentNode(parentNode)
-	nav.app.SetFocus(t)
+	if isTreeDirChanges {
+		nav.dirsTree.SetCurrentNode(parentNode)
+	}
+	//nav.app.SetFocus(nav.dirsTree)
+	//nav.app.QueueUpdate(func() {
+	//})
 }

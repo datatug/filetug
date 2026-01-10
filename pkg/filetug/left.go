@@ -27,7 +27,7 @@ func createLeft(nav *Navigator) {
 	}
 	nav.left.SetBorder(true)
 	nav.left.AddItem(nav.favorites, 3, 0, false)
-	nav.left.AddItem(nav.dirs, 0, 1, true)
+	nav.left.AddItem(nav.dirsTree, 0, 1, true)
 	nav.left.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyRight:
@@ -68,8 +68,8 @@ func createLeft(nav *Navigator) {
 				favNodes := nav.favorites.GetRoot().GetChildren()
 				if nav.favorites.GetCurrentNode() == favNodes[len(favNodes)-1] {
 					nav.favorites.SetCurrentNode(nil)
-					nav.dirs.SetCurrentNode(nav.dirs.GetRoot())
-					nav.app.SetFocus(nav.dirs.TreeView)
+					nav.dirsTree.SetCurrentNode(nav.dirsTree.GetRoot())
+					nav.app.SetFocus(nav.dirsTree.TreeView)
 					return nil
 				}
 				return event
@@ -78,12 +78,12 @@ func createLeft(nav *Navigator) {
 			}
 		})
 	})
-	nav.dirs.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		return treeViewInputCapture(nav.dirs.TreeView, event, func(key *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyUp && nav.dirs.GetCurrentNode() == nav.dirs.GetRoot() {
+	nav.dirsTree.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		return treeViewInputCapture(nav.dirsTree.TreeView, event, func(key *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyUp && nav.dirsTree.GetCurrentNode() == nav.dirsTree.GetRoot() {
 				children := nav.favorites.GetRoot().GetChildren()
 				nav.favorites.SetCurrentNode(children[len(children)-1])
-				nav.dirs.SetCurrentNode(nil)
+				nav.dirsTree.SetCurrentNode(nil)
 				nav.app.SetFocus(nav.favorites.TreeView)
 				return nil
 			}
@@ -115,24 +115,24 @@ func createLeft(nav *Navigator) {
 	nav.favorites.SetFocusFunc(func() {
 		nav.activeCol = 0
 		if nav.favorites.GetCurrentNode() == nil {
-			nav.favorites.SetCurrentNode(nav.dirs.GetRoot().GetChildren()[0])
+			nav.favorites.SetCurrentNode(nav.dirsTree.GetRoot().GetChildren()[0])
 		}
 		onLeftTreeViewFocus(nav.favorites.TreeView)
 	})
 	nav.favoritesFocusFunc = func() {
 		nav.activeCol = 0
 		if nav.favorites.GetCurrentNode() == nil {
-			nav.favorites.SetCurrentNode(nav.dirs.GetRoot().GetChildren()[0])
+			nav.favorites.SetCurrentNode(nav.dirsTree.GetRoot().GetChildren()[0])
 		}
 		onLeftTreeViewFocus(nav.favorites.TreeView)
 	}
-	nav.dirs.SetFocusFunc(func() {
+	nav.dirsTree.SetFocusFunc(func() {
 		nav.activeCol = 0
-		onLeftTreeViewFocus(nav.dirs.TreeView)
+		onLeftTreeViewFocus(nav.dirsTree.TreeView)
 	})
 	nav.dirsFocusFunc = func() {
 		nav.activeCol = 0
-		onLeftTreeViewFocus(nav.dirs.TreeView)
+		onLeftTreeViewFocus(nav.dirsTree.TreeView)
 	}
 	nav.favorites.SetBlurFunc(func() {
 		onLeftTreeViewBlur(nav.favorites.TreeView)
@@ -140,10 +140,10 @@ func createLeft(nav *Navigator) {
 	nav.favoritesBlurFunc = func() {
 		onLeftTreeViewBlur(nav.favorites.TreeView)
 	}
-	nav.dirs.SetBlurFunc(func() {
-		onLeftTreeViewBlur(nav.dirs.TreeView)
+	nav.dirsTree.SetBlurFunc(func() {
+		onLeftTreeViewBlur(nav.dirsTree.TreeView)
 	})
 	nav.dirsBlurFunc = func() {
-		onLeftTreeViewBlur(nav.dirs.TreeView)
+		onLeftTreeViewBlur(nav.dirsTree.TreeView)
 	}
 }

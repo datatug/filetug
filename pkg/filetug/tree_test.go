@@ -1,9 +1,14 @@
 package filetug
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rivo/tview"
+)
 
 func TestNewTree(t *testing.T) {
-	tree := NewTree()
+	nav := NewNavigator(tview.NewApplication())
+	tree := NewTree(nav)
 	if tree == nil {
 		t.Fatal("tree is nil")
 	}

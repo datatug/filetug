@@ -28,7 +28,7 @@ func newFiles(nav *Navigator) *tview.Table {
 		}
 		switch event.Key() {
 		case tcell.KeyLeft:
-			nav.app.SetFocus(nav.dirs)
+			nav.app.SetFocus(nav.dirsTree)
 			return nil
 		case tcell.KeyRight:
 			nav.app.SetFocus(nav.previewer)
