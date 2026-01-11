@@ -1,6 +1,7 @@
 package gitutils
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -37,7 +38,7 @@ func TestDirGitStatus_String(t *testing.T) {
 }
 
 func TestGetGitStatus(t *testing.T) {
-	status := GetGitStatus(".")
+	status := GetGitStatus(context.Background(), ".")
 	if status != nil {
 		s := status.String()
 		if !strings.HasPrefix(s, "[gray]🌿") {

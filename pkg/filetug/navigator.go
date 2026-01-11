@@ -195,10 +195,11 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 		nav.app.QueueUpdateDraw(func() {
 			node.SetText(prefix + cachedStatus.String())
 		})
+		return // temp, TODO: remove
 	}
 
 	go func() {
-		status := gitutils.GetGitStatus(fullPath)
+		status := gitutils.GetGitStatus(ctx, fullPath)
 		if status == nil {
 			return
 		}
@@ -220,13 +221,20 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 }
 
 func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
+
+	isTreeDirChanges := selectedNode == nil
+
+	//if isTreeDirChanges {
+	//	if nav.gitCancel != nil {
+	//		nav.gitCancel()
+	//	}
+	//}
+
 	var ctx context.Context
 	ctx, nav.gitCancel = context.WithCancel(context.Background())
 
 	var parentNode *tview.TreeNode
 	var nodePath string
-
-	isTreeDirChanges := selectedNode == nil
 
 	if isTreeDirChanges {
 		nav.favorites.SetCurrentNode(nil)
@@ -239,9 +247,11 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 
 	if strings.HasPrefix(dir, "~") || strings.HasPrefix(dir, "/") {
 		nodePath = dir[:1]
-		fullPath := fsutils.ExpandHome(nodePath)
-		nav.dirsTree.currDirRoot.SetText(nodePath).SetReference(nodePath)
-		nav.updateGitStatus(ctx, fullPath, nav.dirsTree.currDirRoot, nodePath)
+		if isTreeDirChanges {
+			fullPath := fsutils.ExpandHome(nodePath)
+			nav.dirsTree.currDirRoot.SetText(nodePath).SetReference(nodePath)
+			nav.updateGitStatus(ctx, fullPath, nav.dirsTree.currDirRoot, nodePath)
+		}
 	}
 
 	dirRelPath := strings.TrimPrefix(strings.TrimPrefix(dir, "~"), "/")
@@ -254,11 +264,11 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 			} else {
 				nodePath = nodePath + "/" + p
 			}
-			fullPath := fsutils.ExpandHome(nodePath)
-			prefix := "📁" + p
-			n := tview.NewTreeNode(prefix).SetReference(nodePath)
-			nav.updateGitStatus(ctx, fullPath, n, prefix)
 			if isTreeDirChanges {
+				fullPath := fsutils.ExpandHome(nodePath)
+				prefix := "📁" + p
+				n := tview.NewTreeNode(prefix).SetReference(nodePath)
+				nav.updateGitStatus(ctx, fullPath, n, prefix)
 				parentNode.AddChild(n)
 				parentNode = n
 			}
@@ -292,12 +302,7 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		nav.files.SetTitle(dir)
 	}
 	nav.files.Clear()
-	//nav.files.SetCell(0, 0, tview.NewTableCell("Name").SetTextColor(Style.TableHeaderColor).SetExpansion(1))
-	//nav.files.SetCell(0, 1, tview.NewTableCell("Size").SetTextColor(Style.TableHeaderColor).SetAlign(tview.AlignRight))
-	//nav.files.SetCell(0, 2, tview.NewTableCell("Modified").SetTextColor(Style.TableHeaderColor).SetAlign(tview.AlignRight))
-	//nav.files.SetFixed(1, 0)
 	nav.files.SetSelectable(true, false)
-	//nav.files.Select(1, 0)
 
 	sort.Slice(children, func(i, j int) bool {
 		if children[i].IsDir() && !children[j].IsDir() {
@@ -310,25 +315,22 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 
 	nav.files.SetRecords(fsRecords{nodePath: nodePath, dirEntries: children})
 
-	for _, child := range children {
-		name := child.Name()
-		if strings.HasPrefix(name, ".") {
-			continue
-		}
-		if child.IsDir() && isTreeDirChanges {
-			childPath := path.Join(nodePath, name)
-			prefix := "📁" + name
-			n := tview.NewTreeNode(prefix).SetReference(childPath)
-			parentNode.AddChild(n)
-
-			fullPath := fsutils.ExpandHome(childPath)
-			nav.updateGitStatus(ctx, fullPath, n, prefix+" ")
-		}
-	}
 	if isTreeDirChanges {
+		for _, child := range children {
+			name := child.Name()
+			if strings.HasPrefix(name, ".") {
+				continue
+			}
+			if child.IsDir() {
+				childPath := path.Join(nodePath, name)
+				prefix := "📁" + name
+				n := tview.NewTreeNode(prefix).SetReference(childPath)
+				parentNode.AddChild(n)
+
+				fullPath := fsutils.ExpandHome(childPath)
+				nav.updateGitStatus(ctx, fullPath, n, prefix+" ")
+			}
+		}
 		nav.dirsTree.SetCurrentNode(parentNode)
 	}
-	//nav.app.SetFocus(nav.dirsTree)
-	//nav.app.QueueUpdate(func() {
-	//})
 }

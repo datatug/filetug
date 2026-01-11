@@ -1,11 +1,19 @@
 package gitutils
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+)
+
+var (
+	// gitStatusSemaphore limits concurrent git status calls to avoid system hang
+	gitStatusSemaphore = make(chan struct{}, 2)
 )
 
 type DirGitStatus struct {
@@ -25,8 +33,22 @@ func (s *DirGitStatus) String() string {
 	return fmt.Sprintf("[gray]🌿%s📄%d[-][green]+%d[-][red]-%d[-]", s.Branch, s.FilesChanged, s.Insertions, s.Deletions)
 }
 
-// GetGitStatus returns a brief git status for the given directory
-func GetGitStatus(dir string) *DirGitStatus {
+// GetGitStatus returns a brief git status for the given directory.
+// It uses a context to allow cancellation and a semaphore to limit concurrency.
+func GetGitStatus(ctx context.Context, dir string) *DirGitStatus {
+	// Quick check if .git exists to avoid expensive go-git calls for non-git dirs
+	dotGit := filepath.Join(dir, ".git")
+	if _, err := os.Stat(dotGit); os.IsNotExist(err) {
+		return nil
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case gitStatusSemaphore <- struct{}{}:
+		defer func() { <-gitStatusSemaphore }()
+	}
+
 	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		return nil
@@ -48,6 +70,13 @@ func GetGitStatus(dir string) *DirGitStatus {
 			res.Branch = head.Hash().String()[:7]
 		}
 	}
+
+	select {
+	case <-ctx.Done():
+		return res
+	default:
+	}
+
 	headCommit, _ := repo.CommitObject(head.Hash())
 
 	worktree, err := repo.Worktree()
@@ -71,6 +100,12 @@ func GetGitStatus(dir string) *DirGitStatus {
 		headTree, err := headCommit.Tree()
 		if err == nil {
 			for fileName, fileStatus := range status {
+				select {
+				case <-ctx.Done():
+					return res
+				default:
+				}
+
 				if fileStatus.Worktree == git.Unmodified && fileStatus.Staging == git.Unmodified {
 					continue
 				}
@@ -99,9 +134,6 @@ func GetGitStatus(dir string) *DirGitStatus {
 					}
 					continue
 				}
-
-				// For modified files, ideally we want a line-by-line diff.
-				// For now, let's keep it simple as go-git's diffing is mostly between trees.
 			}
 		}
 	}
