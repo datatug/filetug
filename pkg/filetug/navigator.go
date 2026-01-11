@@ -52,6 +52,8 @@ type Navigator struct {
 
 	previewer *previewer
 
+	bottom *bottom
+
 	gitStatusCache   map[string]*gitutils.RepoStatus
 	gitStatusCacheMu sync.RWMutex
 	gitCancel        context.CancelFunc
@@ -86,6 +88,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		Flex:           tview.NewFlex().SetDirection(tview.FlexRow),
 		main:           tview.NewFlex(),
 		favorites:      newFavorites(),
+		bottom:         newBottom(),
 		proportions:    make([]int, 3),
 		gitStatusCache: make(map[string]*gitutils.RepoStatus),
 	}
@@ -104,6 +107,8 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 	createLeft(nav)
 
 	nav.AddItem(nav.main, 0, 1, true)
+
+	nav.AddItem(nav.bottom, 1, 0, false)
 
 	nav.createColumns()
 
@@ -223,6 +228,8 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 	})
 }
 
+var saveCurrentDir = ftstate.SaveCurrentDir
+
 func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 
 	isTreeDirChanges := selectedNode == nil
@@ -248,7 +255,7 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		parentNode = selectedNode
 	}
 
-	ftstate.SaveCurrentDir(dir)
+	saveCurrentDir(dir)
 
 	if strings.HasPrefix(dir, "~") || strings.HasPrefix(dir, "/") {
 		nodePath = dir[:1]

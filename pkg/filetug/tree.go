@@ -19,7 +19,6 @@ func NewTree(nav *Navigator) *Tree {
 	t := &Tree{
 		TreeView: tview.NewTreeView(),
 	}
-
 	t.currDirRoot = tview.NewTreeNode("~")
 	t.SetRoot(t.currDirRoot)
 	t.SetChangedFunc(func(node *tview.TreeNode) {
@@ -28,6 +27,5 @@ func NewTree(nav *Navigator) *Tree {
 			nav.showDir(dir, node)
 		}
 	})
-
 	return t
 }
