@@ -2,6 +2,7 @@ package gitutils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,26 +17,53 @@ var (
 	gitStatusSemaphore = make(chan struct{}, 2)
 )
 
-type DirGitStatus struct {
-	Branch       string
-	FilesChanged int
-	Insertions   int
-	Deletions    int
+type FileGitStatus struct {
+	Insertions int
+	Deletions  int
 }
 
-func (s *DirGitStatus) String() string {
+func (s *FileGitStatus) String() string {
+	var sb strings.Builder
+	if s.Insertions > 0 {
+		if _, err := fmt.Fprintf(&sb, "[green]+%d[-]", s.Insertions); err != nil {
+			return err.Error()
+		}
+	}
+	if s.Deletions > 0 {
+		if _, err := fmt.Fprintf(&sb, "[red]-%d[-]", s.Deletions); err != nil {
+			return err.Error()
+		}
+	}
+	if sb.Len() == 0 {
+		return "±0"
+	}
+	return sb.String()
+}
+
+type DirGitChangesStats struct {
+	FilesChanged int
+	FileGitStatus
+}
+
+type RepoStatus struct {
+	Branch string
+	DirGitChangesStats
+}
+
+func (s *RepoStatus) String() string {
 	if s == nil {
 		return ""
 	}
-	if s.FilesChanged == 0 && s.Insertions == 0 && s.Deletions == 0 {
-		return fmt.Sprintf("[gray]🌿%s±0[-]", s.Branch)
+	var noChanges DirGitChangesStats
+	if s.DirGitChangesStats == noChanges {
+		return fmt.Sprintf("[gray]🌿%s%s[-]", s.Branch, s.FileGitStatus.String())
 	}
-	return fmt.Sprintf("[gray]🌿%s📄%d[-][green]+%d[-][red]-%d[-]", s.Branch, s.FilesChanged, s.Insertions, s.Deletions)
+	return fmt.Sprintf("[gray]🌿%s📄%d[-]%s", s.Branch, s.FilesChanged, s.FileGitStatus.String())
 }
 
-// GetGitStatus returns a brief git status for the given directory.
+// GetRepositoryStatus returns a brief git status for the given directory.
 // It uses a context to allow cancellation and a semaphore to limit concurrency.
-func GetGitStatus(ctx context.Context, dir string) *DirGitStatus {
+func GetRepositoryStatus(ctx context.Context, dir string) *RepoStatus {
 	// Quick check if .git exists to avoid expensive go-git calls for non-git dirs
 	dotGit := filepath.Join(dir, ".git")
 	if _, err := os.Stat(dotGit); os.IsNotExist(err) {
@@ -54,11 +82,11 @@ func GetGitStatus(ctx context.Context, dir string) *DirGitStatus {
 		return nil
 	}
 
-	res := &DirGitStatus{}
+	res := &RepoStatus{}
 
 	head, err := repo.Head()
 	if err != nil {
-		if err == plumbing.ErrReferenceNotFound {
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
 			res.Branch = "master"
 		} else {
 			return nil

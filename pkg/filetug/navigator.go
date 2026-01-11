@@ -51,7 +51,7 @@ type Navigator struct {
 
 	previewer *previewer
 
-	gitStatusCache   map[string]*gitutils.DirGitStatus
+	gitStatusCache   map[string]*gitutils.RepoStatus
 	gitStatusCacheMu sync.RWMutex
 	gitCancel        context.CancelFunc
 }
@@ -86,7 +86,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		main:           tview.NewFlex(),
 		favorites:      newFavorites(),
 		proportions:    make([]int, 3),
-		gitStatusCache: make(map[string]*gitutils.DirGitStatus),
+		gitStatusCache: make(map[string]*gitutils.RepoStatus),
 	}
 	nav.dirsTree = NewTree(nav)
 	nav.AddItem(nav.breadcrumbs, 1, 0, false)
@@ -199,7 +199,7 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 	}
 
 	go func() {
-		status := gitutils.GetGitStatus(ctx, fullPath)
+		status := gitutils.GetRepositoryStatus(ctx, fullPath)
 		if status == nil {
 			return
 		}
@@ -313,7 +313,8 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		return children[i].Name() < children[j].Name()
 	})
 
-	nav.files.SetRecords(fsRecords{nodePath: nodePath, dirEntries: children})
+	dirRecords := NewDirRecords(nodePath, children)
+	nav.files.SetRecords(dirRecords)
 
 	if isTreeDirChanges {
 		for _, child := range children {
