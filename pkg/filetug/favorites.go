@@ -40,7 +40,7 @@ func builtInFavorites() []favorite {
 	}
 }
 func newFavorites(nav *Navigator) *favorites {
-	flex := tview.NewFlex()
+	flex := tview.NewFlex().SetDirection(tview.FlexRow)
 	flex.SetTitle(" Favorites ")
 	f := &favorites{
 		Flex:  flex,
@@ -53,6 +53,8 @@ func newFavorites(nav *Navigator) *favorites {
 		),
 	}
 	f.AddItem(f.list, 0, 1, true)
+	hint := tview.NewTextView().SetText("<esc> to go back").SetTextColor(tcell.ColorGray)
+	f.AddItem(hint, 1, 0, false)
 	f.setItems()
 	f.list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
