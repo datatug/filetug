@@ -24,8 +24,10 @@ func (f *favorites) Draw(screen tcell.Screen) {
 
 func builtInFavorites() []favorite {
 	return []favorite{
-		{path: "~", description: "User's home directory"},
 		{path: "/", description: "root"},
+		{path: "~", description: "User's home directory"},
+		{path: "~/Documents", description: "Documents"},
+		{path: "~/projects", description: "Projects"},
 	}
 }
 func newFavorites(nav *Navigator) *favorites {
