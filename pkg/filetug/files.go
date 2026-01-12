@@ -96,20 +96,20 @@ func newFiles(nav *Navigator) *files {
 // selectionChangedNavFunc: TODO: is it a duplicate of selectionChangedNavFunc?
 func (f *files) selectionChangedNavFunc(row, _ int) {
 	if row == 0 {
-		f.nav.previewer.textView.SetText("Selected dir: " + f.nav.currentDir)
+		f.nav.previewer.textView.SetText("Selected dir: " + f.nav.current.dir)
 		f.nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
 		return
 	}
 	cell := f.GetCell(row, 0)
 	name := cell.Text[1:]
-	fullName := filepath.Join(f.nav.currentDir, name)
+	fullName := filepath.Join(f.nav.current.dir, name)
 	f.nav.previewer.PreviewFile(name, fullName)
 }
 
 // selectionChanged: TODO: is it a duplicate of selectionChangedNavFunc?
 func (f *files) selectionChanged(row, _ int) {
 	if row == 0 {
-		f.nav.previewer.textView.SetText("Selected dir: " + f.nav.currentDir)
+		f.nav.previewer.textView.SetText("Selected dir: " + f.nav.current.dir)
 		f.nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
 		return
 	}

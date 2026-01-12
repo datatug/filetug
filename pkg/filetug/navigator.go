@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -26,7 +27,7 @@ type Navigator struct {
 	*tview.Flex
 	main *tview.Flex
 
-	currentDir  string
+	current     current
 	activeCol   int
 	proportions []int
 
@@ -41,8 +42,8 @@ type Navigator struct {
 	previewerFocusFunc func()
 	previewerBlurFunc  func()
 
-	left  *left
-	right *right
+	left  *container
+	right *container
 
 	dirsTree  *Tree
 	favorites *favorites
@@ -60,6 +61,17 @@ type Navigator struct {
 
 func (nav *Navigator) SetFocus() {
 	nav.app.SetFocus(nav.dirsTree.TreeView)
+}
+
+func (nav *Navigator) SetFocusToContainer(index int) {
+	switch index {
+	case nav.left.index:
+		nav.app.SetFocus(nav.left.Flex)
+	case nav.right.index:
+		nav.app.SetFocus(nav.right.Flex)
+	case 1:
+		nav.app.SetFocus(nav.files)
+	}
 }
 
 type navigatorOptions struct {
@@ -90,7 +102,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		proportions:    make([]int, 3),
 		gitStatusCache: make(map[string]*gitutils.RepoStatus),
 	}
-	nav.right = newRight(nav)
+	nav.right = newContainer(2, nav)
 	nav.favorites = newFavorites(nav)
 	nav.dirsTree = NewTree(nav)
 	nav.AddItem(nav.breadcrumbs, 1, 0, false)
@@ -138,7 +150,7 @@ func (nav *Navigator) createColumns() {
 			if event.Key() == tcell.KeyRune {
 				switch r := event.Rune(); r {
 				case 'f':
-					nav.right.SetContent(nav.favorites)
+					nav.left.SetContent(nav.favorites)
 					nav.app.SetFocus(nav.favorites)
 				case '0':
 					copy(nav.proportions, defaultProportions)
@@ -262,50 +274,59 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	saveCurrentDir(dir)
 
 	if strings.HasPrefix(dir, "~") || strings.HasPrefix(dir, "/") {
-		nodePath = dir[:1]
+		nodePath = dir
 		if isTreeDirChanges {
 			fullPath := fsutils.ExpandHome(nodePath)
-			nav.dirsTree.currDirRoot.SetText(nodePath).SetReference(nodePath)
+			rootNode := nav.dirsTree.currDirRoot
+			switch dir {
+			case "~", "/":
+				rootNode.SetText(dir)
+			default:
+				_, name := filepath.Split(fullPath)
+				rootNode.SetText(name)
+			}
+
+			rootNode.SetReference(nodePath).SetColor(tcell.ColorWhite)
 			go nav.updateGitStatus(ctx, fullPath, nav.dirsTree.currDirRoot, nodePath)
 		}
 	}
 
-	dirRelPath := strings.TrimPrefix(strings.TrimPrefix(dir, "~"), "/")
-
-	if dirRelPath != "" {
-		parents := strings.Split(dirRelPath, "/")
-		for _, p := range parents {
-			if nodePath == "/" {
-				nodePath += p
-			} else {
-				nodePath = nodePath + "/" + p
-			}
-			if isTreeDirChanges {
-				fullPath := fsutils.ExpandHome(nodePath)
-				prefix := "📁" + p
-				n := tview.NewTreeNode(prefix).SetReference(nodePath)
-				go nav.updateGitStatus(ctx, fullPath, n, prefix)
-				parentNode.AddChild(n)
-				parentNode = n
-			}
-		}
-	}
+	//dirRelPath := strings.TrimPrefix(strings.TrimPrefix(dir, "~"), "/")
+	//
+	//if dirRelPath != "" {
+	//	parents := strings.Split(dirRelPath, "/")
+	//	for _, p := range parents {
+	//		if nodePath == "/" {
+	//			nodePath += p
+	//		} else {
+	//			nodePath = nodePath + "/" + p
+	//		}
+	//		if isTreeDirChanges {
+	//			fullPath := fsutils.ExpandHome(nodePath)
+	//			prefix := "📁" + p
+	//			n := tview.NewTreeNode(prefix).SetReference(nodePath)
+	//			go nav.updateGitStatus(ctx, fullPath, n, prefix)
+	//			parentNode.AddChild(n)
+	//			parentNode = n
+	//		}
+	//	}
+	//}
 
 	if isTreeDirChanges {
 		nav.dirsTree.selectedDirNode = parentNode
 	}
-	nav.currentDir = fsutils.ExpandHome(nodePath)
+	nav.current.dir = fsutils.ExpandHome(nodePath)
 
 	nav.breadcrumbs.Clear()
 
-	for _, p := range strings.Split(nav.currentDir, "/") {
+	for _, p := range strings.Split(nav.current.dir, "/") {
 		if p == "" {
 			continue
 		}
 		nav.breadcrumbs.Push(sneatv.NewBreadcrumb(p, nil))
 	}
 
-	children, err := os.ReadDir(nav.currentDir)
+	children, err := os.ReadDir(nav.current.dir)
 	if err != nil {
 		parentNode.ClearChildren()
 		parentNode.SetColor(tcell.ColorOrangeRed)

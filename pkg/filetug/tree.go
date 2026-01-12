@@ -28,7 +28,7 @@ func NewTree(nav *Navigator) *Tree {
 		nav:      nav,
 		TreeView: tv,
 		boxed: newBoxed(tv,
-			WithLeftPadding(1),
+			//WithLeftPadding(0),
 			WithRightBorder(0, 1),
 		),
 	}
@@ -48,6 +48,9 @@ func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	tree := t.TreeView
 	nav := t.nav
 	switch event.Key() {
+	case tcell.KeyRight:
+		t.nav.app.SetFocus(t.nav.files)
+		return nil
 	case tcell.KeyEnter:
 		ref := tree.GetCurrentNode().GetReference()
 		if ref != nil {

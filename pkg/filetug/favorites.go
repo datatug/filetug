@@ -1,9 +1,16 @@
 package filetug
 
 import (
+	"github.com/datatug/filetug/pkg/fsutils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+type favorite struct {
+	path        string
+	shortcut    rune
+	description string
+}
 
 type favorites struct {
 	*tview.Flex
@@ -11,21 +18,23 @@ type favorites struct {
 	nav   *Navigator
 	list  *tview.List
 	items []favorite
-}
-
-type favorite struct {
-	path        string
-	description string
+	prev  current
 }
 
 func (f *favorites) Draw(screen tcell.Screen) {
 	f.boxed.Draw(screen)
 }
 
+func (f *favorites) ShowFavorites() {
+	f.prev = f.nav.current
+	f.nav.left.SetContent(f)
+	f.nav.app.SetFocus(f.list)
+}
+
 func builtInFavorites() []favorite {
 	return []favorite{
-		{path: "/", description: "root"},
-		{path: "~", description: "User's home directory"},
+		{path: "/", shortcut: '/', description: "root"},
+		{path: "~", shortcut: '0', description: "User's home directory"},
 		{path: "~/Documents", description: "Documents"},
 		{path: "~/projects", description: "Projects"},
 	}
@@ -40,13 +49,18 @@ func newFavorites(nav *Navigator) *favorites {
 		items: builtInFavorites(),
 		boxed: newBoxed(
 			flex,
-			WithLeftBorder(1, -1),
+			WithLeftBorder(2, -1),
 		),
 	}
 	f.AddItem(f.list, 0, 1, true)
 	f.setItems()
 	f.list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
+		case tcell.KeyEscape:
+			f.nav.goDir(f.prev.dir)
+			f.nav.left.SetContent(f.nav.dirsTree)
+			f.nav.app.SetFocus(f.nav.dirsTree)
+			return nil
 		case tcell.KeyLeft:
 			f.nav.app.SetFocus(f.nav.files.Table.Table)
 			return nil
@@ -59,10 +73,32 @@ func newFavorites(nav *Navigator) *favorites {
 
 func (f *favorites) setItems() {
 	f.list.Clear()
+	i := 0
 	for _, item := range f.items {
-		f.list.AddItem(item.path+" - [::i]"+item.description+"[-:-:I]", "", 0, func() {
-			f.nav.goDir(item.path)
-			f.nav.app.SetFocus(f.nav.files.Table.Table)
+		if item.path != "~" && item.path != "/" {
+			i++
+		}
+		var mainText string
+		if string(item.shortcut) != item.path {
+			mainText = item.path
+		}
+		mainText += " - [::i]" + item.description + "[-:-:I]"
+		var secondText string
+		if item.path == "~" {
+			secondText = fsutils.ExpandHome("~")
+		}
+		shortcut := item.shortcut
+		if shortcut == 0 {
+			shortcut = '0' + rune(i)
+		}
+		f.list.AddItem(mainText, secondText, shortcut, func() {
+			f.selected(item)
 		})
 	}
+}
+
+func (f *favorites) selected(item favorite) {
+	f.nav.goDir(item.path)
+	f.nav.left.SetContent(f.nav.dirsTree)
+	f.nav.app.SetFocus(f.nav.dirsTree)
 }
