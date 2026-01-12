@@ -191,7 +191,7 @@ func (nav *Navigator) createColumns() {
 }
 
 func (nav *Navigator) goDir(dir string) {
-
+	nav.dirsTree.SetSearch("")
 	nav.favorites.SetCurrentNode(nil)
 	nav.showDir(dir, nil)
 }

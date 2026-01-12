@@ -27,7 +27,7 @@ func newBottom() *bottom {
 	menuItems := []MenuItem{
 		{
 			Title:   "F1 Help",
-			HotKeys: []string{"F1"},
+			HotKeys: []string{"F1", "H"},
 			Action:  func() {},
 		},
 		{
@@ -41,13 +41,48 @@ func newBottom() *bottom {
 			Action:  func() {},
 		},
 		{
+			Title:   "Bookmarks",
+			HotKeys: []string{"B"},
+			Action:  func() {},
+		},
+		{
 			Title:   "Previewer",
 			HotKeys: []string{"P"},
 			Action:  func() {},
 		},
+		{
+			Title:   "Copy",
+			HotKeys: []string{"F5", "C"},
+			Action:  func() {},
+		},
+		{
+			Title:   "Move",
+			HotKeys: []string{"F6", "M"},
+			Action:  func() {},
+		},
+		{
+			Title:   "Delete",
+			HotKeys: []string{"F8", "D"},
+			Action:  func() {},
+		},
+		{
+			Title:   "View",
+			HotKeys: []string{"V"},
+			Action:  func() {},
+		},
+		{
+			Title:   "Edit",
+			HotKeys: []string{"E"},
+			Action:  func() {},
+		},
+		{
+			Title:   "Exit",
+			HotKeys: []string{"x"},
+			Action:  func() {},
+		},
 	}
 
-	const separator = "   "
+	const separator = " | "
 	var sb strings.Builder
 	for _, mi := range menuItems {
 		title := mi.Title
