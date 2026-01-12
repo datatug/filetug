@@ -20,7 +20,7 @@ func TestDirGitStatus_String(t *testing.T) {
 		{
 			name:   "clean",
 			status: &RepoStatus{Branch: "main"},
-			want:   "[gray]🌿main±0[-]",
+			want:   "[gray]git:main±0[-]",
 		},
 		{
 			name: "dirty",
@@ -28,7 +28,7 @@ func TestDirGitStatus_String(t *testing.T) {
 				FilesChanged:  2,
 				FileGitStatus: FileGitStatus{Insertions: 10, Deletions: 5},
 			}},
-			want: "[gray]🌿feature📄2[-][green]+10[-][red]-5[-]",
+			want: "[gray]git:feature📄2[-][green]+10[-][red]-5[-]",
 		},
 	}
 	for _, tt := range tests {
@@ -44,8 +44,8 @@ func TestGetGitStatus(t *testing.T) {
 	status := GetRepositoryStatus(context.Background(), ".")
 	if status != nil {
 		s := status.String()
-		if !strings.HasPrefix(s, "[gray]🌿") {
-			t.Errorf("Expected status string starting with '[gray]🌿', got '%s'", s)
+		if !strings.HasPrefix(s, "[gray]git:") {
+			t.Errorf("Expected status string starting with '[gray]git:', got '%s'", s)
 		}
 	}
 }

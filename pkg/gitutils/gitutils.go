@@ -56,9 +56,9 @@ func (s *RepoStatus) String() string {
 	}
 	var noChanges DirGitChangesStats
 	if s.DirGitChangesStats == noChanges {
-		return fmt.Sprintf("[gray]🌿%s%s[-]", s.Branch, s.FileGitStatus.String())
+		return fmt.Sprintf("[gray]git:%s%s[-]", s.Branch, s.FileGitStatus.String())
 	}
-	return fmt.Sprintf("[gray]🌿%s📄%d[-]%s", s.Branch, s.FilesChanged, s.FileGitStatus.String())
+	return fmt.Sprintf("[gray]git:%s📄%d[-]%s", s.Branch, s.FilesChanged, s.FileGitStatus.String())
 }
 
 // GetRepositoryStatus returns a brief git status for the given directory.

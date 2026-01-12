@@ -69,7 +69,8 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovered from panic: %v", r)
-			defer pprof.StopCPUProfile()
+			pprof.StopCPUProfile()
+			panic(r)
 		}
 	}()
 	run(app)

@@ -26,17 +26,22 @@ func newBottom() *bottom {
 
 	menuItems := []MenuItem{
 		{
-			Title:   "GoTo",
-			HotKeys: []string{"G"},
-			Action:  func() {},
-		},
-		{
 			Title:   "F1 Help",
 			HotKeys: []string{"F1"},
 			Action:  func() {},
 		},
 		{
-			Title:   "Preview",
+			Title:   "GoTo",
+			HotKeys: []string{"G"},
+			Action:  func() {},
+		},
+		{
+			Title:   "Favorites",
+			HotKeys: []string{"F"},
+			Action:  func() {},
+		},
+		{
+			Title:   "Previewer",
 			HotKeys: []string{"P"},
 			Action:  func() {},
 		},

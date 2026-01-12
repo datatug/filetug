@@ -19,18 +19,28 @@ import (
 
 type previewer struct {
 	*tview.Flex
+	boxed    *boxed
 	nav      *Navigator
 	textView *tview.TextView
 }
 
+func (t *previewer) Draw(screen tcell.Screen) {
+	t.boxed.Draw(screen)
+}
+
 func newPreviewer(nav *Navigator) *previewer {
+	flex := tview.NewFlex()
 	p := previewer{
-		Flex: tview.NewFlex(),
-		nav:  nav,
+		Flex: flex,
+		boxed: newBoxed(
+			flex,
+			WithLeftBorder(0, -1),
+		),
+		nav: nav,
 	}
-	p.SetTitle("Preview")
-	p.SetBorder(true)
-	p.SetBorderColor(Style.BlurBorderColor)
+	p.SetTitle("Previewer")
+	//p.SetBorder(true)
+	//p.SetBorderColor(Style.BlurBorderColor)
 
 	p.textView = tview.NewTextView()
 	p.textView.SetWrap(false)
@@ -64,7 +74,7 @@ func newPreviewer(nav *Navigator) *previewer {
 			nav.app.SetFocus(nav.files)
 			return nil
 		case tcell.KeyUp:
-			nav.o.moveFocusUp(p)
+			nav.o.moveFocusUp(p.textView)
 			return nil
 		default:
 			return event

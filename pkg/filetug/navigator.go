@@ -13,7 +13,6 @@ import (
 	"github.com/datatug/filetug/pkg/ftstate"
 	"github.com/datatug/filetug/pkg/gitutils"
 	"github.com/datatug/filetug/pkg/sneatv"
-	"github.com/datatug/filetug/pkg/sticky"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -32,7 +31,6 @@ type Navigator struct {
 	proportions []int
 
 	filesFocusFunc            func()
-	filesBlurFunc             func()
 	filesSelectionChangedFunc func(row, column int)
 
 	favoritesFocusFunc func()
@@ -48,7 +46,7 @@ type Navigator struct {
 	dirsTree  *Tree
 	favorites *favorites
 
-	files *sticky.Table
+	files *files
 
 	previewer *previewer
 
@@ -127,7 +125,9 @@ func (nav *Navigator) createColumns() {
 
 	nav.main.Clear()
 	nav.main.AddItem(nav.left, 0, nav.proportions[0], true)
+	nav.main.AddItem(nil, 1, 0, false)
 	nav.main.AddItem(nav.files, 0, nav.proportions[1], true)
+	nav.main.AddItem(nil, 1, 0, false)
 	nav.main.AddItem(nav.previewer, 0, nav.proportions[2], true)
 
 	nav.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

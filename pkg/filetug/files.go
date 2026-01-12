@@ -42,7 +42,7 @@ func (r fsRecords) GetCell(row, _ int, colName string) *tview.TableCell {
 		if dirEntry.IsDir() {
 			cell = tview.NewTableCell(" 📁" + name)
 		} else {
-			cell = tview.NewTableCell("   " + name)
+			cell = tview.NewTableCell(" 📄" + name)
 		}
 	} else {
 		fi := r.infos[row]
@@ -76,8 +76,52 @@ func (r fsRecords) GetCell(row, _ int, colName string) *tview.TableCell {
 	return cell
 }
 
-func newFiles(nav *Navigator) *sticky.Table {
-	files := sticky.NewTable([]sticky.Column{
+type files struct {
+	*sticky.Table
+	nav   *Navigator
+	boxed *boxed
+}
+
+func (f *files) Draw(screen tcell.Screen) {
+	f.boxed.Draw(screen)
+}
+
+func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+	table := f.Table
+	if string(event.Rune()) == " " {
+		row, _ := table.GetSelection()
+		cell := table.GetCell(row, 0)
+
+		if strings.HasPrefix(cell.Text, " ") {
+			cell.SetText("✓" + strings.TrimPrefix(cell.Text, " "))
+		} else {
+			cell.SetText(" " + strings.TrimPrefix(cell.Text, "✓"))
+		}
+		return nil
+	}
+	switch event.Key() {
+	case tcell.KeyLeft:
+		f.nav.app.SetFocus(f.nav.dirsTree)
+		return nil
+	case tcell.KeyRight:
+		f.nav.app.SetFocus(f.nav.previewer)
+		return nil
+	case tcell.KeyUp:
+		row, _ := table.GetSelection()
+		if row == 0 {
+			if f.nav.o.moveFocusUp != nil {
+				f.nav.o.moveFocusUp(table)
+				return nil
+			}
+		}
+		return event
+	default:
+		return event
+	}
+}
+
+func newFiles(nav *Navigator) *files {
+	table := sticky.NewTable([]sticky.Column{
 		{
 			Name:      "Name",
 			Expansion: 1,
@@ -92,90 +136,65 @@ func newFiles(nav *Navigator) *sticky.Table {
 			FixedWidth: 10,
 		},
 	})
-	files.SetSelectable(true, false)
-	files.SetFixed(1, 1)
-	files.SetBorder(true)
-	files.SetBorderColor(Style.BlurBorderColor)
-	files.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if string(event.Rune()) == " " {
-			row, _ := files.GetSelection()
-			cell := files.GetCell(row, 0)
-
-			if strings.HasPrefix(cell.Text, " ") {
-				cell.SetText("✓" + strings.TrimPrefix(cell.Text, " "))
-			} else {
-				cell.SetText(" " + strings.TrimPrefix(cell.Text, "✓"))
-			}
-			return nil
-		}
-		switch event.Key() {
-		case tcell.KeyLeft:
-			nav.app.SetFocus(nav.dirsTree)
-			return nil
-		case tcell.KeyRight:
-			nav.app.SetFocus(nav.previewer)
-			return nil
-		case tcell.KeyUp:
-			row, _ := files.GetSelection()
-			if row == 0 {
-				nav.o.moveFocusUp(files)
-				return nil
-			}
-			return event
-		default:
-			return event
-		}
-	})
-	files.SetFocusFunc(func() {
-		files.SetBorderColor(Style.FocusedBorderColor)
+	f := &files{
+		nav:   nav,
+		Table: table,
+		boxed: newBoxed(
+			table,
+			WithLeftBorder(0, -1),
+			WithRightBorder(0, +1),
+		),
+	}
+	table.SetSelectable(true, false)
+	table.SetFixed(1, 0)
+	table.SetInputCapture(f.inputCapture)
+	table.SetFocusFunc(func() {
 		nav.activeCol = 1
 	})
 	nav.filesFocusFunc = func() {
-		files.SetBorderColor(Style.FocusedBorderColor)
 		nav.activeCol = 1
 	}
 
-	files.SetBlurFunc(func() {
-		files.SetBorderColor(Style.BlurBorderColor)
-	})
-	nav.filesBlurFunc = func() {
-		files.SetBorderColor(Style.BlurBorderColor)
-	}
+	table.SetSelectionChangedFunc(f.selectionChanged)
+	nav.filesSelectionChangedFunc = f.selectionChangedNavFunc
+	return f
+}
 
-	files.SetSelectionChangedFunc(func(row, column int) {
-		if row == 0 {
-			nav.previewer.textView.SetText("Selected dir: " + nav.currentDir)
-			nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
-			return
-		}
-		cell := files.GetCell(row, 0)
-		ref := cell.GetReference()
-		if ref == nil {
-			nav.previewer.SetText("cell has no reference")
-			return
-		}
-		fullName := ref.(string)
-		stat, err := os.Stat(fullName)
-		if err != nil {
-			nav.previewer.SetErr(err)
-			return
-		}
-		if stat.IsDir() {
-			nav.previewer.SetText("Directory: " + fullName)
-			return
-		}
-		nav.previewer.PreviewFile("", fullName)
-	})
-	nav.filesSelectionChangedFunc = func(row, column int) {
-		if row == 0 {
-			nav.previewer.textView.SetText("Selected dir: " + nav.currentDir)
-			nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
-			return
-		}
-		cell := files.GetCell(row, 0)
-		name := cell.Text[1:]
-		fullName := filepath.Join(nav.currentDir, name)
-		nav.previewer.PreviewFile(name, fullName)
+// selectionChangedNavFunc: TODO: is it a duplicate of selectionChangedNavFunc?
+func (f *files) selectionChangedNavFunc(row, _ int) {
+	if row == 0 {
+		f.nav.previewer.textView.SetText("Selected dir: " + f.nav.currentDir)
+		f.nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
+		return
 	}
-	return files
+	cell := f.GetCell(row, 0)
+	name := cell.Text[1:]
+	fullName := filepath.Join(f.nav.currentDir, name)
+	f.nav.previewer.PreviewFile(name, fullName)
+}
+
+// selectionChanged: TODO: is it a duplicate of selectionChangedNavFunc?
+func (f *files) selectionChanged(row, _ int) {
+	if row == 0 {
+		f.nav.previewer.textView.SetText("Selected dir: " + f.nav.currentDir)
+		f.nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
+		return
+	}
+	cell := f.GetCell(row, 0)
+	ref := cell.GetReference()
+	if ref == nil {
+		f.nav.previewer.SetText("cell has no reference")
+		return
+	}
+	fullName := ref.(string)
+	stat, err := os.Stat(fullName)
+	if err != nil {
+		f.nav.previewer.SetErr(err)
+		return
+	}
+	if stat.IsDir() {
+		f.nav.previewer.SetText("Directory: " + fullName)
+		return
+	}
+	f.nav.previewer.PreviewFile("", fullName)
 }

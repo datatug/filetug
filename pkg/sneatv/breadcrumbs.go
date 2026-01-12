@@ -18,8 +18,9 @@ func (b *Breadcrumbs) GoHome() error {
 	return b.items[0].Action()
 }
 
-func (b *Breadcrumbs) TakeFocus() {
-	//b.selectedItemIndex -= 1
+func (b *Breadcrumbs) TakeFocus(from tview.Primitive) {
+	b.nextFocusTarget = from
+	b.selectedItemIndex -= 1
 }
 
 func (b *Breadcrumbs) SelectedItemIndex() int {

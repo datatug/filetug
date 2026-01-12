@@ -25,8 +25,8 @@ func createLeft(nav *Navigator) {
 		Flex: tview.NewFlex().SetDirection(tview.FlexRow),
 		nav:  nav,
 	}
-	nav.left.SetBorder(true)
-	nav.left.AddItem(nav.favorites, 3, 0, false)
+	//nav.left.SetBorder(true)
+	//nav.left.AddItem(nav.favorites, 3, 0, false)
 	nav.left.AddItem(nav.dirsTree, 0, 1, true)
 	nav.left.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -36,59 +36,6 @@ func createLeft(nav *Navigator) {
 		default:
 			return event
 		}
-	})
-	treeViewInputCapture := func(t *tview.TreeView, event *tcell.EventKey, f func(*tcell.EventKey) *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEnter:
-			ref := t.GetCurrentNode().GetReference()
-			if ref != nil {
-				dir := ref.(string)
-				nav.goDir(dir)
-				return nil
-			}
-		}
-		if f != nil {
-			return f(event)
-		}
-		return event
-	}
-	nav.favorites.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		return treeViewInputCapture(nav.favorites.TreeView, event, func(key *tcell.EventKey) *tcell.EventKey {
-			switch event.Key() {
-			case tcell.KeyUp:
-				rootNode := nav.favorites.GetRoot()
-				current := nav.favorites.GetCurrentNode()
-				if current == rootNode || current == rootNode.GetChildren()[0] {
-					nav.o.moveFocusUp(nav.favorites.TreeView)
-					nav.favorites.SetCurrentNode(nil)
-					return nil
-				}
-				return event
-			case tcell.KeyDown:
-				favNodes := nav.favorites.GetRoot().GetChildren()
-				if nav.favorites.GetCurrentNode() == favNodes[len(favNodes)-1] {
-					nav.favorites.SetCurrentNode(nil)
-					nav.dirsTree.SetCurrentNode(nav.dirsTree.GetRoot())
-					nav.app.SetFocus(nav.dirsTree.TreeView)
-					return nil
-				}
-				return event
-			default:
-				return event
-			}
-		})
-	})
-	nav.dirsTree.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		return treeViewInputCapture(nav.dirsTree.TreeView, event, func(key *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyUp && nav.dirsTree.GetCurrentNode() == nav.dirsTree.GetRoot() {
-				children := nav.favorites.GetRoot().GetChildren()
-				nav.favorites.SetCurrentNode(children[len(children)-1])
-				nav.dirsTree.SetCurrentNode(nil)
-				nav.app.SetFocus(nav.favorites.TreeView)
-				return nil
-			}
-			return event
-		})
 	})
 
 	nav.left.SetFocusFunc(nav.left.onFocus)

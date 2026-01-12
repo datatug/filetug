@@ -13,11 +13,6 @@ func TestFiles(t *testing.T) {
 	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
 	f := nav.files
 
-	t.Run("FocusBlur", func(t *testing.T) {
-		nav.filesFocusFunc()
-		nav.filesBlurFunc()
-	})
-
 	t.Run("SelectionChanged", func(t *testing.T) {
 		nav.filesSelectionChangedFunc(0, 0)
 

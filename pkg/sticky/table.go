@@ -24,6 +24,7 @@ func NewTable(columns []Column) *Table {
 		columns: columns,
 		Table:   tview.NewTable(),
 	}
+	t.SetFixed(1, 0)
 	// ---- re-render on resize ----
 	//app.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
 	//	render()
@@ -58,7 +59,10 @@ func NewTable(columns []Column) *Table {
 
 func (t *Table) setHeader() {
 	for i, col := range t.columns {
-		t.SetCell(0, i, tview.NewTableCell(col.Name))
+		th := tview.NewTableCell(col.Name)
+		th.SetTextColor(tcell.ColorDarkGray)
+		//th.SetBackgroundColor(tcell.ColorGray)
+		t.SetCell(0, i, th)
 	}
 }
 
