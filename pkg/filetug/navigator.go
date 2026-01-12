@@ -119,7 +119,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 	return nav
 }
 
-var defaultProportions = []int{6, 10, 8}
+var defaultProportions = []int{6, 9, 9}
 
 func (nav *Navigator) createColumns() {
 
