@@ -1,5 +1,5 @@
 package filetug
 
-func showHelpModal() {
+func showHelpModal(nav *Navigator) {
 
 }

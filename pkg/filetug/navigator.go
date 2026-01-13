@@ -158,7 +158,7 @@ const (
 func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyF1:
-		showHelpModal()
+		showHelpModal(nav)
 		return nil
 	case tcell.KeyRune:
 		if event.Modifiers()&tcell.ModAlt != 0 {
