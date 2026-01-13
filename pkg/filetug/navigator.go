@@ -145,40 +145,7 @@ func (nav *Navigator) createColumns() {
 	nav.main.AddItem(nil, 1, 0, false)
 	nav.main.AddItem(nav.right, 0, nav.proportions[2], true)
 
-	nav.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyF1:
-			showHelpModal()
-			return nil
-		case tcell.KeyRune:
-			if event.Modifiers()&tcell.ModAlt != 0 {
-				switch r := event.Rune(); r {
-				case 'f':
-					nav.favorites.ShowFavorites()
-				case '0':
-					copy(nav.proportions, defaultProportions)
-					nav.createColumns()
-				case '+', '=':
-					nav.resize(increase)
-					return nil
-				case '-', '_':
-					nav.resize(decrease)
-					return nil
-				case '/', 'r', 'R':
-					nav.goDir("/")
-					return nil
-				case '~', 'h', 'H':
-					nav.goDir("~")
-					return nil
-				default:
-					return event
-				}
-			}
-			return event
-		default:
-			return event
-		}
-	})
+	nav.SetInputCapture(nav.inputCapture)
 }
 
 type resizeMode int
@@ -187,6 +154,41 @@ const (
 	increase resizeMode = 1
 	decrease resizeMode = -1
 )
+
+func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+	switch event.Key() {
+	case tcell.KeyF1:
+		showHelpModal()
+		return nil
+	case tcell.KeyRune:
+		if event.Modifiers()&tcell.ModAlt != 0 {
+			switch r := event.Rune(); r {
+			case 'f':
+				nav.favorites.ShowFavorites()
+			case '0':
+				copy(nav.proportions, defaultProportions)
+				nav.createColumns()
+			case '+', '=':
+				nav.resize(increase)
+				return nil
+			case '-', '_':
+				nav.resize(decrease)
+				return nil
+			case '/', 'r', 'R':
+				nav.goDir("/")
+				return nil
+			case '~', 'h', 'H':
+				nav.goDir("~")
+				return nil
+			default:
+				return event
+			}
+		}
+		return event
+	default:
+		return event
+	}
+}
 
 func (nav *Navigator) resize(mode resizeMode) {
 	switch nav.activeCol {
