@@ -2,21 +2,55 @@ package filetug
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/datatug/filetug/pkg/ftstate"
 	"github.com/datatug/filetug/pkg/sticky"
 	"github.com/gdamore/tcell/v2"
 )
 
 type files struct {
 	*sticky.Table
-	nav   *Navigator
-	boxed *boxed
+	nav             *Navigator
+	boxed           *boxed
+	records         *FileRecords
+	currentFileName string
 }
 
 func (f *files) Draw(screen tcell.Screen) {
 	f.boxed.Draw(screen)
+}
+
+func (f *files) SetRecords(records *FileRecords) {
+	f.records = records
+	f.Table.SetRecords(records)
+	if f.currentFileName != "" {
+		f.selectCurrentFile()
+	}
+}
+
+func (f *files) selectCurrentFile() {
+	if f.records != nil {
+		for i, entry := range f.records.Entries {
+			if entry.Name() == f.currentFileName {
+				go func() {
+					//time.Sleep(100 * time.Millisecond)
+					f.nav.app.QueueUpdateDraw(func() {
+						f.Select(i+1, 0)
+					})
+				}()
+
+				return
+			}
+		}
+	}
+}
+
+func (f *files) SetCurrentFile(name string) {
+	f.currentFileName = name
+	f.selectCurrentFile()
 }
 
 func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
@@ -125,6 +159,8 @@ func (f *files) selectionChanged(row, _ int) {
 		f.nav.previewer.SetErr(err)
 		return
 	}
+	_, name := path.Split(fullName)
+	ftstate.SaveCurrentFileName(name)
 	if stat.IsDir() {
 		f.nav.previewer.SetText("Directory: " + fullName)
 		return

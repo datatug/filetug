@@ -125,11 +125,17 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 
 	nav.createColumns()
 
-	currentDir := ftstate.GetCurrentDir()
-	if currentDir == "" {
-		currentDir = "~"
+	if state, stateErr := ftstate.GetState(); state != nil {
+		if state.CurrentDir == "" {
+			state.CurrentDir = "~"
+		}
+		nav.goDir(state.CurrentDir)
+		if stateErr == nil {
+			if state.CurrentFileName != "" {
+				nav.files.SetCurrentFile(state.CurrentFileName)
+			}
+		}
 	}
-	nav.goDir(currentDir)
 
 	return nav
 }
@@ -217,6 +223,7 @@ func (nav *Navigator) resize(mode resizeMode) {
 func (nav *Navigator) goDir(dir string) {
 	nav.dirsTree.SetSearch("")
 	nav.showDir(dir, nil)
+	saveCurrentDir(dir)
 }
 
 func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node *tview.TreeNode, prefix string) {
@@ -277,8 +284,6 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		parentNode = selectedNode
 	}
 
-	saveCurrentDir(dir)
-
 	if strings.HasPrefix(dir, "~") || strings.HasPrefix(dir, "/") {
 		nodePath = dir
 		if isTreeDirChanges {
@@ -302,15 +307,15 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	//if dirRelPath != "" {
 	//	parents := strings.Split(dirRelPath, "/")
 	//	for _, p := range parents {
-	//		if nodePath == "/" {
-	//			nodePath += p
+	//		if NodePath == "/" {
+	//			NodePath += p
 	//		} else {
-	//			nodePath = nodePath + "/" + p
+	//			NodePath = NodePath + "/" + p
 	//		}
 	//		if isTreeDirChanges {
-	//			fullPath := fsutils.ExpandHome(nodePath)
+	//			fullPath := fsutils.ExpandHome(NodePath)
 	//			prefix := "📁" + p
-	//			n := tview.NewTreeNode(prefix).SetReference(nodePath)
+	//			n := tview.NewTreeNode(prefix).SetReference(NodePath)
 	//			go nav.updateGitStatus(ctx, fullPath, n, prefix)
 	//			parentNode.AddChild(n)
 	//			parentNode = n

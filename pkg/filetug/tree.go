@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/datatug/filetug/pkg/ftstate"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -36,7 +37,10 @@ func NewTree(nav *Navigator) *Tree {
 	t.SetRoot(t.currDirRoot)
 	t.SetChangedFunc(func(node *tview.TreeNode) {
 		ref := node.GetReference()
+
 		if dir, ok := ref.(string); ok {
+			_, name := path.Split(dir)
+			ftstate.SaveSelectedTreeDir(name)
 			nav.showDir(dir, node)
 		}
 	})

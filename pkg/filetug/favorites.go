@@ -37,6 +37,7 @@ func builtInFavorites() []favorite {
 		{path: "~", shortcut: '0', description: "User's home directory"},
 		{path: "~/Documents", description: "Documents"},
 		{path: "~/projects", description: "Projects"},
+		{path: "~/.filetug", description: "FileTug settings dir"},
 	}
 }
 func newFavorites(nav *Navigator) *favorites {

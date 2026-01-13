@@ -16,6 +16,7 @@ var settingsDirPath = fsutils.ExpandHome(settingsDir)
 
 type State struct {
 	CurrentDir      string `json:"current_dir,omitempty"`
+	SelectedTreeDir string `json:"selected_tree_dir,omitempty"`
 	CurrentFileName string `json:"current_file_name,omitempty"`
 }
 
@@ -24,6 +25,12 @@ func getStateFilePath() string {
 }
 
 var logErr = log.Println
+
+func GetState() (*State, error) {
+	filePath := getStateFilePath()
+	var state State
+	return &state, readJSON(filePath, false, &state)
+}
 
 func GetCurrentDir() string {
 	var state State
@@ -35,6 +42,18 @@ func GetCurrentDir() string {
 func SaveCurrentDir(currentDir string) {
 	saveSettingValue(func(state *State) {
 		state.CurrentDir = currentDir
+	})
+}
+
+func SaveSelectedTreeDir(dir string) {
+	saveSettingValue(func(state *State) {
+		state.SelectedTreeDir = dir
+	})
+}
+
+func SaveCurrentFileName(name string) {
+	saveSettingValue(func(state *State) {
+		state.CurrentFileName = name
 	})
 }
 
