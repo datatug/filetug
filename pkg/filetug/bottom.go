@@ -27,7 +27,7 @@ func newBottom() *bottom {
 	menuItems := []MenuItem{
 		{
 			Title:   "F1 Help",
-			HotKeys: []string{"F1", "H"},
+			HotKeys: []string{"F1"},
 			Action:  func() {},
 		},
 		{
