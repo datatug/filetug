@@ -3,7 +3,6 @@ package filetug
 import (
 	"os"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/datatug/filetug/pkg/fsutils"
@@ -74,7 +73,7 @@ func (r fsRecords) GetCell(row, _ int, colName string) *tview.TableCell {
 
 		switch colName {
 		case "Size":
-			cell = tview.NewTableCell(strconv.FormatInt(fi.Size(), 10)).SetAlign(tview.AlignRight)
+			cell = tview.NewTableCell(fsutils.GetSizeShortText(fi.Size())).SetAlign(tview.AlignRight)
 		case "Modified":
 			var s string
 			if modTime := fi.ModTime(); fi.ModTime().After(time.Now().Add(24 * time.Hour)) {
