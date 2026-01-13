@@ -146,8 +146,12 @@ func (nav *Navigator) createColumns() {
 	nav.main.AddItem(nav.right, 0, nav.proportions[2], true)
 
 	nav.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Modifiers()&tcell.ModAlt != 0 {
-			if event.Key() == tcell.KeyRune {
+		switch event.Key() {
+		case tcell.KeyF1:
+			showHelpModal()
+			return nil
+		case tcell.KeyRune:
+			if event.Modifiers()&tcell.ModAlt != 0 {
 				switch r := event.Rune(); r {
 				case 'f':
 					nav.favorites.ShowFavorites()
@@ -202,8 +206,10 @@ func (nav *Navigator) createColumns() {
 					return event
 				}
 			}
+			return event
+		default:
+			return event
 		}
-		return event
 	})
 }
 
@@ -318,11 +324,18 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 
 	nav.breadcrumbs.Clear()
 
-	for _, p := range strings.Split(nav.current.dir, "/") {
+	currentDir := strings.Split(nav.current.dir, "/")
+	breadPaths := make([]string, 0, len(currentDir))
+	for _, p := range currentDir[1:] {
 		if p == "" {
 			continue
 		}
-		nav.breadcrumbs.Push(sneatv.NewBreadcrumb(p, nil))
+		breadPaths = append(breadPaths, p)
+		breadPath := "/" + path.Join(breadPaths...)
+		nav.breadcrumbs.Push(sneatv.NewBreadcrumb(p, func() error {
+			nav.goDir(breadPath)
+			return nil
+		}))
 	}
 
 	children, err := os.ReadDir(nav.current.dir)
