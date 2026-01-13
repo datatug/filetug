@@ -39,7 +39,7 @@ func NewTable(columns []Column) *Table {
 	t.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyDown:
-			if t.topRowIndex < t.records.Count()-1 {
+			if t.topRowIndex < t.GetRowCount()-1 {
 				t.topRowIndex++
 				t.render()
 			}
@@ -68,6 +68,32 @@ func (t *Table) setHeader() {
 		t.SetCell(0, i, th)
 	}
 
+}
+
+func (t *Table) Select(row, column int) {
+	t.Table.Select(row, column)
+	if row > 0 {
+		t.ScrollToRow(row - 1)
+	}
+}
+
+func (t *Table) ScrollToRow(row int) {
+	_, _, _, visibleRowsCount := t.GetRect()
+	if visibleRowsCount <= 1 { // 1 for header
+		return
+	}
+	visibleRowsCount-- // header
+
+	if row < t.topRowIndex {
+		t.topRowIndex = row
+		t.render()
+	} else if row >= t.topRowIndex+visibleRowsCount {
+		t.topRowIndex = row - visibleRowsCount + 1
+		if t.topRowIndex < 0 {
+			t.topRowIndex = 0
+		}
+		t.render()
+	}
 }
 
 func (t *Table) render() {
@@ -105,18 +131,20 @@ func (t *Table) render() {
 		}
 	}
 
-	for row := t.topRowIndex; row < visibleRowsCount && t.topRowIndex+row < t.records.Count(); row++ {
-		for col, column := range t.columns {
-			td := t.records.GetCell(row, col, column.Name)
-			if td != nil {
-				if maxWidth := maxColWidth[col]; maxWidth > 0 {
-					td.SetMaxWidth(maxWidth)
+	if t.records != nil {
+		for row := 0; row < visibleRowsCount && t.topRowIndex+row < t.records.RecordsCount(); row++ {
+			for col, column := range t.columns {
+				td := t.records.GetCell(t.topRowIndex+row, col)
+				if td != nil {
+					if maxWidth := maxColWidth[col]; maxWidth > 0 {
+						td.SetMaxWidth(maxWidth)
+					}
+					if column.Expansion > 0 {
+						td.SetExpansion(column.Expansion)
+					}
 				}
-				if column.Expansion > 0 {
-					td.SetExpansion(column.Expansion)
-				}
+				t.SetCell(row+1, col, td)
 			}
-			t.SetCell(row+1, col, td)
 		}
 	}
 }

@@ -65,7 +65,7 @@ func newFavorites(nav *Navigator) *favorites {
 			f.nav.app.SetFocus(f.nav.dirsTree)
 			return nil
 		case tcell.KeyLeft:
-			f.nav.app.SetFocus(f.nav.files.Table.Table)
+			f.nav.app.SetFocus(f.nav.files.table)
 			return nil
 		default:
 			return event

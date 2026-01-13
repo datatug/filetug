@@ -7,43 +7,47 @@ import (
 	"strings"
 
 	"github.com/datatug/filetug/pkg/ftstate"
-	"github.com/datatug/filetug/pkg/sticky"
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 type files struct {
-	*sticky.Table
-	nav             *Navigator
-	boxed           *boxed
-	records         *FileRecords
+	*boxed
+	table *tview.Table
+	rows  *FileRows
+	nav   *Navigator
+
 	currentFileName string
 }
 
-func (f *files) Draw(screen tcell.Screen) {
-	f.boxed.Draw(screen)
-}
+//func (f *files) Clear() {
+//	f.table.Clear()
+//}
 
-func (f *files) SetRecords(records *FileRecords) {
-	f.records = records
-	f.Table.SetRecords(records)
+//func (f *files) Draw(screen tcell.Screen) {
+//	//f.selectCurrentFile()
+//	f.boxed.Draw(screen)
+//}
+
+func (f *files) SetRows(rows *FileRows) {
+	f.rows = rows
+	f.table.SetContent(rows)
 	if f.currentFileName != "" {
 		f.selectCurrentFile()
 	}
 }
 
 func (f *files) selectCurrentFile() {
-	if f.records != nil {
-		for i, entry := range f.records.Entries {
-			if entry.Name() == f.currentFileName {
-				go func() {
-					//time.Sleep(100 * time.Millisecond)
-					f.nav.app.QueueUpdateDraw(func() {
-						f.Select(i+1, 0)
-					})
-				}()
-
-				return
+	if f.currentFileName == "" || f.rows == nil {
+		return
+	}
+	for i, entry := range f.rows.Entries {
+		if entry.Name() == f.currentFileName {
+			row, _ := f.table.GetSelection()
+			if row != i+1 {
+				f.table.Select(i+1, 0)
 			}
+			return
 		}
 	}
 }
@@ -54,7 +58,7 @@ func (f *files) SetCurrentFile(name string) {
 }
 
 func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
-	table := f.Table
+	table := f.table
 	if string(event.Rune()) == " " {
 		row, _ := table.GetSelection()
 		cell := table.GetCell(row, 0)
@@ -88,26 +92,29 @@ func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 }
 
 func newFiles(nav *Navigator) *files {
-	table := sticky.NewTable([]sticky.Column{
-		{
-			Name:      "Name",
-			Expansion: 1,
-			MinWidth:  20,
-		},
-		{
-			Name:       "Size",
-			FixedWidth: 6,
-		},
-		{
-			Name:       "Modified",
-			FixedWidth: 10,
-		},
-	})
+	table := tview.NewTable()
+	//table := sticky.NewTable([]sticky.Column{
+	//	{
+	//		Name:      "Name",
+	//		Expansion: 1,
+	//		MinWidth:  20,
+	//	},
+	//	{
+	//		Name:       "Size",
+	//		FixedWidth: 6,
+	//	},
+	//	{
+	//		Name:       "Modified",
+	//		FixedWidth: 10,
+	//	},
+	//})
+	flex := tview.NewFlex()
+	flex.AddItem(table, 0, 1, true)
 	f := &files{
 		nav:   nav,
-		Table: table,
+		table: table,
 		boxed: newBoxed(
-			table,
+			flex,
 			WithLeftBorder(0, -1),
 			WithRightBorder(0, +1),
 		),
@@ -134,7 +141,7 @@ func (f *files) selectionChangedNavFunc(row, _ int) {
 		f.nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
 		return
 	}
-	cell := f.GetCell(row, 0)
+	cell := f.table.GetCell(row, 0)
 	name := cell.Text[1:]
 	fullName := filepath.Join(f.nav.current.dir, name)
 	f.nav.previewer.PreviewFile(name, fullName)
@@ -147,23 +154,31 @@ func (f *files) selectionChanged(row, _ int) {
 		f.nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
 		return
 	}
-	cell := f.GetCell(row, 0)
+	cell := f.table.GetCell(row, 0)
 	ref := cell.GetReference()
 	if ref == nil {
 		f.nav.previewer.SetText("cell has no reference")
 		return
 	}
+
 	fullName := ref.(string)
+	f.rememberCurrent(fullName)
+
 	stat, err := os.Stat(fullName)
 	if err != nil {
 		f.nav.previewer.SetErr(err)
 		return
 	}
-	_, name := path.Split(fullName)
-	ftstate.SaveCurrentFileName(name)
+
 	if stat.IsDir() {
 		f.nav.previewer.SetText("Directory: " + fullName)
 		return
 	}
+
 	f.nav.previewer.PreviewFile("", fullName)
+}
+
+func (f *files) rememberCurrent(fullName string) {
+	_, f.currentFileName = path.Split(fullName)
+	ftstate.SaveCurrentFileName(f.currentFileName)
 }

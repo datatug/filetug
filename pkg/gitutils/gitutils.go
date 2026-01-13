@@ -35,7 +35,7 @@ func (s *FileGitStatus) String() string {
 		}
 	}
 	if sb.Len() == 0 {
-		return "±0"
+		return "[lightgray]±0[-]"
 	}
 	return sb.String()
 }
@@ -51,14 +51,15 @@ type RepoStatus struct {
 }
 
 func (s *RepoStatus) String() string {
+	const separator = "[gray]┆[-]"
 	if s == nil {
 		return ""
 	}
 	var noChanges DirGitChangesStats
 	if s.DirGitChangesStats == noChanges {
-		return fmt.Sprintf("[gray]git:%s%s[-]", s.Branch, s.FileGitStatus.String())
+		return separator + fmt.Sprintf("[darkgray]%s[-]%s", s.Branch, s.FileGitStatus.String())
 	}
-	return fmt.Sprintf("[gray]git:%s📄%d[-]%s", s.Branch, s.FilesChanged, s.FileGitStatus.String())
+	return separator + fmt.Sprintf("[darkgray]%s[-]%s[darkgray]ƒ%d[-]%s", s.Branch, separator, s.FilesChanged, s.FileGitStatus.String())
 }
 
 // GetRepositoryStatus returns a brief git status for the given directory.

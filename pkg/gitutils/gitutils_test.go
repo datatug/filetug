@@ -20,7 +20,7 @@ func TestDirGitStatus_String(t *testing.T) {
 		{
 			name:   "clean",
 			status: &RepoStatus{Branch: "main"},
-			want:   "[gray]git:main±0[-]",
+			want:   "[gray]┆[-][darkgray]main[-][lightgray]±0[-]",
 		},
 		{
 			name: "dirty",
@@ -28,7 +28,7 @@ func TestDirGitStatus_String(t *testing.T) {
 				FilesChanged:  2,
 				FileGitStatus: FileGitStatus{Insertions: 10, Deletions: 5},
 			}},
-			want: "[gray]git:feature📄2[-][green]+10[-][red]-5[-]",
+			want: "[gray]┆[-][darkgray]feature[-][gray]┆[-][darkgray]ƒ2[-][green]+10[-][red]-5[-]",
 		},
 	}
 	for _, tt := range tests {

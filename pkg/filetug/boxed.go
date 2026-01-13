@@ -11,10 +11,12 @@ var (
 )
 
 type boxedContent interface {
+	tview.Primitive
 	GetTitle() string
-	Draw(screen tcell.Screen)
-	HasFocus() bool
-	GetRect() (x int, y int, width int, height int)
+	SetTitle(title string) *tview.Box
+	//Draw(screen tcell.Screen)
+	//HasFocus() bool
+	//GetRect() (x int, y int, width int, height int)
 	SetBorderPadding(top, bottom, left, right int) *tview.Box
 }
 
@@ -34,11 +36,11 @@ type boxOptions struct {
 
 type BoxOption func(*boxOptions)
 
-func WithLeftPadding(padding int) BoxOption {
-	return func(opts *boxOptions) {
-		opts.leftPadding = padding
-	}
-}
+//func WithLeftPadding(padding int) BoxOption {
+//	return func(opts *boxOptions) {
+//		opts.leftPadding = padding
+//	}
+//}
 
 //func WithRightPadding(padding int) BoxOption {
 //	return func(opts *boxOptions) {

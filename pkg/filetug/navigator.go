@@ -70,7 +70,7 @@ func (nav *Navigator) SetFocusToContainer(index int) {
 	case nav.right.index:
 		nav.app.SetFocus(nav.right.Flex)
 	case 1:
-		nav.app.SetFocus(nav.files)
+		nav.app.SetFocus(nav.files.boxed)
 	}
 }
 
@@ -348,8 +348,8 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	if err != nil {
 		parentNode.ClearChildren()
 		parentNode.SetColor(tcell.ColorOrangeRed)
-		dirRecords := NewDirRecords(nodePath, nil)
-		nav.files.SetRecords(dirRecords)
+		dirRecords := NewFileRows(nodePath, nil)
+		nav.files.SetRows(dirRecords)
 		nav.previewer.textView.SetText(err.Error()).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
 		return
 	}
@@ -360,8 +360,8 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	} else {
 		nav.files.SetTitle(dir)
 	}
-	nav.files.Clear()
-	nav.files.SetSelectable(true, false)
+	//nav.files.Clear()
+	nav.files.table.SetSelectable(true, false)
 
 	sort.Slice(children, func(i, j int) bool {
 		if children[i].IsDir() && !children[j].IsDir() {
@@ -372,8 +372,8 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		return children[i].Name() < children[j].Name()
 	})
 
-	dirRecords := NewDirRecords(nodePath, children)
-	nav.files.SetRecords(dirRecords)
+	dirRecords := NewFileRows(nodePath, children)
+	nav.files.SetRows(dirRecords)
 
 	if isTreeDirChanges {
 		for _, child := range children {
