@@ -159,42 +159,10 @@ func (nav *Navigator) createColumns() {
 					copy(nav.proportions, defaultProportions)
 					nav.createColumns()
 				case '+', '=':
-					switch nav.activeCol {
-					case 0:
-						nav.proportions[0] += 2
-						nav.proportions[1] -= 1
-						nav.proportions[2] -= 1
-					case 1:
-						nav.proportions[0] -= 1
-						nav.proportions[1] += 2
-						nav.proportions[2] -= 1
-					case 2:
-						nav.proportions[0] -= 1
-						nav.proportions[1] -= 1
-						nav.proportions[2] += 2
-					default:
-						return event
-					}
-					nav.createColumns()
+					nav.resize(increase)
 					return nil
 				case '-', '_':
-					switch nav.activeCol {
-					case 0:
-						nav.proportions[0] -= 2
-						nav.proportions[1] += 1
-						nav.proportions[2] += 1
-					case 1:
-						nav.proportions[0] += 1
-						nav.proportions[1] -= 2
-						nav.proportions[2] += 1
-					case 2:
-						nav.proportions[0] += 1
-						nav.proportions[1] += 1
-						nav.proportions[2] -= 2
-					default:
-						return event
-					}
-					nav.createColumns()
+					nav.resize(decrease)
 					return nil
 				case '/', 'r', 'R':
 					nav.goDir("/")
@@ -211,6 +179,34 @@ func (nav *Navigator) createColumns() {
 			return event
 		}
 	})
+}
+
+type resizeMode int
+
+const (
+	increase resizeMode = 1
+	decrease resizeMode = -1
+)
+
+func (nav *Navigator) resize(mode resizeMode) {
+	switch nav.activeCol {
+	case 0:
+		nav.proportions[0] += 2 * int(mode)
+		nav.proportions[1] -= 1 * int(mode)
+		nav.proportions[2] -= 1 * int(mode)
+	case 1:
+		nav.proportions[0] -= 1 * int(mode)
+		nav.proportions[1] += 2 * int(mode)
+		nav.proportions[2] -= 1 * int(mode)
+	case 2:
+		nav.proportions[0] -= 1 * int(mode)
+		nav.proportions[1] -= 1 * int(mode)
+		nav.proportions[2] += 2 * int(mode)
+	default:
+		return
+	}
+
+	nav.createColumns()
 }
 
 func (nav *Navigator) goDir(dir string) {
