@@ -21,7 +21,7 @@ type files struct {
 }
 
 //func (f *files) Clear() {
-//	f.table.Clear()
+//	f.extTable.Clear()
 //}
 
 //func (f *files) Draw(screen tcell.Screen) {
@@ -93,7 +93,7 @@ func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 
 func newFiles(nav *Navigator) *files {
 	table := tview.NewTable()
-	//table := sticky.NewTable([]sticky.Column{
+	//extTable := sticky.NewTable([]sticky.Column{
 	//	{
 	//		Name:      "Name",
 	//		Expansion: 1,
