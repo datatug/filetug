@@ -1,7 +1,6 @@
 package ftstate
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 
@@ -24,7 +23,9 @@ func getStateFilePath() string {
 	return filepath.Join(settingsDirPath, stateFileName)
 }
 
-var logErr = log.Println
+var logErr = func(v ...any) {
+
+}
 
 func GetState() (*State, error) {
 	filePath := getStateFilePath()
@@ -65,8 +66,7 @@ func saveSettingValue(f func(state *State)) {
 	var state State
 	err := readJSON(filePath, false, &state)
 	if err != nil {
-		log.Println("SaveCurrentDir: Error reading state file:", err)
-		return
+		logErr("SaveCurrentDir: Error reading state file:", err)
 	}
 
 	if dirInfo, err := os.Stat(settingsDirPath); err != nil {
@@ -82,7 +82,7 @@ func saveSettingValue(f func(state *State)) {
 	}
 
 	f(&state)
-	if err = writeJSON(filePath, state); err != nil {
+	if err := writeJSON(filePath, state); err != nil {
 		logErr("SaveCurrentDir: Error writing state file:", err)
 		return
 	}
