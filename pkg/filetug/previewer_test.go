@@ -104,4 +104,38 @@ func TestPreviewer(t *testing.T) {
 		_, err := prettyJSON("{invalid}")
 		assert.Error(t, err)
 	})
+
+	t.Run("readFile", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "test*.txt")
+		defer func() {
+			_ = os.Remove(tmpFile.Name())
+		}()
+		content := "0123456789"
+		err := os.WriteFile(tmpFile.Name(), []byte(content), 0644)
+		assert.NoError(t, err)
+
+		t.Run("max_0", func(t *testing.T) {
+			data, err := p.readFile(tmpFile.Name(), 0)
+			assert.NoError(t, err)
+			assert.Equal(t, content, string(data))
+		})
+
+		t.Run("max_5", func(t *testing.T) {
+			data, err := p.readFile(tmpFile.Name(), 5)
+			assert.NoError(t, err)
+			assert.Equal(t, "01234", string(data))
+		})
+
+		t.Run("max_minus_5", func(t *testing.T) {
+			data, err := p.readFile(tmpFile.Name(), -5)
+			assert.NoError(t, err)
+			assert.Equal(t, "56789", string(data))
+		})
+
+		t.Run("max_minus_20", func(t *testing.T) {
+			data, err := p.readFile(tmpFile.Name(), -20)
+			assert.NoError(t, err)
+			assert.Equal(t, content, string(data))
+		})
+	})
 }

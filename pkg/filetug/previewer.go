@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/blacktop/go-termimg"
 	"github.com/datatug/filetug/pkg/chroma2tcell"
 	"github.com/datatug/filetug/pkg/fileviewers/dsstore"
+	"github.com/datatug/filetug/pkg/fsutils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -98,18 +97,28 @@ func (p *previewer) SetText(text string) {
 	p.textView.SetTextColor(tcell.ColorWhiteSmoke)
 }
 
-func (p *previewer) PreviewFile(name, fullName string) {
-	data, err := os.ReadFile(fullName)
+func (p *previewer) readFile(fullName string, max int) (data []byte, err error) {
+	data, err = fsutils.ReadFileData(fullName, max)
 	if err != nil {
 		p.textView.SetText(fmt.Sprintf("Error reading file %s: %s", fullName, err.Error()))
 		p.textView.SetTextColor(tcell.ColorRed)
 		return
 	}
+	return
+}
+
+func (p *previewer) PreviewFile(name, fullName string) {
 	if name == "" {
 		_, name = path.Split(fullName)
 	}
+	var data []byte
+	var err error
 	switch name {
 	case ".DS_Store":
+		data, err = p.readFile(fullName, 0)
+		if err != nil {
+			return
+		}
 		bufferRead := bytes.NewBuffer(data)
 		var s dsstore.Store
 		err = s.Read(bufferRead)
@@ -126,34 +135,51 @@ func (p *previewer) PreviewFile(name, fullName string) {
 		ext := strings.ToLower(filepath.Ext(name))
 		switch ext {
 		case ".json":
+			data, err = p.readFile(fullName, 0)
+			if err != nil {
+				return
+			}
 			str, err := prettyJSON(string(data))
 			if err == nil {
 				data = []byte(str)
 			}
-		case ".png", ".jpg", ".jpeg", ".gif":
-			p.textView.Clear()
-			p.textView.SetDynamicColors(true)
-			_, _, w, h := p.textView.GetInnerRect()
-			if w == 0 || h == 0 {
-				w, h = 80, 40 // Fallback
-			}
-			img, err := termimg.Open(fullName)
+		case ".log":
+			data, err = p.readFile(fullName, -1024)
+		case ".png", ".jpg", ".jpeg", ".gif", ".mov":
+			data, err = p.readFile(fullName, 1024)
 			if err != nil {
-				p.SetErr(err)
 				return
 			}
-			rendered, err := img.Width(w).Height(h).Render()
-			if err != nil {
-				p.SetErr(err)
-				return
-			}
-			p.textView.SetWrap(false)
-			writer := tview.ANSIWriter(p.textView)
-			_, _ = writer.Write([]byte(rendered))
+			//p.textView.Clear()
+			p.textView.SetText(string(data))
+			//p.textView.SetDynamicColors(true)
+			//_, _, w, h := p.textView.GetInnerRect()
+			//if w == 0 || h == 0 {
+			//	w, h = 80, 40 // Fallback
+			//}
+			//img, err := termimg.Open(fullName)
+			//if err != nil {
+			//	p.SetErr(err)
+			//	return
+			//}
+			//rendered, err := img.Width(w).Height(h).Render()
+			//if err != nil {
+			//	p.SetErr(err)
+			//	return
+			//}
+			//p.textView.SetWrap(false)
+			//writer := tview.ANSIWriter(p.textView)
+			//_, _ = writer.Write([]byte(rendered))
 			return
 		}
 	}
 	lexer := lexers.Match(name)
+	if data == nil && err == nil {
+		data, err = p.readFile(fullName, 1024*1024)
+		if err != nil {
+			return
+		}
+	}
 	if lexer == nil {
 		p.textView.Clear()
 		p.textView.SetDynamicColors(true)

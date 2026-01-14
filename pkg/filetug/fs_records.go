@@ -31,7 +31,7 @@ type FileRows struct {
 //}
 
 func (r *FileRows) GetRowCount() int {
-	return len(r.Entries) + 1
+	return len(r.Entries)
 }
 
 func (r *FileRows) GetColumnCount() int {
@@ -62,11 +62,11 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 		}
 		switch col {
 		case nameColIndex:
-			return th("Name").SetExpansion(1)
+			return th(" ..").SetExpansion(1)
 		case sizeColIndex:
-			return th("Size")
+			return th("")
 		case modifiedColIndex:
-			return th("Modified")
+			return th("")
 		default:
 			return nil
 		}
@@ -111,7 +111,9 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 				size := fi.Size()
 				sizeText = fsutils.GetSizeShortText(size)
 			}
-			cell = tview.NewTableCell(sizeText).SetAlign(tview.AlignRight)
+			cell = tview.NewTableCell(sizeText).
+				SetAlign(tview.AlignRight).
+				SetExpansion(1)
 		case modifiedColIndex:
 			var s string
 			if modTime := fi.ModTime(); fi.ModTime().After(time.Now().Add(24 * time.Hour)) {
