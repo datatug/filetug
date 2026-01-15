@@ -70,16 +70,15 @@ func DirExists(path string) (bool, error) {
 
 // ExpandHome expands leading ~ to the user's home directory.
 func ExpandHome(p string) string {
-	if p == "" {
-		return p
-	}
-	if strings.HasPrefix(p, "~/") || p == "~" {
+	if p == "~" || strings.HasPrefix(p, "~/") {
 		home, err := os.UserHomeDir()
 		if err == nil {
 			if p == "~" {
 				return home
 			}
-			return filepath.Join(home, strings.TrimPrefix(p, "~/"))
+			p = filepath.Join(home, strings.TrimPrefix(p, "~/"))
+			p = strings.TrimSuffix(p, "/")
+			return p
 		}
 	}
 	return p

@@ -91,6 +91,16 @@ func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 			}
 		}
 		return event
+	case tcell.KeyEnter:
+		row, _ := table.GetSelection()
+		nameCell := table.GetCell(row, 0)
+		switch ref := nameCell.GetReference().(type) {
+		case DirEntry:
+			f.nav.goDir(ref.Path)
+			return nil
+		default:
+			return event
+		}
 	default:
 		return event
 	}
@@ -190,7 +200,8 @@ func (f *files) selectionChanged(row, _ int) {
 		return
 	}
 
-	fullName := ref.(string)
+	dirEntry := ref.(DirEntry)
+	fullName := filepath.Join(dirEntry.Path, dirEntry.Name())
 	f.rememberCurrent(fullName)
 
 	stat, err := os.Stat(fullName)

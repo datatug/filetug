@@ -306,15 +306,15 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	//if dirRelPath != "" {
 	//	parents := strings.Split(dirRelPath, "/")
 	//	for _, p := range parents {
-	//		if NodePath == "/" {
-	//			NodePath += p
+	//		if ParentPath == "/" {
+	//			ParentPath += p
 	//		} else {
-	//			NodePath = NodePath + "/" + p
+	//			ParentPath = ParentPath + "/" + p
 	//		}
 	//		if isTreeDirChanges {
-	//			fullPath := fsutils.ExpandHome(NodePath)
+	//			fullPath := fsutils.ExpandHome(ParentPath)
 	//			prefix := "📁" + p
-	//			n := tview.NewTreeNode(prefix).SetReference(NodePath)
+	//			n := tview.NewTreeNode(prefix).SetReference(ParentPath)
 	//			go nav.updateGitStatus(ctx, fullPath, n, prefix)
 	//			parentNode.AddChild(n)
 	//			parentNode = n
@@ -352,7 +352,11 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	if err != nil {
 		parentNode.ClearChildren()
 		parentNode.SetColor(tcell.ColorOrangeRed)
-		dirRecords := NewFileRows(nodePath, nil)
+		dirEntry := DirEntry{
+			Path: nodePath,
+			//DirEntry: ,
+		}
+		dirRecords := NewFileRows(dirEntry, nil)
 		nav.files.SetRows(dirRecords)
 		nav.previewer.textView.SetText(err.Error()).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
 		return
@@ -376,7 +380,10 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		return children[i].Name() < children[j].Name()
 	})
 
-	dirRecords := NewFileRows(nodePath, children)
+	dirEntry := DirEntry{
+		Path: nodePath,
+	}
+	dirRecords := NewFileRows(dirEntry, children)
 	nav.files.SetRows(dirRecords)
 
 	if isTreeDirChanges {

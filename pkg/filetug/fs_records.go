@@ -3,6 +3,7 @@ package filetug
 import (
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/datatug/filetug/pkg/fsutils"
@@ -37,7 +38,7 @@ func (f Filter) IsVisibleByDirEntry(entry os.DirEntry) bool {
 type FileRows struct {
 	tview.TableContentReadOnly
 	hideParent     bool
-	NodePath       string
+	Dir            DirEntry
 	AllEntries     []os.DirEntry
 	VisibleEntries []os.DirEntry
 	Infos          []os.FileInfo
@@ -80,9 +81,12 @@ func (r *FileRows) GetColumnCount() int {
 	return 3
 }
 
-func NewFileRows(nodePath string, dirEntries []os.DirEntry) *FileRows {
+func NewFileRows(parent DirEntry, dirEntries []os.DirEntry) *FileRows {
+	if parent.Path != "/" {
+		parent.Path = strings.TrimSuffix(parent.Path, "/")
+	}
 	return &FileRows{
-		NodePath:       nodePath,
+		Dir:            parent,
 		AllEntries:     dirEntries,
 		VisibleEntries: dirEntries,
 		Infos:          make([]os.FileInfo, len(dirEntries)),
@@ -106,7 +110,18 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 		}
 		switch col {
 		case nameColIndex:
-			return th(" ..").SetExpansion(1)
+			cell := th(" " + "..").SetExpansion(1)
+			var parentDir string
+			if r.Dir.Path == "~" {
+				parentDir = fsutils.ExpandHome("~")
+			} else {
+				parentDir, _ = path.Split(r.Dir.Path)
+			}
+			if parentDir != "/" {
+				parentDir = strings.TrimSuffix(parentDir, "/")
+			}
+			dirEntry := DirEntry{Path: parentDir}
+			return cell.SetReference(dirEntry)
 		case sizeColIndex:
 			return th("")
 		case modifiedColIndex:
@@ -178,6 +193,15 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 	}
 	color := GetColorByFileExt(name)
 	cell.SetTextColor(color)
-	cell.SetReference(fsutils.ExpandHome(path.Join(r.NodePath, name)))
+	ref := DirEntry{
+		DirEntry: dirEntry,
+		Path:     path.Join(fsutils.ExpandHome(r.Dir.Path), dirEntry.Name()),
+	}
+	cell.SetReference(ref)
 	return cell
+}
+
+type DirEntry struct {
+	Path string
+	os.DirEntry
 }
