@@ -10,8 +10,9 @@ import (
 
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/datatug/filetug/pkg/chroma2tcell"
-	"github.com/datatug/filetug/pkg/fileviewers/dsstore"
 	"github.com/datatug/filetug/pkg/fsutils"
+	"github.com/datatug/filetug/pkg/previewers"
+	"github.com/datatug/filetug/pkg/previewers/dsstore"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -145,31 +146,11 @@ func (p *previewer) PreviewFile(name, fullName string) {
 			}
 		case ".log":
 			data, err = p.readFile(fullName, -1024)
-		case ".png", ".jpg", ".jpeg", ".gif", ".mov":
-			data, err = p.readFile(fullName, 1024)
-			if err != nil {
-				return
-			}
-			//p.textView.Clear()
-			p.textView.SetText(string(data))
-			//p.textView.SetDynamicColors(true)
-			//_, _, w, h := p.textView.GetInnerRect()
-			//if w == 0 || h == 0 {
-			//	w, h = 80, 40 // Fallback
-			//}
-			//img, err := termimg.Open(fullName)
-			//if err != nil {
-			//	p.SetErr(err)
-			//	return
-			//}
-			//rendered, err := img.Width(w).Height(h).Render()
-			//if err != nil {
-			//	p.SetErr(err)
-			//	return
-			//}
-			//p.textView.SetWrap(false)
-			//writer := tview.ANSIWriter(p.textView)
-			//_, _ = writer.Write([]byte(rendered))
+		case ".png", ".jpg", ".jpeg", ".gif", ".webp":
+			metaTable := previewers.NewMetaTable()
+			meta := previewers.ImagePreviewer{}.GetMeta(fullName)
+			metaTable.SetMeta(meta)
+			p.nav.right.SetContent(metaTable)
 			return
 		}
 	}

@@ -347,7 +347,9 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	children, err := os.ReadDir(nav.current.dir)
 	dirContext := newDirContext(nav.current.dir, children)
 	summary := newDirSummary(dirContext, nav)
+
 	nav.right.SetContent(summary)
+
 	if err != nil {
 		parentNode.ClearChildren()
 		parentNode.SetColor(tcell.ColorOrangeRed)
