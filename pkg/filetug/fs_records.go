@@ -36,6 +36,7 @@ func (f Filter) IsVisibleByDirEntry(entry os.DirEntry) bool {
 
 type FileRows struct {
 	tview.TableContentReadOnly
+	hideParent     bool
 	NodePath       string
 	AllEntries     []os.DirEntry
 	VisibleEntries []os.DirEntry
@@ -69,7 +70,10 @@ func (r *FileRows) applyFilter() {
 }
 
 func (r *FileRows) GetRowCount() int {
-	return len(r.VisibleEntries)
+	if r.hideParent {
+		return len(r.VisualInfos)
+	}
+	return len(r.VisibleEntries) + 1
 }
 
 func (r *FileRows) GetColumnCount() int {
@@ -96,21 +100,21 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 	if row < 0 {
 		return nil
 	}
-	//if row == 0 {
-	//	th := func(text string) *tview.TableCell {
-	//		return tview.NewTableCell(text)
-	//	}
-	//	switch col {
-	//	case nameColIndex:
-	//		return th(" ..").SetExpansion(1)
-	//	case sizeColIndex:
-	//		return th("")
-	//	case modifiedColIndex:
-	//		return th("")
-	//	default:
-	//		return nil
-	//	}
-	//}
+	if !r.hideParent && row == 0 {
+		th := func(text string) *tview.TableCell {
+			return tview.NewTableCell(text)
+		}
+		switch col {
+		case nameColIndex:
+			return th(" ..").SetExpansion(1)
+		case sizeColIndex:
+			return th("")
+		case modifiedColIndex:
+			return th("")
+		default:
+			return nil
+		}
+	}
 	if r.Err != nil {
 		if col == nameColIndex {
 			return tview.NewTableCell(" 📁" + r.Err.Error()).SetTextColor(tcell.ColorOrangeRed)
@@ -124,6 +128,9 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 		return nil
 	}
 	i := row
+	if !r.hideParent {
+		i--
+	}
 	if i >= len(r.VisibleEntries) {
 		return nil
 	}

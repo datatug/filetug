@@ -13,9 +13,10 @@ import (
 
 type files struct {
 	*boxed
-	table           *tview.Table
-	rows            *FileRows
-	nav             *Navigator
+	table *tview.Table
+	rows  *FileRows
+	nav   *Navigator
+	filterTabs
 	currentFileName string
 }
 
@@ -94,6 +95,22 @@ func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	}
 }
 
+type filterTabs struct {
+	nav       *Navigator
+	filesTab  *Tab
+	dirsTab   *Tab
+	hiddenTab *Tab
+}
+
+func newFilterTabs(nav *Navigator) filterTabs {
+	return filterTabs{
+		nav:       nav,
+		filesTab:  &Tab{Title: "Files", Checked: true},
+		dirsTab:   &Tab{Title: "Dirs", Checked: true},
+		hiddenTab: &Tab{Title: "Hidden", Checked: false},
+	}
+}
+
 func newFiles(nav *Navigator) *files {
 	table := tview.NewTable()
 	//extTable := sticky.NewTable([]sticky.Column{
@@ -113,6 +130,9 @@ func newFiles(nav *Navigator) *files {
 	//})
 	flex := tview.NewFlex()
 	flex.AddItem(table, 0, 1, true)
+
+	tabs := newFilterTabs(nav)
+
 	f := &files{
 		nav:   nav,
 		table: table,
@@ -120,12 +140,9 @@ func newFiles(nav *Navigator) *files {
 			flex,
 			WithLeftBorder(0, -1),
 			WithRightBorder(0, +1),
-			WithTabs(
-				Tab{Title: "☑️Files"},
-				Tab{Title: "🔲Dirs"},
-				Tab{Title: "🔲Hidden"},
-			),
+			WithTabs(tabs.filesTab, tabs.dirsTab, tabs.hiddenTab),
 		),
+		filterTabs: tabs,
 	}
 	table.SetSelectable(true, false)
 	table.SetFixed(1, 0)

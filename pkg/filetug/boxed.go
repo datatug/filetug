@@ -9,17 +9,17 @@ import (
 
 var (
 	focusedStyle = tcell.StyleDefault.Foreground(tcell.ColorCornflowerBlue).Background(tcell.ColorBlack)
-	bluredStyle  = tcell.StyleDefault.Foreground(tcell.ColorGray).Background(tcell.ColorBlack)
+	blurredStyle = tcell.StyleDefault.Foreground(tcell.ColorGray).Background(tcell.ColorBlack)
 )
 
 type boxedContent interface {
 	tview.Primitive
 	GetTitle() string
 	SetTitle(title string) *tview.Box
+	SetBorderPadding(top, bottom, left, right int) *tview.Box
 	//Draw(screen tcell.Screen)
 	//HasFocus() bool
 	//GetRect() (x int, y int, width int, height int)
-	SetBorderPadding(top, bottom, left, right int) *tview.Box
 }
 
 type boxed struct {
@@ -35,7 +35,7 @@ type boxOptions struct {
 	rightPadding int
 	rightOffset  int
 
-	tabs []Tab
+	tabs []*Tab
 }
 
 type BoxOption func(*boxOptions)
@@ -68,16 +68,17 @@ func WithRightBorder(padding, offset int) BoxOption {
 	}
 }
 
-func WithTabs(tabs ...Tab) BoxOption {
+func WithTabs(tabs ...*Tab) BoxOption {
 	return func(opts *boxOptions) {
 		opts.tabs = append(opts.tabs, tabs...)
 	}
 }
 
 type Tab struct {
-	ID     string
-	Title  string
-	Action func(tab string)
+	ID      string
+	Title   string
+	Checked bool
+	Action  func(tab string)
 }
 
 func newBoxed(inner boxedContent, o ...BoxOption) *boxed {
@@ -106,7 +107,7 @@ func (b boxed) drawBorders(screen tcell.Screen) {
 		// Double horizontal border
 		topLineChar = '═'
 	} else {
-		lineStyle = bluredStyle
+		lineStyle = blurredStyle
 		topLineChar = '─'
 	}
 
@@ -168,6 +169,11 @@ func (b boxed) drawBorders(screen tcell.Screen) {
 		for i, tab := range b.o.tabs {
 			if i > 0 {
 				sb.WriteString("[gray]|[i]")
+			}
+			if tab.Checked {
+				sb.WriteString("☑️")
+			} else {
+				sb.WriteString("🔲")
 			}
 			sb.WriteString(tab.Title)
 		}
