@@ -34,7 +34,7 @@ func (f *favorites) ShowFavorites() {
 func builtInFavorites() []favorite {
 	return []favorite{
 		{path: "/", shortcut: '/', description: "root"},
-		{path: "~", shortcut: '0', description: "User's home directory"},
+		{path: "~", shortcut: 'h', description: "User's home directory"},
 		{path: "~/Documents", description: "Documents"},
 		{path: "~/projects", description: "Projects"},
 		{path: "~/.filetug", description: "FileTug settings dir"},
