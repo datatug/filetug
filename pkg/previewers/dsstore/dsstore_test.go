@@ -21,10 +21,10 @@ func TestRead(t *testing.T) {
 		t.Errorf("%s", err.Error())
 		return
 	}
-	t.Logf("HeaderExtra size is %d", len(s.HeaderExtra))
-	t.Logf("RootExtra size is %d", len(s.RootExtra))
-	t.Logf("DSDBExtra size is %d", len(s.DSDBExtra))
-	t.Logf("Records %d loaded", len(s.Records))
+	//t.Logf("HeaderExtra size is %d", len(s.HeaderExtra))
+	//t.Logf("RootExtra size is %d", len(s.RootExtra))
+	//t.Logf("DSDBExtra size is %d", len(s.DSDBExtra))
+	//t.Logf("Records %d loaded", len(s.Records))
 }
 
 func TestWriteEmpty(t *testing.T) {
