@@ -69,7 +69,7 @@ func (r *FileRows) applyFilter() {
 }
 
 func (r *FileRows) GetRowCount() int {
-	return len(r.VisibleEntries)
+	return len(r.VisibleEntries) + 1
 }
 
 func (r *FileRows) GetColumnCount() int {
