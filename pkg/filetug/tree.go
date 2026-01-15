@@ -20,6 +20,15 @@ type Tree struct {
 }
 
 func (t *Tree) Draw(screen tcell.Screen) {
+	root := t.GetRoot()
+	text := root.GetText()
+	if strings.HasSuffix(text, " ") {
+		_, _, width, _ := t.GetInnerRect()
+		if width > len(text) {
+			text += strings.Repeat(" ", width-len(text))
+			root.SetText(text)
+		}
+	}
 	t.boxed.Draw(screen)
 }
 
@@ -45,7 +54,31 @@ func NewTree(nav *Navigator) *Tree {
 		}
 	})
 	t.SetInputCapture(t.inputCapture)
+	t.SetFocusFunc(t.focus)
+	t.SetBlurFunc(t.blur)
 	return t
+}
+
+func (t *Tree) focus() {
+	t.nav.left.SetBorderColor(theme.FocusedBorderColor)
+	t.nav.activeCol = 0
+	t.nav.right.SetContent(t.nav.dirSummary)
+	currentNode := t.GetCurrentNode()
+	currentNode.SetSelectedTextStyle(theme.FocusedSelectedTextStyle)
+	t.SetGraphicsColor(tcell.ColorWhite)
+	if t.GetCurrentNode() == nil {
+		children := t.GetRoot().GetChildren()
+		if len(children) > 0 {
+			t.SetCurrentNode(children[0])
+		}
+	}
+}
+
+func (t *Tree) blur() {
+	t.nav.left.SetBorderColor(theme.BlurredBorderColor)
+	t.SetGraphicsColor(theme.BlurredGraphicsColor)
+	currentNode := t.GetCurrentNode()
+	currentNode.SetSelectedTextStyle(theme.BlurredSelectedTextStyle)
 }
 
 func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {

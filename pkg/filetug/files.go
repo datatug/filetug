@@ -30,6 +30,7 @@ type files struct {
 //}
 
 func (f *files) SetRows(rows *FileRows) {
+	f.table.Select(0, 0)
 	f.rows = rows
 	f.table.SetContent(rows)
 	if f.currentFileName != "" {
@@ -145,19 +146,25 @@ func newFiles(nav *Navigator) *files {
 		filterTabs: tabs,
 	}
 	table.SetSelectable(true, false)
-	table.SetFixed(1, 0)
+	//table.SetFixed(1, 0)
 	table.SetInputCapture(f.inputCapture)
-	table.SetFocusFunc(func() {
-		nav.activeCol = 1
-		nav.right.SetContent(nav.previewer)
-	})
-	nav.filesFocusFunc = func() {
-		nav.activeCol = 1
-	}
+	table.SetFocusFunc(f.focus)
+	table.SetBlurFunc(f.blur)
 
 	table.SetSelectionChangedFunc(f.selectionChanged)
 	nav.filesSelectionChangedFunc = f.selectionChangedNavFunc
+	f.blur()
 	return f
+}
+
+func (f *files) focus() {
+	f.nav.activeCol = 1
+	f.nav.right.SetContent(f.nav.previewer)
+	f.table.SetSelectedStyle(theme.FocusedSelectedTextStyle)
+}
+
+func (f *files) blur() {
+	f.table.SetSelectedStyle(theme.BlurredSelectedTextStyle)
 }
 
 // selectionChangedNavFunc: TODO: is it a duplicate of selectionChangedNavFunc?

@@ -31,13 +31,9 @@ type Navigator struct {
 	activeCol   int
 	proportions []int
 
-	filesFocusFunc            func()
 	filesSelectionChangedFunc func(row, column int)
 
 	favoritesFocusFunc func()
-
-	dirsFocusFunc func()
-	dirsBlurFunc  func()
 
 	previewerFocusFunc func()
 	previewerBlurFunc  func()
@@ -294,7 +290,7 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 			rootNode := nav.dirsTree.currDirRoot
 			switch dir {
 			case "~", "/":
-				rootNode.SetText(dir)
+				rootNode.SetText(dir + strings.Repeat(" ", 10))
 			default:
 				_, name := filepath.Split(fullPath)
 				rootNode.SetText(name)

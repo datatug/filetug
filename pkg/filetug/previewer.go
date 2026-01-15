@@ -40,7 +40,7 @@ func newPreviewer(nav *Navigator) *previewer {
 	}
 	p.SetTitle("Previewer")
 	//p.SetBorder(true)
-	//p.SetBorderColor(Style.BlurBorderColor)
+	//p.SetBorderColor(theme.BlurredBorderColor)
 
 	p.textView = tview.NewTextView()
 	p.textView.SetWrap(false)
@@ -54,18 +54,18 @@ func newPreviewer(nav *Navigator) *previewer {
 
 	p.SetFocusFunc(func() {
 		nav.activeCol = 2
-		p.SetBorderColor(Style.FocusedBorderColor)
+		p.SetBorderColor(theme.FocusedBorderColor)
 		//nav.app.SetFocus(tv)
 	})
 	nav.previewerFocusFunc = func() {
 		nav.activeCol = 2
-		p.SetBorderColor(Style.FocusedBorderColor)
+		p.SetBorderColor(theme.FocusedBorderColor)
 	}
 	p.SetBlurFunc(func() {
-		p.SetBorderColor(Style.BlurBorderColor)
+		p.SetBorderColor(theme.BlurredBorderColor)
 	})
 	nav.previewerBlurFunc = func() {
-		p.SetBorderColor(Style.BlurBorderColor)
+		p.SetBorderColor(theme.BlurredBorderColor)
 	}
 
 	p.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

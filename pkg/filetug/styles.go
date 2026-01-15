@@ -4,22 +4,30 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-type Styles struct {
-	FocusedBorderColor   tcell.Color
-	FocusedGraphicsColor tcell.Color
+type Theme struct {
+	FocusedBorderColor       tcell.Color
+	FocusedGraphicsColor     tcell.Color
+	FocusedSelectedTextStyle tcell.Style
 
-	BlurBorderColor   tcell.Color
-	BlurGraphicsColor tcell.Color
+	BlurredBorderColor       tcell.Color
+	BlurredGraphicsColor     tcell.Color
+	BlurredSelectedTextStyle tcell.Style
 
 	TableHeaderColor tcell.Color
 }
 
-var Style = Styles{
+var theme = Theme{
 	FocusedBorderColor:   tcell.ColorCornflowerBlue,
 	FocusedGraphicsColor: tcell.ColorWhite,
+	FocusedSelectedTextStyle: tcell.StyleDefault.
+		Background(tcell.ColorWhite).
+		Foreground(tcell.ColorBlack),
 
-	BlurBorderColor:   tcell.ColorGray,
-	BlurGraphicsColor: tcell.ColorGray,
+	BlurredBorderColor:   tcell.ColorGray,
+	BlurredGraphicsColor: tcell.ColorGray,
+	BlurredSelectedTextStyle: tcell.StyleDefault.
+		Background(tcell.ColorGray).
+		Foreground(tcell.ColorWhite),
 
 	TableHeaderColor: tcell.ColorWhiteSmoke,
 }
