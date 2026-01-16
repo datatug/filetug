@@ -317,7 +317,11 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 			case *ftpfile.Store:
 				text = store.RootTitle()
 			default:
-				text = " " + ".."
+				if dir == "/" {
+					text = "/"
+				} else {
+					text = " " + ".."
+				}
 			}
 			rootNode.SetText(text)
 
