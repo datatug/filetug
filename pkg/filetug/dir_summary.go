@@ -257,7 +257,7 @@ func (d *dirSummary) updateTable() {
 				if g.Count == 1 {
 					countText = "[ghostwhite]1[-] file "
 				} else {
-					countText = fmt.Sprintf("[ghostwhite]%d[-] files", g.Count)
+					countText = fmt.Sprintf("[ghostwhite]%d[-] filesPanel", g.Count)
 				}
 			}
 			countCell := tview.NewTableCell(countText).SetAlign(tview.AlignRight).SetTextColor(cellTextColor)
@@ -299,7 +299,7 @@ func (d *dirSummary) updateTable() {
 			if ext.Count == 1 {
 				countText = "[ghostwhite]1[-] file "
 			} else {
-				countText = fmt.Sprintf("[ghostwhite]%d[-] files", ext.Count)
+				countText = fmt.Sprintf("[ghostwhite]%d[-] filesPanel", ext.Count)
 			}
 
 			countCell := tview.NewTableCell(countText).SetAlign(tview.AlignRight).SetTextColor(cellTextColor)

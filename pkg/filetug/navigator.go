@@ -3,12 +3,15 @@ package filetug
 import (
 	"context"
 	"fmt"
-	"os"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/datatug/filetug/pkg/files"
+	"github.com/datatug/filetug/pkg/files/httpfile"
+	"github.com/datatug/filetug/pkg/files/osfile"
 	"github.com/datatug/filetug/pkg/fsutils"
 	"github.com/datatug/filetug/pkg/ftstate"
 	"github.com/datatug/filetug/pkg/gitutils"
@@ -20,6 +23,8 @@ import (
 type Navigator struct {
 	app *tview.Application
 	o   navigatorOptions
+
+	store files.Store
 
 	breadcrumbs *sneatv.Breadcrumbs
 
@@ -43,7 +48,7 @@ type Navigator struct {
 	dirsTree  *Tree
 	favorites *favorites
 
-	files *files
+	files *filesPanel
 
 	dirSummary *dirSummary
 
@@ -86,7 +91,8 @@ func OnMoveFocusUp(f func(source tview.Primitive)) NavigatorOption {
 func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator {
 
 	nav := &Navigator{
-		app: app,
+		app:   app,
+		store: osfile.NewStore("/"),
 		breadcrumbs: sneatv.NewBreadcrumbs(
 			sneatv.NewBreadcrumb("FileTug: ", func() error {
 				return nil
@@ -127,7 +133,17 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		if state.CurrentDir == "" {
 			state.CurrentDir = "~"
 		}
-		nav.goDir(state.CurrentDir)
+		dirPath := state.CurrentDir
+		if strings.HasPrefix(state.CurrentDir, "https://") {
+			currentUrl, err := url.Parse(state.CurrentDir)
+			if err != nil {
+				return nil
+			}
+			dirPath = currentUrl.Path
+			currentUrl.Path = "/"
+			nav.store = httpfile.NewStore(*currentUrl)
+		}
+		nav.goDir(dirPath)
 		if stateErr == nil {
 			if state.CurrentFileName != "" {
 				nav.files.SetCurrentFile(state.CurrentFileName)
@@ -221,7 +237,11 @@ func (nav *Navigator) resize(mode resizeMode) {
 func (nav *Navigator) goDir(dir string) {
 	nav.dirsTree.SetSearch("")
 	nav.showDir(dir, nil)
-	saveCurrentDir(dir)
+	stateDir := dir
+	if httpStore, ok := nav.store.(*httpfile.HttpStore); ok {
+		stateDir, _ = url.JoinPath(httpStore.Root.String(), dir)
+	}
+	saveCurrentDir(stateDir)
 }
 
 func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node *tview.TreeNode, prefix string) {
@@ -342,7 +362,7 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		}))
 	}
 
-	children, err := os.ReadDir(nav.current.dir)
+	children, err := nav.store.ReadDir(nav.current.dir)
 	dirContext := newDirContext(nav.current.dir, children)
 
 	nav.dirSummary.SetDir(dirContext)
@@ -367,7 +387,7 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 	} else {
 		nav.files.SetTitle(dir)
 	}
-	//nav.files.Clear()
+	//nav.filesPanel.Clear()
 	nav.files.table.SetSelectable(true, false)
 
 	sort.Slice(children, func(i, j int) bool {

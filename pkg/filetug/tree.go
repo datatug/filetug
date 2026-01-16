@@ -65,21 +65,23 @@ func (t *Tree) focus() {
 	t.nav.activeCol = 0
 	t.nav.right.SetContent(t.nav.dirSummary)
 	currentNode := t.GetCurrentNode()
-	currentNode.SetSelectedTextStyle(theme.FocusedSelectedTextStyle)
-	t.SetGraphicsColor(tcell.ColorWhite)
-	if t.GetCurrentNode() == nil {
-		children := t.GetRoot().GetChildren()
-		if len(children) > 0 {
-			t.SetCurrentNode(children[0])
-		}
+	if currentNode == nil {
+		currentNode = t.GetRoot()
+		t.SetCurrentNode(currentNode)
 	}
+	if currentNode != nil {
+		currentNode.SetSelectedTextStyle(theme.FocusedSelectedTextStyle)
+	}
+	t.SetGraphicsColor(tcell.ColorWhite)
 }
 
 func (t *Tree) blur() {
 	t.nav.left.SetBorderColor(theme.BlurredBorderColor)
 	t.SetGraphicsColor(theme.BlurredGraphicsColor)
 	currentNode := t.GetCurrentNode()
-	currentNode.SetSelectedTextStyle(theme.BlurredSelectedTextStyle)
+	if currentNode != nil {
+		currentNode.SetSelectedTextStyle(theme.BlurredSelectedTextStyle)
+	}
 }
 
 func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {

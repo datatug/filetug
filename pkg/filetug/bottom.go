@@ -32,8 +32,18 @@ func newBottom() *bottom {
 			Action:  func() {},
 		},
 		{
-			Title:   "GoTo",
+			Title:   "Go",
 			HotKeys: []string{"G"},
+			Action:  func() {},
+		},
+		{
+			Title:   "/",
+			HotKeys: []string{"/"},
+			Action:  func() {},
+		},
+		{
+			Title:   "Home",
+			HotKeys: []string{"H"},
 			Action:  func() {},
 		},
 		{

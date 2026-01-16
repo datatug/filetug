@@ -11,7 +11,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-type files struct {
+type filesPanel struct {
 	*boxed
 	table *tview.Table
 	rows  *FileRows
@@ -21,16 +21,16 @@ type files struct {
 	currentFileName string
 }
 
-//func (f *files) Clear() {
+//func (f *filesPanel) Clear() {
 //	f.extTable.Clear()
 //}
 
-//func (f *files) Draw(screen tcell.Screen) {
+//func (f *filesPanel) Draw(screen tcell.Screen) {
 //	//f.selectCurrentFile()
 //	f.boxed.Draw(screen)
 //}
 
-func (f *files) SetRows(rows *FileRows) {
+func (f *filesPanel) SetRows(rows *FileRows) {
 	f.table.Select(0, 0)
 	rows.SetFilter(f.filter)
 	f.rows = rows
@@ -41,11 +41,11 @@ func (f *files) SetRows(rows *FileRows) {
 	f.table.ScrollToBeginning()
 }
 
-func (f *files) SetFilter(filter Filter) {
+func (f *filesPanel) SetFilter(filter Filter) {
 	f.rows.SetFilter(filter)
 }
 
-func (f *files) selectCurrentFile() {
+func (f *filesPanel) selectCurrentFile() {
 	if f.currentFileName == "" || f.rows == nil {
 		return
 	}
@@ -60,12 +60,12 @@ func (f *files) selectCurrentFile() {
 	}
 }
 
-func (f *files) SetCurrentFile(name string) {
+func (f *filesPanel) SetCurrentFile(name string) {
 	f.currentFileName = name
 	f.selectCurrentFile()
 }
 
-func (f *files) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+func (f *filesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	table := f.table
 	if string(event.Rune()) == " " {
 		row, _ := table.GetSelection()
@@ -125,7 +125,7 @@ func newFilterTabs(nav *Navigator) filterTabs {
 	}
 }
 
-func newFiles(nav *Navigator) *files {
+func newFiles(nav *Navigator) *filesPanel {
 	table := tview.NewTable()
 	//extTable := sticky.NewTable([]sticky.Column{
 	//	{
@@ -147,7 +147,7 @@ func newFiles(nav *Navigator) *files {
 
 	tabs := newFilterTabs(nav)
 
-	f := &files{
+	f := &filesPanel{
 		nav:   nav,
 		table: table,
 		boxed: newBoxed(
@@ -170,18 +170,18 @@ func newFiles(nav *Navigator) *files {
 	return f
 }
 
-func (f *files) focus() {
+func (f *filesPanel) focus() {
 	f.nav.activeCol = 1
 	f.nav.right.SetContent(f.nav.previewer)
 	f.table.SetSelectedStyle(theme.FocusedSelectedTextStyle)
 }
 
-func (f *files) blur() {
+func (f *filesPanel) blur() {
 	f.table.SetSelectedStyle(theme.BlurredSelectedTextStyle)
 }
 
 // selectionChangedNavFunc: TODO: is it a duplicate of selectionChangedNavFunc?
-func (f *files) selectionChangedNavFunc(row, _ int) {
+func (f *filesPanel) selectionChangedNavFunc(row, _ int) {
 	cell := f.table.GetCell(row, 0)
 	name := cell.Text[1:]
 	fullName := filepath.Join(f.nav.current.dir, name)
@@ -190,7 +190,7 @@ func (f *files) selectionChangedNavFunc(row, _ int) {
 }
 
 // selectionChanged: TODO: is it a duplicate of selectionChangedNavFunc?
-func (f *files) selectionChanged(row, _ int) {
+func (f *filesPanel) selectionChanged(row, _ int) {
 	if row == 0 {
 		f.nav.previewer.textView.SetText("Selected dir: " + f.nav.current.dir)
 		f.nav.previewer.textView.SetTextColor(tcell.ColorWhiteSmoke)
@@ -221,7 +221,7 @@ func (f *files) selectionChanged(row, _ int) {
 	f.nav.previewer.PreviewFile("", fullName)
 }
 
-func (f *files) rememberCurrent(fullName string) {
+func (f *filesPanel) rememberCurrent(fullName string) {
 	_, f.currentFileName = path.Split(fullName)
 	ftstate.SaveCurrentFileName(f.currentFileName)
 }

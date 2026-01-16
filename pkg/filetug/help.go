@@ -10,9 +10,9 @@ func showHelpModal(nav *Navigator) {
 Alt+F - Favorites
 Alt+G - Go to...
 Al+P - Show/Hide previewer
-Alt+C - Copy files & directories
-Alt+M - Move files & directories
-Alt+D - Delete files & directories
+Alt+C - Copy filesPanel & directories
+Alt+M - Move filesPanel & directories
+Alt+D - Delete filesPanel & directories
 Alt+V - View file
 Alt+E - Edit file
 Alt+X - Exit the app`
