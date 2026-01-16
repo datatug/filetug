@@ -348,6 +348,11 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 
 	nav.breadcrumbs.Clear()
 
+	nav.breadcrumbs.Push(sneatv.NewBreadcrumb(nav.store.RootTitle(), func() error {
+		nav.goDir("/")
+		return nil
+	}))
+
 	currentDir := strings.Split(nav.current.dir, "/")
 	breadPaths := make([]string, 0, len(currentDir))
 	for _, p := range currentDir[1:] {

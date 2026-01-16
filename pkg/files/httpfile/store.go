@@ -8,14 +8,24 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/datatug/filetug/pkg/files"
 )
 
 func NewStore(root url.URL) *HttpStore {
 	return &HttpStore{Root: root}
 }
 
+var _ files.Store = (*HttpStore)(nil)
+
 type HttpStore struct {
 	Root url.URL
+}
+
+func (h HttpStore) RootTitle() string {
+	root := h.Root
+	root.User = nil
+	return root.String()
 }
 
 func (h HttpStore) ReadDir(name string) ([]os.DirEntry, error) {

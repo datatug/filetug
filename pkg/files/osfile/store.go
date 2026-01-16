@@ -2,15 +2,25 @@ package osfile
 
 import (
 	"os"
+	"strings"
+
+	"github.com/datatug/filetug/pkg/files"
 )
 
 var osReadDir = os.ReadDir
 
+var _ files.Store = (*Store)(nil)
+
 type Store struct {
-	root string
+	title string
+	root  string
 }
 
-func (o Store) ReadDir(name string) ([]os.DirEntry, error) {
+func (s Store) RootTitle() string {
+	return strings.TrimSuffix(s.title, ".station")
+}
+
+func (s Store) ReadDir(name string) ([]os.DirEntry, error) {
 	return osReadDir(name)
 }
 
@@ -18,5 +28,7 @@ func NewStore(root string) *Store {
 	if root == "" {
 		panic("root is empty")
 	}
-	return &Store{root: root}
+	store := Store{root: root}
+	store.title, _ = os.Hostname()
+	return &store
 }

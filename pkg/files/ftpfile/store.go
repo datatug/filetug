@@ -7,8 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/datatug/filetug/pkg/files"
 	"github.com/jlaffaye/ftp"
 )
+
+var _ files.Store = (*Store)(nil)
 
 type Store struct {
 	addr     string
@@ -16,6 +19,10 @@ type Store struct {
 	password string
 	explicit bool
 	implicit bool
+}
+
+func (s *Store) RootTitle() string {
+	return "ftp://" + s.addr
 }
 
 func NewStore(addr, user, password string) *Store {
