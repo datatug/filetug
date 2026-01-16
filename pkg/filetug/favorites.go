@@ -53,7 +53,7 @@ func newFavorites(nav *Navigator) *favorites {
 	flex.SetTitle(" Favorites ")
 	f := &favorites{
 		Flex:  flex,
-		list:  tview.NewList(),
+		list:  tview.NewList().SetSecondaryTextColor(tcell.ColorGray),
 		nav:   nav,
 		items: builtInFavorites(),
 		boxed: newBoxed(
@@ -116,11 +116,17 @@ func (f *favorites) setItems() {
 			i++
 		}
 		var mainText string
-		if string(item.shortcut) != item.path {
+		switch item.path {
+		case "/":
+			mainText = "/ [darkgray::i] root"
+		case "~":
+			mainText = "~ [darkgray::i] User's home directory"
+		default:
 			mainText = item.path
 		}
-		mainText += " - [::i]" + item.description + "[-:-:I]"
-		var secondText string
+
+		//mainText += " - [::i]" + item.description + "[-:-:I]"
+		secondText := item.description
 		if item.path == "~" {
 			secondText = fsutils.ExpandHome("~")
 		}
