@@ -320,7 +320,7 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 				if dir == "/" {
 					text = "/"
 				} else {
-					text = " " + ".."
+					text = ".."
 				}
 			}
 			rootNode.SetText(text)
