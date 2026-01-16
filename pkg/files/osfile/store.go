@@ -1,6 +1,7 @@
 package osfile
 
 import (
+	"context"
 	"net/url"
 	"os"
 	"strings"
@@ -27,7 +28,10 @@ func (s Store) RootTitle() string {
 	return strings.TrimSuffix(s.title, ".station")
 }
 
-func (s Store) ReadDir(name string) ([]os.DirEntry, error) {
+func (s Store) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return osReadDir(name)
 }
 

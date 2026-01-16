@@ -399,7 +399,7 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 		}))
 	}
 
-	children, err := nav.store.ReadDir(nav.current.dir)
+	children, err := nav.store.ReadDir(ctx, nav.current.dir)
 	dirContext := newDirContext(nav.current.dir, children)
 
 	nav.dirSummary.SetDir(dirContext)

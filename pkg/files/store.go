@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"net/url"
 	"os"
 )
@@ -8,5 +9,5 @@ import (
 type Store interface {
 	RootTitle() string
 	RootURL() url.URL
-	ReadDir(name string) ([]os.DirEntry, error)
+	ReadDir(ctx context.Context, name string) ([]os.DirEntry, error)
 }

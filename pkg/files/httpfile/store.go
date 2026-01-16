@@ -1,6 +1,7 @@
 package httpfile
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,14 +13,29 @@ import (
 	"github.com/datatug/filetug/pkg/files"
 )
 
-func NewStore(root url.URL) *HttpStore {
-	return &HttpStore{Root: root}
+type StoreOption func(*HttpStore)
+
+func NewStore(root url.URL, o ...StoreOption) *HttpStore {
+	store := &HttpStore{
+		Root: root,
+	}
+	for _, opt := range o {
+		opt(store)
+	}
+	return store
+}
+
+func WithHttpClient(client *http.Client) StoreOption {
+	return func(store *HttpStore) {
+		store.client = client
+	}
 }
 
 var _ files.Store = (*HttpStore)(nil)
 
 type HttpStore struct {
-	Root url.URL
+	Root   url.URL
+	client *http.Client
 }
 
 func (h HttpStore) RootURL() url.URL {
@@ -33,14 +49,24 @@ func (h HttpStore) RootTitle() string {
 	return root.String()
 }
 
-func (h HttpStore) ReadDir(name string) ([]os.DirEntry, error) {
+func (h HttpStore) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error) {
 	u := h.Root
 	u.Path = name
 	if !strings.HasSuffix(u.Path, "/") {
 		u.Path += "/"
 	}
 
-	resp, err := http.Get(u.String())
+	client := h.client
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch directory listing: %w", err)
 	}

@@ -1,11 +1,13 @@
 package ftpfile
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/datatug/filetug/pkg/files"
@@ -16,6 +18,7 @@ var _ files.Store = (*Store)(nil)
 
 type Store struct {
 	root     url.URL
+	factory  func(addr string, options ...ftp.DialOption) (FtpClient, error)
 	explicit bool
 	implicit bool
 }
@@ -28,17 +31,34 @@ func (s *Store) RootURL() url.URL {
 
 func (s *Store) RootTitle() string {
 	root := s.RootURL()
-	return root.String()
+	return strings.TrimSuffix(root.String(), "/ƒ")
 }
 
-func NewStore(root url.URL) *Store {
+type FtpClient interface {
+	Login(user, password string) error
+	List(path string) (entries []*ftp.Entry, err error)
+	Quit() error
+}
+
+type StoreOption func(*Store)
+
+func NewStore(root url.URL, options ...StoreOption) *Store {
 	if root.Scheme != "ftp" {
 		panic(fmt.Errorf("schema should be 'ftp', got '%s'", root.Scheme))
 	}
 	store := &Store{
 		root: root,
 	}
+	for _, opt := range options {
+		opt(store)
+	}
 	return store
+}
+
+func WithFtpClientFactory(factory func(addr string, options ...ftp.DialOption) (FtpClient, error)) StoreOption {
+	return func(s *Store) {
+		s.factory = factory
+	}
 }
 
 func (s *Store) SetTLS(explicit, implicit bool) {
@@ -46,7 +66,7 @@ func (s *Store) SetTLS(explicit, implicit bool) {
 	s.implicit = implicit
 }
 
-func (s *Store) ReadDir(name string) ([]os.DirEntry, error) {
+func (s *Store) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error) {
 	root := s.root
 	host := root.Hostname()
 	if port := root.Port(); port == "" {
@@ -64,10 +84,37 @@ func (s *Store) ReadDir(name string) ([]os.DirEntry, error) {
 		options = append(options, ftp.DialWithExplicitTLS(&tls.Config{ServerName: host, InsecureSkipVerify: true}))
 	}
 
-	c, err := ftp.Dial(addr, options...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to ftp server: %w", err)
+	type dialResult struct {
+		c   FtpClient
+		err error
 	}
+
+	dialChan := make(chan dialResult, 1)
+	go func() {
+		if s.factory != nil {
+			c, err := s.factory(addr, options...)
+			dialChan <- dialResult{c, err}
+		} else {
+			conn, err := ftp.Dial(addr, options...)
+			if err != nil {
+				dialChan <- dialResult{nil, err}
+			} else {
+				dialChan <- dialResult{conn, nil}
+			}
+		}
+	}()
+
+	var c FtpClient
+	select {
+	case res := <-dialChan:
+		if res.err != nil {
+			return nil, fmt.Errorf("failed to connect to ftp server: %w", res.err)
+		}
+		c = res.c
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
 	defer func() {
 		_ = c.Quit()
 	}()
@@ -78,15 +125,41 @@ func (s *Store) ReadDir(name string) ([]os.DirEntry, error) {
 		if !hasPassword {
 			return nil, errors.New("missing password")
 		}
-		err = c.Login(username, password)
-		if err != nil {
-			return nil, fmt.Errorf("failed to login to ftp server: %w", err)
+
+		loginChan := make(chan error, 1)
+		go func() {
+			loginChan <- c.Login(username, password)
+		}()
+
+		select {
+		case err := <-loginChan:
+			if err != nil {
+				return nil, fmt.Errorf("failed to login to ftp server: %w", err)
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		}
 	}
 
-	entries, err := c.List(name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list directory: %w", err)
+	type listResult struct {
+		entries []*ftp.Entry
+		err     error
+	}
+	listChan := make(chan listResult, 1)
+	go func() {
+		entries, err := c.List(name)
+		listChan <- listResult{entries, err}
+	}()
+
+	var entries []*ftp.Entry
+	select {
+	case res := <-listChan:
+		if res.err != nil {
+			return nil, fmt.Errorf("failed to list directory: %w", res.err)
+		}
+		entries = res.entries
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 
 	result := make([]os.DirEntry, 0, len(entries))
