@@ -98,6 +98,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 				return nil
 			}).SetColor(tcell.ColorWhiteSmoke),
 			sneatv.WithSeparator("/"),
+			sneatv.WithSeparatorStartIndex(1),
 		),
 		Flex:           tview.NewFlex().SetDirection(tview.FlexRow),
 		main:           tview.NewFlex(),

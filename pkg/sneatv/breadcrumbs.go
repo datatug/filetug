@@ -9,6 +9,7 @@ type Breadcrumbs struct {
 	*tview.Box
 	items             []Breadcrumb
 	separator         string
+	separatorStartIdx int
 	selectedItemIndex int             // -1 means last item is considered focused
 	nextFocusTarget   tview.Primitive // optional: where to move focus on Tab/Down
 	prevFocusTarget   tview.Primitive // optional: where to move focus on Shift+Tab/Up
@@ -102,7 +103,7 @@ func (b *Breadcrumbs) Draw(screen tcell.Screen) {
 		_, printed := tview.Print(screen, text, cursorX, y, maxX-cursorX, tview.AlignLeft, color)
 		cursorX += printed
 		// Add a separator between items if there is still room.
-		if i < len(b.items)-1 && cursorX < maxX {
+		if i >= b.separatorStartIdx && i < len(b.items)-1 && cursorX < maxX {
 			_, sp := tview.Print(screen, b.separator, cursorX, y, maxX-cursorX, tview.AlignLeft, tcell.ColorGray)
 			cursorX += sp
 		}
