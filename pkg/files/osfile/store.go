@@ -44,5 +44,6 @@ func NewStore(root string) *Store {
 	if store.title, err = os.Hostname(); err != nil {
 		store.title = err.Error()
 	}
+	store.title = "🖥️" + store.title
 	return &store
 }

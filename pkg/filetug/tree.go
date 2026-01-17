@@ -66,6 +66,7 @@ func (t *Tree) setError(node *tview.TreeNode, err error) {
 	node.SetColor(tcell.ColorOrangeRed)
 	nodePath := getNodePath(node)
 	_, name := path.Split(nodePath)
+
 	text := dirEmoji + fmt.Sprintf("%s: %v", name, err)
 	node.SetText(text)
 	//node.AddChild(tview.NewTreeNode(err.Error()))
@@ -244,7 +245,38 @@ func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirConte
 		}
 		if child.IsDir() {
 			childPath := path.Join(dirContext.Path, name)
-			prefix := dirEmoji + name
+			emoji := dirEmoji
+			switch strings.ToLower(name) {
+			case "library":
+				emoji = "📚"
+			case "users":
+				emoji = "👥"
+			case "applications":
+				emoji = "🈸"
+			case "music":
+				emoji = "🎹"
+			case "movies":
+				emoji = "📺"
+			case "pictures":
+				emoji = "🖼️"
+			case "desktop":
+				emoji = "🖥️"
+			case "datatug":
+				emoji = "🛥️"
+			case "documents":
+				emoji = "🗃"
+			case "public":
+				emoji = "📢"
+			case "temp":
+				emoji = "ƒ⏳"
+			case "system":
+				emoji = "🧠"
+			case "bin", "sbin":
+				emoji = "🚀"
+			case "private":
+				emoji = "🔒"
+			}
+			prefix := emoji + name
 			n := tview.NewTreeNode(prefix).SetReference(childPath)
 			node.AddChild(n)
 
