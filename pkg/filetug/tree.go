@@ -12,6 +12,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+const dirEmoji = "📁"
+
 type Tree struct {
 	boxed *boxed
 	*tview.TreeView
@@ -62,7 +64,10 @@ func (t *Tree) setError(node *tview.TreeNode, err error) {
 	//panic(err)
 	node.ClearChildren()
 	node.SetColor(tcell.ColorOrangeRed)
-	node.SetText(err.Error())
+	nodePath := getNodePath(node)
+	_, name := path.Split(nodePath)
+	text := dirEmoji + fmt.Sprintf("%s: %v", name, err)
+	node.SetText(text)
 	//node.AddChild(tview.NewTreeNode(err.Error()))
 }
 
@@ -239,7 +244,7 @@ func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirConte
 		}
 		if child.IsDir() {
 			childPath := path.Join(dirContext.Path, name)
-			prefix := "📁" + name
+			prefix := dirEmoji + name
 			n := tview.NewTreeNode(prefix).SetReference(childPath)
 			node.AddChild(n)
 

@@ -311,7 +311,7 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dir str
 		dirContext, err := nav.getDirData(ctx)
 		nav.app.QueueUpdateDraw(func() {
 			if err != nil {
-				nav.showNodeError(nav.dirsTree.rootNode, err)
+				nav.showNodeError(node, err)
 				return
 			}
 			nav.onDataLoaded(node, dirContext)
@@ -343,6 +343,7 @@ func (nav *Navigator) showNodeError(node *tview.TreeNode, err error) {
 	nav.files.SetRows(dirRecords, false)
 	text := err.Error()
 	nav.previewer.textView.SetText(text).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
+	nav.right.SetContent(nav.previewer)
 }
 
 func (nav *Navigator) setBreadcrumbs() {
