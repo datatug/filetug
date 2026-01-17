@@ -1,6 +1,6 @@
 # FileTug – modern CLI file browser/picker with neat UI
 
-- Free to use & Open source - [MIT License](LICENSE)
+- Free to use & Open source - [GPLv3 License](LICENSE)
 - Developed in [Go](https://go.dev/)
 
 ## ♺ Continuous Integration — [![Build and Test](https://github.com/datatug/filetug/actions/workflows/build.yml/badge.svg)](https://github.com/datatug/filetug/actions/workflows/build.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/datatug/filetug?cache=0)](https://goreportcard.com/report/github.com/datatug/filetug) [![Coverage Status](https://coveralls.io/repos/github/datatug/filetug/badge.svg?branch=main&cache=1)](https://coveralls.io/github/datatug/filetug?branch=main) [![GoDoc](https://godoc.org/github.com/datatug/filetug?status.svg)](https://godoc.org/github.com/datatug/filetug)
@@ -35,5 +35,6 @@ ft <PATH_TO_DIRECTORY_OR_FILE>
 
 ## Contributing
 
-Contributions are welcome! Please read the [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details on how to contribute to this
+Contributions are welcome! Please read the [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details on how to contribute to
+this
 project.
