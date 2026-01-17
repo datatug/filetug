@@ -1,6 +1,9 @@
 package sneatv
 
 import (
+	"net/url"
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -82,7 +85,12 @@ func (b *Breadcrumbs) Draw(screen tcell.Screen) {
 		if cursorX >= maxX {
 			break
 		}
-		label := tview.Escape(item.GetTitle())
+		title := strings.TrimSuffix(item.GetTitle(), b.separator)
+		var isURL bool
+		if _, err := url.Parse(title); err == nil {
+			isURL = true
+		}
+		label := tview.Escape(title)
 		var text string
 		if i == focus {
 			if b.HasFocus() {
@@ -102,6 +110,10 @@ func (b *Breadcrumbs) Draw(screen tcell.Screen) {
 		}
 		_, printed := tview.Print(screen, text, cursorX, y, maxX-cursorX, tview.AlignLeft, color)
 		cursorX += printed
+		if isURL {
+			tview.Print(screen, " ", cursorX, y, 1, tview.AlignLeft, color)
+			cursorX++
+		}
 		// Add a separator between items if there is still room.
 		if i >= b.separatorStartIdx && i < len(b.items)-1 && cursorX < maxX {
 			_, sp := tview.Print(screen, b.separator, cursorX, y, maxX-cursorX, tview.AlignLeft, tcell.ColorGray)

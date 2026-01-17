@@ -348,19 +348,31 @@ func (nav *Navigator) showNodeError(node *tview.TreeNode, err error) {
 
 func (nav *Navigator) setBreadcrumbs() {
 	nav.breadcrumbs.Clear()
-	nav.breadcrumbs.Push(sneatv.NewBreadcrumb(nav.store.RootTitle(), func() error {
-		nav.goDir("/")
-		return nil
-	}))
 
-	currentDir := strings.Split(nav.current.dir, "/")
+	rootPath := nav.store.RootURL().Path
+	{
+		rootTitle := nav.store.RootTitle()
+		rootTitle = strings.TrimSuffix(rootTitle, "/")
+		rootBreadcrumb := sneatv.NewBreadcrumb(rootTitle, func() error {
+			nav.goDir(rootPath)
+			return nil
+		})
+		nav.breadcrumbs.Push(rootBreadcrumb)
+	}
+
+	relativePath := strings.TrimPrefix(strings.TrimPrefix(nav.current.dir, rootPath), "/")
+	if relativePath == "" {
+		return
+	}
+	currentDir := strings.Split(relativePath, "/")
 	breadPaths := make([]string, 0, len(currentDir))
-	for _, p := range currentDir[1:] {
+	breadPaths = append(breadPaths, rootPath)
+	for _, p := range currentDir {
 		if p == "" {
-			continue
+			p = "{EMPTY PATH ITEM}"
 		}
 		breadPaths = append(breadPaths, p)
-		breadPath := "/" + path.Join(breadPaths...)
+		breadPath := path.Join(breadPaths...)
 		nav.breadcrumbs.Push(sneatv.NewBreadcrumb(p, func() error {
 			nav.goDir(breadPath)
 			return nil

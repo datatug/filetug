@@ -44,7 +44,6 @@ func (h HttpStore) RootURL() url.URL {
 
 func (h HttpStore) RootTitle() string {
 	root := h.Root
-	root.Path = ""
 	root.User = nil
 	return root.String()
 }
