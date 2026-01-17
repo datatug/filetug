@@ -19,17 +19,17 @@ import (
 
 var _ tview.TableContent = (*FileRows)(nil)
 
-func NewFileRows(store files.Store, parent DirEntry, dirEntries []os.DirEntry) *FileRows {
-	if parent.Path != "/" {
-		parent.Path = strings.TrimSuffix(parent.Path, "/")
+func NewFileRows(dir *DirContext) *FileRows {
+	if dir.Path != "/" {
+		dir.Path = strings.TrimSuffix(dir.Path, "/")
 	}
 	return &FileRows{
-		store:          store,
-		Dir:            parent,
-		AllEntries:     dirEntries,
-		VisibleEntries: dirEntries,
-		Infos:          make([]os.FileInfo, len(dirEntries)),
-		VisualInfos:    make([]os.FileInfo, len(dirEntries)),
+		store:          dir.Store,
+		Dir:            dir,
+		AllEntries:     dir.children,
+		VisibleEntries: dir.children,
+		Infos:          make([]os.FileInfo, len(dir.children)),
+		VisualInfos:    make([]os.FileInfo, len(dir.children)),
 	}
 }
 
@@ -37,7 +37,7 @@ type FileRows struct {
 	tview.TableContentReadOnly
 	hideParent     bool
 	store          files.Store
-	Dir            DirEntry
+	Dir            *DirContext
 	AllEntries     []os.DirEntry
 	VisibleEntries []os.DirEntry
 	Infos          []os.FileInfo

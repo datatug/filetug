@@ -1,6 +1,7 @@
 package filetug
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"strings"
@@ -14,10 +15,9 @@ import (
 type Tree struct {
 	boxed *boxed
 	*tview.TreeView
-	nav             *Navigator
-	currDirRoot     *tview.TreeNode
-	search          string
-	selectedDirNode *tview.TreeNode
+	nav      *Navigator
+	rootNode *tview.TreeNode
+	search   string
 }
 
 func (t *Tree) Draw(screen tcell.Screen) {
@@ -35,29 +35,39 @@ func (t *Tree) Draw(screen tcell.Screen) {
 
 func NewTree(nav *Navigator) *Tree {
 	tv := tview.NewTreeView()
-	t := &Tree{
-		nav:      nav,
-		TreeView: tv,
-		boxed: newBoxed(tv,
-			//WithLeftPadding(0),
-			WithRightBorder(0, 1),
-		),
+	t := &Tree{nav: nav, TreeView: tv,
+		boxed: newBoxed(tv, WithRightBorder(0, 1)),
 	}
-	t.currDirRoot = tview.NewTreeNode("~")
-	t.SetRoot(t.currDirRoot)
-	t.SetChangedFunc(func(node *tview.TreeNode) {
-		ref := node.GetReference()
-
-		if dir, ok := ref.(string); ok {
-			_, name := path.Split(dir)
-			ftstate.SaveSelectedTreeDir(name)
-			nav.showDir(dir, node)
-		}
-	})
+	t.rootNode = tview.NewTreeNode("~")
+	t.SetRoot(t.rootNode)
+	t.SetChangedFunc(t.changed)
 	t.SetInputCapture(t.inputCapture)
 	t.SetFocusFunc(t.focus)
 	t.SetBlurFunc(t.blur)
 	return t
+}
+
+func (t *Tree) changed(node *tview.TreeNode) {
+	ref := node.GetReference()
+
+	if dir, ok := ref.(string); ok {
+		var ctx context.Context
+		ctx, t.nav.cancel = context.WithCancel(context.Background())
+		t.nav.showDir(ctx, node, dir)
+		ftstate.SaveSelectedTreeDir(dir)
+	}
+}
+
+func (t *Tree) setError(node *tview.TreeNode, err error) {
+	//panic(err)
+	node.ClearChildren()
+	node.SetColor(tcell.ColorOrangeRed)
+	node.SetText(err.Error())
+	//node.AddChild(tview.NewTreeNode(err.Error()))
+}
+
+func getNodePath(node *tview.TreeNode) string {
+	return node.GetReference().(string)
 }
 
 func (t *Tree) focus() {
@@ -190,5 +200,51 @@ func highlightTreeNodes(n *tview.TreeNode, search *search) {
 	}
 	for _, child := range n.GetChildren() {
 		highlightTreeNodes(child, search)
+	}
+}
+
+func (t *Tree) setCurrentDir(dir string) (nodePath string) {
+	t.SetSearch("")
+	t.rootNode.ClearChildren()
+
+	root := t.nav.store.RootURL()
+	if root.Path == "" {
+		root.Path = "/"
+	}
+
+	var text string
+	if dir == root.Path {
+		if dir == "/" {
+			text = "/"
+		} else {
+			text = strings.TrimSuffix(root.Path, "/")
+		}
+	} else {
+		nodePath = strings.TrimPrefix(dir, root.Path)
+		text = ".."
+	}
+
+	t.rootNode.SetText(text)
+	t.rootNode.SetReference(nodePath).SetColor(tcell.ColorWhite)
+
+	return
+}
+
+func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirContext *DirContext) {
+	node.ClearChildren()
+	for _, child := range dirContext.children {
+		name := child.Name()
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		if child.IsDir() {
+			childPath := path.Join(dirContext.Path, name)
+			prefix := "📁" + name
+			n := tview.NewTreeNode(prefix).SetReference(childPath)
+			node.AddChild(n)
+
+			fullPath := fsutils.ExpandHome(childPath)
+			go t.nav.updateGitStatus(ctx, fullPath, n, prefix+" ")
+		}
 	}
 }

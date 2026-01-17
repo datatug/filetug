@@ -1,8 +1,11 @@
 package ftstate
 
 import (
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/datatug/filetug/pkg/fsutils"
 )
@@ -17,7 +20,7 @@ type State struct {
 	Store           string `json:"store,omitempty"`
 	CurrentDir      string `json:"current_dir,omitempty"`
 	SelectedTreeDir string `json:"selected_tree_dir,omitempty"`
-	CurrentFileName string `json:"current_file_name,omitempty"`
+	CurrentDirEntry string `json:"current_dir_entry,omitempty"`
 }
 
 func getStateFilePath() string {
@@ -42,21 +45,26 @@ func GetCurrentDir() string {
 }
 
 func SaveCurrentDir(store, currentDir string) {
+	root, err := url.Parse(store)
+	if err != nil {
+		panic(err)
+	}
 	saveSettingValue(func(state *State) {
 		state.Store = store
-		state.CurrentDir = currentDir
+		state.CurrentDir = strings.TrimPrefix(currentDir, root.Path)
 	})
 }
 
 func SaveSelectedTreeDir(dir string) {
+	name, _ := path.Split(dir)
 	saveSettingValue(func(state *State) {
-		state.SelectedTreeDir = dir
+		state.SelectedTreeDir = name
 	})
 }
 
 func SaveCurrentFileName(name string) {
 	saveSettingValue(func(state *State) {
-		state.CurrentFileName = name
+		state.CurrentDirEntry = name
 	})
 }
 

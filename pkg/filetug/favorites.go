@@ -46,7 +46,7 @@ func builtInFavorites() []favorite {
 		{Store: "file:", Path: "~/projects", Description: "Projects"},
 		{Store: "file:", Path: "~/.filetug", Description: "FileTug settings dir"},
 		{Store: "https://www.kernel.org/pub/", Path: "/pub", Description: "The Linux Kernel Archives"},
-		{Store: "ftp://demo:password@test.rebex.net/", Path: "/", Description: "The Linux Kernel Archives"},
+		{Store: "ftp://demo:password@test.rebex.net", Description: "The Linux Kernel Archives"},
 	}
 }
 func newFavorites(nav *Navigator) *favorites {
@@ -69,26 +69,6 @@ func newFavorites(nav *Navigator) *favorites {
 	f.list.SetInputCapture(f.inputCapture)
 	f.list.SetChangedFunc(f.changed)
 	return f
-}
-
-func (f *favorites) changed(index int, _ string, _ string, _ rune) {
-	item := f.items[index]
-	dirPath := item.Path
-	if strings.HasPrefix(item.Store, "https://") {
-		root, _ := url.Parse(item.Store)
-		dirPath = root.Path
-		f.nav.store = httpfile.NewStore(*root)
-	} else if strings.HasPrefix(item.Store, "ftp://") {
-		address, _ := url.Parse(item.Store)
-		f.nav.store = ftpfile.NewStore(*address)
-	} else {
-		switch f.nav.store.(type) {
-		case *osfile.Store: // No change needed
-		default:
-			f.nav.store = osfile.NewStore("/")
-		}
-	}
-	f.nav.goDir(dirPath)
 }
 
 func (f *favorites) inputCapture(event *tcell.EventKey) *tcell.EventKey {
@@ -129,7 +109,7 @@ func (f *favorites) setItems() {
 			}
 		} else {
 			storeURL, _ := url.Parse(item.Store)
-			if item.Path[0] == '/' {
+			if item.Path != "" && item.Path[0] == '/' {
 				storeURL.Path = item.Path
 			} else {
 				storeURL = storeURL.JoinPath(storeURL.String(), item.Path)
@@ -153,7 +133,31 @@ func (f *favorites) setItems() {
 }
 
 func (f *favorites) selected(item favorite) {
-	f.nav.goDir(item.Path)
+	f.activateFavorite(item)
+}
+
+func (f *favorites) changed(index int, _ string, _ string, _ rune) {
+	item := f.items[index]
+	f.activateFavorite(item)
+}
+
+func (f *favorites) activateFavorite(item favorite) {
+	dirPath := item.Path
+	if strings.HasPrefix(item.Store, "https://") {
+		root, _ := url.Parse(item.Store)
+		dirPath = root.Path
+		f.nav.store = httpfile.NewStore(*root)
+	} else if strings.HasPrefix(item.Store, "ftp://") {
+		address, _ := url.Parse(item.Store)
+		f.nav.store = ftpfile.NewStore(*address)
+	} else {
+		switch f.nav.store.(type) {
+		case *osfile.Store: // No change needed
+		default:
+			f.nav.store = osfile.NewStore("/")
+		}
+	}
+	f.nav.goDir(dirPath)
 	f.nav.left.SetContent(f.nav.dirsTree)
 	f.nav.app.SetFocus(f.nav.dirsTree)
 }

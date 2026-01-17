@@ -1,6 +1,10 @@
 package filetug
 
-import "os"
+import (
+	"os"
+
+	"github.com/datatug/filetug/pkg/files"
+)
 
 type DirItem struct {
 	Name  string
@@ -9,12 +13,14 @@ type DirItem struct {
 }
 
 type DirContext struct {
+	Store    files.Store
 	Path     string
 	children []os.DirEntry
 }
 
-func newDirContext(path string, children []os.DirEntry) *DirContext {
+func newDirContext(store files.Store, path string, children []os.DirEntry) *DirContext {
 	return &DirContext{
+		Store:    store,
 		Path:     path,
 		children: children,
 	}

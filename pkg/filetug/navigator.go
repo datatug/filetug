@@ -2,8 +2,8 @@ package filetug
 
 import (
 	"context"
-	"fmt"
 	"net/url"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -59,7 +59,7 @@ type Navigator struct {
 
 	gitStatusCache   map[string]*gitutils.RepoStatus
 	gitStatusCacheMu sync.RWMutex
-	gitCancel        context.CancelFunc
+	cancel           context.CancelFunc
 }
 
 func (nav *Navigator) SetFocus() {
@@ -163,8 +163,8 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		}
 		nav.goDir(dirPath)
 		if stateErr == nil {
-			if state.CurrentFileName != "" {
-				nav.files.SetCurrentFile(state.CurrentFileName)
+			if state.CurrentDirEntry != "" {
+				nav.files.SetCurrentFile(state.CurrentDirEntry)
 			}
 		}
 	}
@@ -253,15 +253,11 @@ func (nav *Navigator) resize(mode resizeMode) {
 }
 
 func (nav *Navigator) goDir(dir string) {
-	nav.dirsTree.SetSearch("")
-	nav.showDir(dir, nil)
-	stateDir := dir
-	if httpStore, ok := nav.store.(*httpfile.HttpStore); ok {
-		rootUrl := httpStore.RootURL()
-		stateDir, _ = url.JoinPath(rootUrl.String(), dir)
-	}
-	storeRootURL := nav.store.RootURL()
-	saveCurrentDir(storeRootURL.String(), stateDir)
+	ctx := context.Background()
+	nav.dirsTree.setCurrentDir(dir)
+	nav.showDir(ctx, nav.dirsTree.rootNode, dir)
+	root := nav.store.RootURL()
+	saveCurrentDir(root.String(), dir)
 }
 
 func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node *tview.TreeNode, prefix string) {
@@ -298,88 +294,59 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 
 var saveCurrentDir = ftstate.SaveCurrentDir
 
-func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
-	nav.current.dir = dir
+func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dir string) {
 
-	isTreeDirChanges := selectedNode == nil
-
-	//if isTreeDirChanges {
-	//	if nav.gitCancel != nil {
-	//		nav.gitCancel()
-	//	}
-	//}
-
-	var ctx context.Context
-	ctx, nav.gitCancel = context.WithCancel(context.Background())
-
-	var parentNode *tview.TreeNode
-	var nodePath string
-
-	if isTreeDirChanges {
-		nav.dirsTree.currDirRoot.ClearChildren()
-		parentNode = nav.dirsTree.currDirRoot
-	} else {
-		nav.dirsTree.selectedDirNode = selectedNode
-		parentNode = selectedNode
+	nav.current.dir = fsutils.ExpandHome(dir)
+	node.SetReference(nav.current.dir)
+	if nav.store.RootURL().Scheme == "file" {
+		name, _ := path.Split(dir)
+		go nav.updateGitStatus(ctx, nav.current.dir, node, name)
 	}
 
-	if strings.HasPrefix(dir, "~") || strings.HasPrefix(dir, "/") {
-		nodePath = dir
-		if isTreeDirChanges {
-			fullPath := fsutils.ExpandHome(nodePath)
-			rootNode := nav.dirsTree.currDirRoot
-			var text string
-			if store, ok := nav.store.(interface{ RootURL() url.URL }); ok {
-				rootUrl := store.RootURL()
-				if rootUrl.Path == "" {
-					rootUrl.Path = "/"
-				}
-				if rootUrl.Path == "/" {
-					text = "/"
-				} else {
-					text = strings.TrimSuffix(rootUrl.Path, "/")
-				}
-			} else if dir == "/" {
-				text = "/"
-			} else {
-				text = ".."
+	nav.setBreadcrumbs()
+	nav.right.SetContent(nav.dirSummary)
+	nav.previewer.textView.SetText("").SetTextColor(tcell.ColorWhiteSmoke)
+
+	go func() {
+		dirContext, err := nav.getDirData(ctx)
+		nav.app.QueueUpdateDraw(func() {
+			if err != nil {
+				nav.showNodeError(nav.dirsTree.rootNode, err)
+				return
 			}
+			nav.onDataLoaded(node, dirContext)
+		})
+	}()
+}
 
-			rootNode.SetText(text)
+func (nav *Navigator) onDataLoaded(node *tview.TreeNode, dirContext *DirContext) {
+	nav.dirSummary.SetDir(dirContext)
 
-			rootNode.SetReference(nodePath).SetColor(tcell.ColorWhite)
-			go nav.updateGitStatus(ctx, fullPath, nav.dirsTree.currDirRoot, nodePath)
-		}
+	//nav.filesPanel.Clear()
+	nav.files.table.SetSelectable(true, false)
+
+	dirRecords := NewFileRows(dirContext)
+	nav.files.SetRows(dirRecords, node != nav.dirsTree.rootNode)
+
+	ctx := context.Background() // TODO: use a cancelable context
+	if node == nav.dirsTree.rootNode {
+		nav.dirsTree.setDirContext(ctx, node, dirContext)
 	}
+}
 
-	//dirRelPath := strings.TrimPrefix(strings.TrimPrefix(dir, "~"), "/")
-	//
-	//if dirRelPath != "" {
-	//	parents := strings.Split(dirRelPath, "/")
-	//	for _, p := range parents {
-	//		if ParentPath == "/" {
-	//			ParentPath += p
-	//		} else {
-	//			ParentPath = ParentPath + "/" + p
-	//		}
-	//		if isTreeDirChanges {
-	//			fullPath := fsutils.ExpandHome(ParentPath)
-	//			prefix := "📁" + p
-	//			n := tview.NewTreeNode(prefix).SetReference(ParentPath)
-	//			go nav.updateGitStatus(ctx, fullPath, n, prefix)
-	//			parentNode.AddChild(n)
-	//			parentNode = n
-	//		}
-	//	}
-	//}
+func (nav *Navigator) showNodeError(node *tview.TreeNode, err error) {
+	nav.dirsTree.setError(node, err)
+	dirRecords := NewFileRows(&DirContext{
+		Store: nav.store,
+		Path:  getNodePath(node),
+	})
+	nav.files.SetRows(dirRecords, false)
+	text := err.Error()
+	nav.previewer.textView.SetText(text).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
+}
 
-	if isTreeDirChanges {
-		nav.dirsTree.selectedDirNode = parentNode
-	}
-	nav.current.dir = fsutils.ExpandHome(nodePath)
-
+func (nav *Navigator) setBreadcrumbs() {
 	nav.breadcrumbs.Clear()
-
 	nav.breadcrumbs.Push(sneatv.NewBreadcrumb(nav.store.RootTitle(), func() error {
 		nav.goDir("/")
 		return nil
@@ -398,66 +365,30 @@ func (nav *Navigator) showDir(dir string, selectedNode *tview.TreeNode) {
 			return nil
 		}))
 	}
+}
 
-	children, err := nav.store.ReadDir(ctx, nav.current.dir)
-	dirContext := newDirContext(nav.current.dir, children)
-
-	nav.dirSummary.SetDir(dirContext)
-	nav.right.SetContent(nav.dirSummary)
-
+func (nav *Navigator) getDirData(ctx context.Context) (dirContext *DirContext, err error) {
+	dirContext = newDirContext(nav.store, nav.current.dir, nil)
+	dirContext.children, err = nav.store.ReadDir(ctx, nav.current.dir)
 	if err != nil {
-		parentNode.ClearChildren()
-		parentNode.SetColor(tcell.ColorOrangeRed)
-		dirEntry := DirEntry{
-			Path: nodePath,
-			//DirEntry: ,
-		}
-		dirRecords := NewFileRows(nav.store, dirEntry, nil)
-		nav.files.SetRows(dirRecords)
-		nav.previewer.textView.SetText(err.Error()).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
-		return
+		return nil, err
 	}
-	nav.previewer.textView.SetText("").SetTextColor(tcell.ColorWhiteSmoke)
+	// Tree is always sorted by name and files are usually as well
+	// So let's sort once here and pass sorted to both Tree and filesPanel.
+	dirContext.children = sortDirChildren(dirContext.children)
+	return
+}
 
-	if isTreeDirChanges {
-		nav.files.SetTitle(fmt.Sprintf(" Files: %s ", dir))
-	} else {
-		nav.files.SetTitle(dir)
-	}
-	//nav.filesPanel.Clear()
-	nav.files.table.SetSelectable(true, false)
-
+func sortDirChildren(children []os.DirEntry) []os.DirEntry {
 	sort.Slice(children, func(i, j int) bool {
+		// Directories first
 		if children[i].IsDir() && !children[j].IsDir() {
 			return true
 		} else if !children[i].IsDir() && children[j].IsDir() {
 			return false
 		}
+		// Then sort by name
 		return children[i].Name() < children[j].Name()
 	})
-
-	dirEntry := DirEntry{
-		Path: nodePath,
-	}
-	dirRecords := NewFileRows(nav.store, dirEntry, children)
-	nav.files.SetRows(dirRecords)
-
-	if isTreeDirChanges {
-		for _, child := range children {
-			name := child.Name()
-			if strings.HasPrefix(name, ".") {
-				continue
-			}
-			if child.IsDir() {
-				childPath := path.Join(nodePath, name)
-				prefix := "📁" + name
-				n := tview.NewTreeNode(prefix).SetReference(childPath)
-				parentNode.AddChild(n)
-
-				fullPath := fsutils.ExpandHome(childPath)
-				go nav.updateGitStatus(ctx, fullPath, n, prefix+" ")
-			}
-		}
-		nav.dirsTree.SetCurrentNode(parentNode)
-	}
+	return children
 }

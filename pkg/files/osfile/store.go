@@ -40,6 +40,9 @@ func NewStore(root string) *Store {
 		panic("root is empty")
 	}
 	store := Store{root: root}
-	store.title, _ = os.Hostname()
+	var err error
+	if store.title, err = os.Hostname(); err != nil {
+		store.title = err.Error()
+	}
 	return &store
 }

@@ -30,8 +30,9 @@ type filesPanel struct {
 //	f.boxed.Draw(screen)
 //}
 
-func (f *filesPanel) SetRows(rows *FileRows) {
+func (f *filesPanel) SetRows(rows *FileRows, showDirs bool) {
 	f.table.Select(0, 0)
+	f.filter.ShowDirs = showDirs
 	rows.SetFilter(f.filter)
 	f.rows = rows
 	f.table.SetContent(rows)
