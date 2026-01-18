@@ -7,6 +7,17 @@
 
 We are targeting 100% test coverage.
 
+## Why FileTug and not MC/ranger/etc.?
+
+> Existing file managers show what files exist. Users want to know what those files are.
+
+If I had to summarize in one sentence.
+
+> Existing terminal file managers optimize for experts who already know them,
+> not for humans trying to get work done.
+
+### Killer features
+
 ## Installation
 
 ```shell
@@ -31,7 +42,7 @@ ft <PATH_TO_DIRECTORY_OR_FILE>
 ## Libraries used
 
 - [tview](https://github.com/rivo/tview) - Modern, rich, and extensible Go UI library for terminal applications
-- [chrome](github.com/alecthomas/chroma) - Go syntax highlighting library
+- [chrome](https://github.com/alecthomas/chroma) - Go syntax highlighting library
 
 ## Contributing
 
