@@ -6,8 +6,11 @@ others:
 
 ## Implemented
 
-- Quick navigation to favorite directories & files
+- Quick navigation to your favorite directories and files
 - Directory summary
+    - summary by extension
+    - summary by file type
+- Instant smart file preview. Parses known file formats and provides a structured preview.
 - Integrated git support:
     - dir status
     - file status – _to be implemented_
@@ -15,12 +18,19 @@ others:
 
 ## Roadmap – to be implemented
 
-- Quick select with a collection of file masks
-- Tagging files & directories
-- Curated lists of files and directories with predefined filters
-- Bookmarks – quick jumps between multiple locations
-- History of operations - see what you've be up to
-- Bulk renaming
+- Caching of network resources
+- pre-fetching of data
+- Quick select with a collection of file masks.
+- Tagging files & directories.
+- Curated lists of files and directories with predefined filters.
+- Bookmarks – quick jumps between multiple locations.
+- History of operations – see what you've been up to.
+- Bulk renaming:
     - support for regular expressions
     - dry run
     - rollback rename
+    - history
+- Logs viewers
+    - support for common log formats
+    - preview logs
+    - tail-watching
