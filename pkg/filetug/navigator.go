@@ -340,6 +340,9 @@ func (nav *Navigator) onDataLoaded(node *tview.TreeNode, dirContext *DirContext,
 }
 
 func (nav *Navigator) showNodeError(node *tview.TreeNode, err error) {
+	if node == nil {
+		return
+	}
 	nav.dirsTree.setError(node, err)
 	dirRecords := NewFileRows(&DirContext{
 		Store: nav.store,
