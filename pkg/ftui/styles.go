@@ -1,4 +1,4 @@
-package filetug
+package ftui
 
 import (
 	"github.com/gdamore/tcell/v2"
@@ -18,7 +18,7 @@ type Theme struct {
 	HotkeyColor tcell.Color
 }
 
-var theme = Theme{
+var CurrentTheme = Theme{
 	FocusedBorderColor:   tcell.ColorCornflowerBlue,
 	FocusedGraphicsColor: tcell.ColorWhite,
 	FocusedSelectedTextStyle: tcell.StyleDefault.

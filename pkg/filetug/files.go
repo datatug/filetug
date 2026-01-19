@@ -8,17 +8,18 @@ import (
 	"time"
 
 	"github.com/datatug/filetug/pkg/ftstate"
+	"github.com/datatug/filetug/pkg/ftui"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type filesPanel struct {
-	*boxed
+	*ftui.Boxed
 	table *tview.Table
 	rows  *FileRows
 	nav   *Navigator
 	filterTabs
-	filter          Filter
+	filter          ftui.Filter
 	currentFileName string
 	loadingProgress int
 }
@@ -29,7 +30,7 @@ type filesPanel struct {
 
 //func (f *filesPanel) Draw(screen tcell.Screen) {
 //	//f.selectCurrentFile()
-//	f.boxed.Draw(screen)
+//	f.Boxed.Draw(screen)
 //}
 
 func (f *filesPanel) onStoreChange() {
@@ -79,7 +80,7 @@ func (f *filesPanel) SetRows(rows *FileRows, showDirs bool) {
 
 }
 
-func (f *filesPanel) SetFilter(filter Filter) {
+func (f *filesPanel) SetFilter(filter ftui.Filter) {
 	f.rows.SetFilter(filter)
 }
 
@@ -149,17 +150,17 @@ func (f *filesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 
 type filterTabs struct {
 	nav       *Navigator
-	filesTab  *Tab
-	dirsTab   *Tab
-	hiddenTab *Tab
+	filesTab  *ftui.Tab
+	dirsTab   *ftui.Tab
+	hiddenTab *ftui.Tab
 }
 
 func newFilterTabs(nav *Navigator) filterTabs {
 	return filterTabs{
 		nav:       nav,
-		filesTab:  &Tab{Title: "Files", Hotkey: 'e', Checked: true},
-		dirsTab:   &Tab{Title: "Dirs", Hotkey: 'r', Checked: false},
-		hiddenTab: &Tab{Title: "Hidden", Hotkey: 'H', Checked: false},
+		filesTab:  &ftui.Tab{Title: "Files", Hotkey: 'e', Checked: true},
+		dirsTab:   &ftui.Tab{Title: "Dirs", Hotkey: 'r', Checked: false},
+		hiddenTab: &ftui.Tab{Title: "Hidden", Hotkey: 'H', Checked: false},
 	}
 }
 
@@ -188,11 +189,11 @@ func newFiles(nav *Navigator) *filesPanel {
 	f := &filesPanel{
 		nav:   nav,
 		table: table,
-		boxed: newBoxed(
+		Boxed: ftui.NewBoxed(
 			flex,
-			WithLeftBorder(0, -1),
-			WithRightBorder(0, +1),
-			WithTabs(tabs.filesTab, tabs.dirsTab, tabs.hiddenTab),
+			ftui.WithLeftBorder(0, -1),
+			ftui.WithRightBorder(0, +1),
+			ftui.WithTabs(tabs.filesTab, tabs.dirsTab, tabs.hiddenTab),
 		),
 		filterTabs: tabs,
 	}
@@ -211,11 +212,11 @@ func newFiles(nav *Navigator) *filesPanel {
 func (f *filesPanel) focus() {
 	f.nav.activeCol = 1
 	f.nav.right.SetContent(f.nav.previewer)
-	f.table.SetSelectedStyle(theme.FocusedSelectedTextStyle)
+	f.table.SetSelectedStyle(ftui.CurrentTheme.FocusedSelectedTextStyle)
 }
 
 func (f *filesPanel) blur() {
-	f.table.SetSelectedStyle(theme.BlurredSelectedTextStyle)
+	f.table.SetSelectedStyle(ftui.CurrentTheme.BlurredSelectedTextStyle)
 }
 
 // selectionChangedNavFunc: TODO: is it a duplicate of selectionChangedNavFunc?

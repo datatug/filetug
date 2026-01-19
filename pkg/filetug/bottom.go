@@ -4,18 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/datatug/filetug/pkg/ftui"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type bottom struct {
 	*tview.TextView
-}
-
-type MenuItem struct {
-	Title   string
-	HotKeys []string
-	Action  func()
 }
 
 func newBottom() *bottom {
@@ -25,7 +20,7 @@ func newBottom() *bottom {
 
 	b.SetTextColor(tcell.ColorSlateGray)
 
-	menuItems := []MenuItem{
+	menuItems := []ftui.MenuItem{
 		{
 			Title:   "F1Help",
 			HotKeys: []string{"F1"},
@@ -67,13 +62,18 @@ func newBottom() *bottom {
 			Action:  func() {},
 		},
 		{
+			Title:   "Masks",
+			HotKeys: []string{"M"},
+			Action:  func() {},
+		},
+		{
 			Title:   "Copy",
 			HotKeys: []string{"F5", "C"},
 			Action:  func() {},
 		},
 		{
-			Title:   "Move",
-			HotKeys: []string{"F6", "M"},
+			Title:   "Rename",
+			HotKeys: []string{"F6", "R"},
 			Action:  func() {},
 		},
 		{
@@ -103,7 +103,7 @@ func newBottom() *bottom {
 	for _, mi := range menuItems {
 		title := mi.Title
 		for _, key := range mi.HotKeys {
-			title = strings.Replace(title, key, fmt.Sprintf("[%s]%s[-]", theme.HotkeyColor, key), 1)
+			title = strings.Replace(title, key, fmt.Sprintf("[%s]%s[-]", ftui.CurrentTheme.HotkeyColor, key), 1)
 		}
 		sb.WriteString(title)
 		sb.WriteString(separator)

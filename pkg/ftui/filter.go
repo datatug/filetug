@@ -1,4 +1,4 @@
-package filetug
+package ftui
 
 import (
 	"os"

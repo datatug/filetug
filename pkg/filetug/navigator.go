@@ -13,6 +13,7 @@ import (
 	"github.com/datatug/filetug/pkg/files/ftpfile"
 	"github.com/datatug/filetug/pkg/files/httpfile"
 	"github.com/datatug/filetug/pkg/files/osfile"
+	"github.com/datatug/filetug/pkg/filetug/masks"
 	"github.com/datatug/filetug/pkg/fsutils"
 	"github.com/datatug/filetug/pkg/ftstate"
 	"github.com/datatug/filetug/pkg/gitutils"
@@ -48,6 +49,7 @@ type Navigator struct {
 
 	dirsTree  *Tree
 	favorites *favorites
+	masks     *masks.Panel
 
 	files *filesPanel
 
@@ -79,7 +81,7 @@ func (nav *Navigator) SetFocusToContainer(index int) {
 	case nav.right.index:
 		nav.app.SetFocus(nav.right.Flex)
 	case 1:
-		nav.app.SetFocus(nav.files.boxed)
+		nav.app.SetFocus(nav.files.Boxed)
 	}
 }
 
@@ -209,6 +211,8 @@ func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 			switch r := event.Rune(); r {
 			case 'f':
 				nav.favorites.ShowFavorites()
+			case 'm':
+				nav.showMasks()
 			case '0':
 				copy(nav.proportions, defaultProportions)
 				nav.createColumns()
@@ -418,4 +422,11 @@ func sortDirChildren(children []os.DirEntry) []os.DirEntry {
 		return children[i].Name() < children[j].Name()
 	})
 	return children
+}
+
+func (nav *Navigator) showMasks() {
+	if nav.masks == nil {
+		nav.masks = masks.NewPanel()
+	}
+	nav.right.SetContent(nav.masks)
 }

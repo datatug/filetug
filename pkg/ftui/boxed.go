@@ -1,4 +1,4 @@
-package filetug
+package ftui
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ var (
 	blurredStyle = tcell.StyleDefault.Foreground(tcell.ColorGray).Background(tcell.ColorBlack)
 )
 
-type boxedContent interface {
+type BoxedContent interface {
 	tview.Primitive
 	GetTitle() string
 	SetTitle(title string) *tview.Box
@@ -23,8 +23,8 @@ type boxedContent interface {
 	//GetRect() (x int, y int, width int, height int)
 }
 
-type boxed struct {
-	boxedContent
+type Boxed struct {
+	BoxedContent
 	o boxOptions
 }
 
@@ -83,9 +83,9 @@ type Tab struct {
 	Action  func(tab string)
 }
 
-func newBoxed(inner boxedContent, o ...BoxOption) *boxed {
-	b := boxed{
-		boxedContent: inner,
+func NewBoxed(inner BoxedContent, o ...BoxOption) *Boxed {
+	b := Boxed{
+		BoxedContent: inner,
 	}
 	for _, option := range o {
 		option(&b.o)
@@ -94,12 +94,12 @@ func newBoxed(inner boxedContent, o ...BoxOption) *boxed {
 	return &b
 }
 
-func (b boxed) Draw(screen tcell.Screen) {
-	b.boxedContent.Draw(screen)
+func (b Boxed) Draw(screen tcell.Screen) {
+	b.BoxedContent.Draw(screen)
 	b.drawBorders(screen)
 }
 
-func (b boxed) drawBorders(screen tcell.Screen) {
+func (b Boxed) drawBorders(screen tcell.Screen) {
 	x, y, width, height := b.GetRect()
 	lineStyle := tcell.StyleDefault
 	hasFocus := b.HasFocus()
@@ -175,7 +175,7 @@ func (b boxed) drawBorders(screen tcell.Screen) {
 			title = tab.Title
 			if tab.Hotkey != 0 {
 				title = strings.Replace(title, string(tab.Hotkey),
-					fmt.Sprintf("[%s]%c[-][DarkGray]", theme.HotkeyColor, tab.Hotkey), 1)
+					fmt.Sprintf("[%s]%c[-][DarkGray]", CurrentTheme.HotkeyColor, tab.Hotkey), 1)
 			}
 			title = fmt.Sprintf("[DarkGray]%s[-]", title)
 			sb.WriteString(title)

@@ -9,12 +9,13 @@ import (
 	"strings"
 
 	"github.com/datatug/filetug/pkg/fsutils"
+	"github.com/datatug/filetug/pkg/ftui"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type dirSummary struct {
-	*boxed
+	*ftui.Boxed
 	flex     *tview.Flex
 	nav      *Navigator
 	extTable *tview.Table
@@ -33,9 +34,9 @@ func newDirSummary(nav *Navigator) *dirSummary {
 	flex.SetTitle("Dir Summary")
 	d := &dirSummary{
 		nav: nav,
-		boxed: newBoxed(
+		Boxed: ftui.NewBoxed(
 			flex,
-			WithLeftBorder(0, -1),
+			ftui.WithLeftBorder(0, -1),
 		),
 		flex:     flex,
 		extTable: tview.NewTable().SetSelectable(true, false),
@@ -218,7 +219,7 @@ func (d *dirSummary) selectionChanged(row int, _ int) {
 	}
 
 	cell1 := d.extTable.GetCell(row, 1)
-	var filter Filter
+	var filter ftui.Filter
 	if cell1.Reference != nil {
 		switch ref := cell1.Reference.(type) {
 		case string:

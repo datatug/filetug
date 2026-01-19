@@ -11,6 +11,7 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/datatug/filetug/pkg/chroma2tcell"
 	"github.com/datatug/filetug/pkg/fsutils"
+	"github.com/datatug/filetug/pkg/ftui"
 	"github.com/datatug/filetug/pkg/previewers"
 	"github.com/datatug/filetug/pkg/previewers/dsstore"
 	"github.com/gdamore/tcell/v2"
@@ -19,7 +20,7 @@ import (
 
 type previewer struct {
 	*tview.Flex
-	boxed    *boxed
+	boxed    *ftui.Boxed
 	nav      *Navigator
 	textView *tview.TextView
 }
@@ -32,9 +33,9 @@ func newPreviewer(nav *Navigator) *previewer {
 	flex := tview.NewFlex()
 	p := previewer{
 		Flex: flex,
-		boxed: newBoxed(
+		boxed: ftui.NewBoxed(
 			flex,
-			WithLeftBorder(0, -1),
+			ftui.WithLeftBorder(0, -1),
 		),
 		nav: nav,
 	}
@@ -54,18 +55,18 @@ func newPreviewer(nav *Navigator) *previewer {
 
 	p.SetFocusFunc(func() {
 		nav.activeCol = 2
-		p.SetBorderColor(theme.FocusedBorderColor)
+		p.SetBorderColor(ftui.CurrentTheme.FocusedBorderColor)
 		//nav.app.SetFocus(tv)
 	})
 	nav.previewerFocusFunc = func() {
 		nav.activeCol = 2
-		p.SetBorderColor(theme.FocusedBorderColor)
+		p.SetBorderColor(ftui.CurrentTheme.FocusedBorderColor)
 	}
 	p.SetBlurFunc(func() {
-		p.SetBorderColor(theme.BlurredBorderColor)
+		p.SetBorderColor(ftui.CurrentTheme.BlurredBorderColor)
 	})
 	nav.previewerBlurFunc = func() {
-		p.SetBorderColor(theme.BlurredBorderColor)
+		p.SetBorderColor(ftui.CurrentTheme.BlurredBorderColor)
 	}
 
 	p.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

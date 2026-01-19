@@ -9,6 +9,7 @@ import (
 
 	"github.com/datatug/filetug/pkg/files"
 	"github.com/datatug/filetug/pkg/fsutils"
+	"github.com/datatug/filetug/pkg/ftui"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -41,7 +42,7 @@ type FileRows struct {
 	Infos          []os.FileInfo
 	VisualInfos    []os.FileInfo
 	Err            error
-	filter         Filter
+	filter         ftui.Filter
 }
 
 func (r *FileRows) HideParent() bool {
@@ -55,7 +56,7 @@ func (r *FileRows) HideParent() bool {
 //	r.selected = r.AllEntries[row-1].Name()
 //}
 
-func (r *FileRows) SetFilter(filter Filter) {
+func (r *FileRows) SetFilter(filter ftui.Filter) {
 	r.filter = filter
 	r.applyFilter()
 }

@@ -20,7 +20,11 @@ others:
 
 - Caching of network resources
 - pre-fetching of data
+- Bulk operations on objects selected in multiple directories
 - Quick bulk-select using sets of matching patterns.
+    - inclusive an exclusive patterns
+    - with support for selection in subdirectories
+    - deselection by mask
     - Example:
         - Coding files: *.(cpp|cs|js|ts)
         - Data files: *.(csv|dbf|json|xml|yaml)
