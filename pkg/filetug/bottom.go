@@ -2,6 +2,7 @@ package filetug
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/datatug/filetug/pkg/ftui"
@@ -11,24 +12,96 @@ import (
 
 type bottom struct {
 	*tview.TextView
+	nav       *Navigator
+	menuItems []ftui.MenuItem
 }
 
-func newBottom() *bottom {
-	b := &bottom{
-		TextView: tview.NewTextView().SetDynamicColors(true),
+func (b *bottom) highlighted(added, removed, remaining []string) {
+	if len(added) == 0 {
+		return
 	}
 
-	b.SetTextColor(tcell.ColorSlateGray)
+	region := added[0]
 
-	menuItems := []ftui.MenuItem{
+	for _, mi := range b.menuItems {
+		if mi.HotKeys[0] == region && mi.Action != nil {
+			mi.Action()
+		}
+	}
+}
+
+func newBottom(nav *Navigator) *bottom {
+	b := &bottom{
+		nav: nav,
+		TextView: tview.NewTextView().
+			SetDynamicColors(true).
+			SetRegions(true).
+			SetTextColor(tcell.ColorSlateGray),
+	}
+
+	b.SetHighlightedFunc(b.highlighted)
+
+	b.menuItems = b.getAltMenuItems()
+	b.render()
+
+	return b
+}
+
+func (b *bottom) render() {
+	const separator = "┊"
+	var sb strings.Builder
+	sb.WriteString("[white]Alt[-]+: ")
+	for _, mi := range b.menuItems {
+		title := mi.Title
+		for _, key := range mi.HotKeys {
+			title = strings.Replace(title, key, fmt.Sprintf("[%s]%s[-]", ftui.CurrentTheme.HotkeyColor, key), 1)
+		}
+		title = fmt.Sprintf(`["%s"]%s[""]`, mi.HotKeys[0], title)
+		sb.WriteString(title)
+		sb.WriteString(separator)
+	}
+	b.SetText(sb.String()[:sb.Len()-len(separator)])
+}
+
+func (b *bottom) getCtrlMenuItems() []ftui.MenuItem {
+	return []ftui.MenuItem{
+		{
+			Title:   "Archive",
+			HotKeys: []string{"A"},
+		},
+		{
+			Title:   "Stage",
+			HotKeys: []string{"S"},
+		},
+		{
+			Title:   "Commit",
+			HotKeys: []string{"C"},
+		},
+		{
+			Title:   "Push",
+			HotKeys: []string{"P"},
+		},
+	}
+}
+
+func (b *bottom) getAltMenuItems() []ftui.MenuItem {
+	return []ftui.MenuItem{
 		{
 			Title:   "F1Help",
 			HotKeys: []string{"F1"},
 			Action:  func() {},
 		},
 		{
+			Title:   "Exit",
+			HotKeys: []string{"x"},
+			Action: func() {
+				b.nav.app.Stop()
+				os.Exit(0)
+			},
+		},
+		{
 			Title:   "Go",
-			HotKeys: []string{"G"},
+			HotKeys: []string{"o"},
 			Action:  func() {},
 		},
 		{
@@ -67,6 +140,11 @@ func newBottom() *bottom {
 			Action:  func() {},
 		},
 		{
+			Title:   "Git",
+			HotKeys: []string{"G"},
+			Action:  func() {},
+		},
+		{
 			Title:   "Copy",
 			HotKeys: []string{"F5", "C"},
 			Action:  func() {},
@@ -91,23 +169,5 @@ func newBottom() *bottom {
 			HotKeys: []string{"E"},
 			Action:  func() {},
 		},
-		{
-			Title:   "Exit",
-			HotKeys: []string{"x"},
-			Action:  func() {},
-		},
 	}
-
-	const separator = "┊"
-	var sb strings.Builder
-	for _, mi := range menuItems {
-		title := mi.Title
-		for _, key := range mi.HotKeys {
-			title = strings.Replace(title, key, fmt.Sprintf("[%s]%s[-]", ftui.CurrentTheme.HotkeyColor, key), 1)
-		}
-		sb.WriteString(title)
-		sb.WriteString(separator)
-	}
-	b.SetText(sb.String()[:sb.Len()-len(separator)])
-	return b
 }

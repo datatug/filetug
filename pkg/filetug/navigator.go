@@ -111,10 +111,10 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		),
 		Flex:           tview.NewFlex().SetDirection(tview.FlexRow),
 		main:           tview.NewFlex(),
-		bottom:         newBottom(),
 		proportions:    make([]int, 3),
 		gitStatusCache: make(map[string]*gitutils.RepoStatus),
 	}
+	nav.bottom = newBottom(nav)
 	nav.right = newContainer(2, nav)
 	nav.favorites = newFavorites(nav)
 	nav.dirsTree = NewTree(nav)
