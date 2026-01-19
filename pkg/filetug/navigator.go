@@ -202,6 +202,7 @@ const (
 )
 
 func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+	nav.bottom.isCtrl = event.Modifiers()&tcell.ModCtrl != 0
 	switch event.Key() {
 	case tcell.KeyF1:
 		showHelpModal(nav)

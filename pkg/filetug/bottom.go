@@ -14,20 +14,7 @@ type bottom struct {
 	*tview.TextView
 	nav       *Navigator
 	menuItems []ftui.MenuItem
-}
-
-func (b *bottom) highlighted(added, removed, remaining []string) {
-	if len(added) == 0 {
-		return
-	}
-
-	region := added[0]
-
-	for _, mi := range b.menuItems {
-		if mi.HotKeys[0] == region && mi.Action != nil {
-			mi.Action()
-		}
-	}
+	isCtrl    bool
 }
 
 func newBottom(nav *Navigator) *bottom {
@@ -63,7 +50,28 @@ func (b *bottom) render() {
 	b.SetText(sb.String()[:sb.Len()-len(separator)])
 }
 
+func (b *bottom) highlighted(added, _, _ []string) {
+	if len(added) == 0 {
+		return
+	}
+
+	menuItems := b.menuItems
+	if b.isCtrl {
+		menuItems = b.getCtrlMenuItems()
+	}
+
+	region := added[0]
+	for _, mi := range menuItems {
+		if mi.HotKeys[0] == region && mi.Action != nil {
+			mi.Action()
+			return
+		}
+	}
+}
+
 func (b *bottom) getCtrlMenuItems() []ftui.MenuItem {
+	// Unfortunately, most terminals do not send standalone CTRL key event,
+	// so we can't handle it to show an alternative menu when CTRL is pressed.
 	return []ftui.MenuItem{
 		{
 			Title:   "Archive",
