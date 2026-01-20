@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -13,7 +14,21 @@ import (
 var (
 	// gitStatusSemaphore limits concurrent git status calls to avoid system hang
 	gitStatusSemaphore = make(chan struct{}, 2)
+
+	repoLocksMu sync.Mutex
+	repoLocks   = make(map[string]*sync.Mutex)
 )
+
+func getRepoLock(repoPath string) *sync.Mutex {
+	repoLocksMu.Lock()
+	defer repoLocksMu.Unlock()
+	if lock, ok := repoLocks[repoPath]; ok {
+		return lock
+	}
+	lock := &sync.Mutex{}
+	repoLocks[repoPath] = lock
+	return lock
+}
 
 // GetDirStatus returns a brief git status for the given directory.
 // It uses a context to allow cancellation and a semaphore to limit concurrency.
@@ -21,6 +36,15 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 	if repo == nil {
 		return nil
 	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil
+	}
+	repoRoot := wt.Filesystem.Root()
+	lock := getRepoLock(repoRoot)
+	lock.Lock()
+	defer lock.Unlock()
 
 	select {
 	case <-ctx.Done():
@@ -79,12 +103,6 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 	if status.IsClean() {
 		return res
 	}
-
-	wt, err := repo.Worktree()
-	if err != nil {
-		return res
-	}
-	repoRoot := wt.Filesystem.Root()
 
 	relPath, err := filepath.Rel(repoRoot, dir)
 	if err != nil {
