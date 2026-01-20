@@ -2,6 +2,7 @@ package filetug
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
@@ -34,14 +35,38 @@ func TestTree(t *testing.T) {
 	})
 
 	t.Run("inputCapture", func(t *testing.T) {
-		eventLeft := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
-		tree.inputCapture(eventLeft)
+		root := tree.GetRoot()
+		root.SetReference("/test")
+		tree.SetCurrentNode(root)
 
+		// Test Right
 		eventRight := tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone)
 		tree.inputCapture(eventRight)
 
+		// Test Left
+		eventLeft := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
+		tree.inputCapture(eventLeft)
+
+		// Test Enter
+		eventEnter := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+		tree.inputCapture(eventEnter)
+
+		// Test Up
 		eventUp := tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
 		tree.inputCapture(eventUp)
+
+		// Test Backspace
+		tree.search = "abc"
+		eventBS := tcell.NewEventKey(tcell.KeyBackspace, 0, tcell.ModNone)
+		tree.inputCapture(eventBS)
+
+		// Test Escape
+		eventEsc := tcell.NewEventKey(tcell.KeyEscape, 0, tcell.ModNone)
+		tree.inputCapture(eventEsc)
+
+		// Test Rune
+		eventRune := tcell.NewEventKey(tcell.KeyRune, 'a', tcell.ModNone)
+		tree.inputCapture(eventRune)
 	})
 
 	t.Run("SetSearch", func(t *testing.T) {
@@ -54,7 +79,28 @@ func TestTree(t *testing.T) {
 
 	t.Run("setDirContext", func(t *testing.T) {
 		root := tree.GetRoot()
-		dc := &DirContext{Path: "/test"}
+		dc := &DirContext{
+			Path: "/test",
+			children: []os.DirEntry{
+				mockDirEntry{name: "dir1", isDir: true},
+				mockDirEntry{name: "file1", isDir: false},
+				mockDirEntry{name: ".hidden", isDir: true},
+				mockDirEntry{name: "Library", isDir: true},
+				mockDirEntry{name: "Users", isDir: true},
+				mockDirEntry{name: "Applications", isDir: true},
+				mockDirEntry{name: "Music", isDir: true},
+				mockDirEntry{name: "Movies", isDir: true},
+				mockDirEntry{name: "Pictures", isDir: true},
+				mockDirEntry{name: "Desktop", isDir: true},
+				mockDirEntry{name: "DataTug", isDir: true},
+				mockDirEntry{name: "Documents", isDir: true},
+				mockDirEntry{name: "Public", isDir: true},
+				mockDirEntry{name: "Temp", isDir: true},
+				mockDirEntry{name: "System", isDir: true},
+				mockDirEntry{name: "bin", isDir: true},
+				mockDirEntry{name: "private", isDir: true},
+			},
+		}
 		tree.setDirContext(context.Background(), root, dc)
 	})
 

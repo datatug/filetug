@@ -1,6 +1,8 @@
 package filetug
 
 import (
+	"errors"
+	"os"
 	"testing"
 
 	"github.com/alecthomas/assert/v2"
@@ -79,5 +81,20 @@ func TestNavigator_goDir(t *testing.T) {
 		nav.SetFocusToContainer(1)
 		nav.SetFocusToContainer(2)
 		nav.showMasks()
+	})
+
+	t.Run("onDataLoaded_showNodeError", func(t *testing.T) {
+		node := tview.NewTreeNode("test").SetReference("/test")
+		dirContext := &DirContext{
+			Path:     "/test",
+			children: []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}},
+		}
+
+		nav.onDataLoaded(node, dirContext, true)
+		nav.onDataLoaded(node, dirContext, false)
+
+		err := errors.New("test error")
+		nav.showNodeError(node, err)
+		nav.showNodeError(nil, err)
 	})
 }

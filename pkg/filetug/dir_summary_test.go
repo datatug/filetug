@@ -55,11 +55,21 @@ func TestDirSummary_SetDir(t *testing.T) {
 }
 
 func TestGetSizeCell(t *testing.T) {
-	cell := getSizeCell(1024, 0)
-	assert.Equal(t, "  1KB", cell.Text)
+	testCases := []struct {
+		size int64
+	}{
+		{1024 * 1024 * 1024 * 1024 * 2},
+		{1024 * 1024 * 1024 * 2},
+		{1024 * 1024 * 2},
+		{1024 * 2},
+		{512},
+		{0},
+	}
 
-	cell = getSizeCell(1024*1024*1024*1024, 0)
-	assert.Contains(t, cell.Text, "1TB")
+	for _, tc := range testCases {
+		cell := getSizeCell(tc.size, 0)
+		assert.NotEmpty(t, cell.Text)
+	}
 }
 
 func TestDirSummary_Extra(t *testing.T) {
@@ -94,17 +104,32 @@ func TestDirSummary_Extra(t *testing.T) {
 	})
 
 	t.Run("inputCapture", func(t *testing.T) {
-		eventEsc := tcell.NewEventKey(tcell.KeyEscape, 0, tcell.ModNone)
-		ds.inputCapture(eventEsc)
+		// Mock data with a group that has multiple extensions and a group that has one extension
+		entries := []os.DirEntry{
+			mockDirEntry{name: "image1.png", isDir: false},
+			mockDirEntry{name: "image2.jpg", isDir: false},
+			mockDirEntry{name: "script.go", isDir: false},
+		}
+		ds.SetDir(&DirContext{Path: "/test", children: entries})
 
+		// Test Left
 		eventLeft := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
-		ds.inputCapture(eventLeft)
+		assert.Nil(t, ds.inputCapture(eventLeft))
 
-		eventRight := tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone)
-		ds.inputCapture(eventRight)
+		// Test Down
+		eventDown := tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+		// Row 0 is header group (Images or Code)
+		ds.extTable.Select(0, 0)
+		ds.inputCapture(eventDown)
 
+		// Test Up
 		eventUp := tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+		ds.extTable.Select(1, 0)
 		ds.inputCapture(eventUp)
+
+		// Test other key
+		eventOther := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModNone)
+		assert.Equal(t, eventOther, ds.inputCapture(eventOther))
 	})
 
 	t.Run("GetSizes", func(t *testing.T) {

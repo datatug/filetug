@@ -70,6 +70,16 @@ func TestFavorites(t *testing.T) {
 	t.Run("changed", func(t *testing.T) {
 		f.changed(0, "", "", 0)
 	})
+
+	t.Run("selected", func(t *testing.T) {
+		f.selected(f.items[0])
+	})
+
+	t.Run("setItems_coverage", func(t *testing.T) {
+		f.items = append(f.items, favorite{Store: "https://www.example.com", Path: "/abc", Description: "Example"})
+		f.items = append(f.items, favorite{Store: "file:", Path: "/some/path", Description: "Path"})
+		f.setItems()
+	})
 }
 
 func TestNewFavorites_NilNav(t *testing.T) {

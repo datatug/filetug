@@ -108,3 +108,52 @@ func TestFileRows_GetCell(t *testing.T) {
 	assert.NotNil(t, cell)
 	assert.NotEmpty(t, cell.Text)
 }
+
+func TestFileRows_Extra(t *testing.T) {
+	store := mockStore{root: url.URL{Path: "/"}}
+	fr := NewFileRows(&DirContext{Store: store, Path: "/"})
+	fr.VisibleEntries = []os.DirEntry{
+		mockDirEntry{name: "dir1", isDir: true},
+	}
+	fr.VisualInfos = make([]os.FileInfo, 1)
+
+	t.Run("GetColumnCount", func(t *testing.T) {
+		assert.Equal(t, 3, fr.GetColumnCount())
+	})
+
+	t.Run("GetCell_Error", func(t *testing.T) {
+		fr.Err = assert.AnError
+		cell := fr.GetCell(0, 0)
+		assert.NotNil(t, cell)
+		assert.Contains(t, cell.Text, "📁")
+		fr.Err = nil
+	})
+
+	t.Run("GetCell_Empty", func(t *testing.T) {
+		fr.VisibleEntries = nil
+		fr.VisualInfos = nil
+		fr.Dir.Path = "/home"    // Ensure HideParent() is false, so row 0 is parent row
+		cell := fr.GetCell(1, 0) // Row 0 is parent, Row 1 is "No entries"
+		assert.NotNil(t, cell)
+		assert.Contains(t, cell.Text, "No entries")
+	})
+
+	t.Run("getTopRow", func(t *testing.T) {
+		fr.Dir.Path = "/home"
+		cell := fr.getTopRow(0)
+		assert.Equal(t, "..", cell.Text)
+
+		fr.Dir.Path = "/"
+		cell = fr.getTopRow(0)
+		assert.Equal(t, ".", cell.Text)
+
+		cell = fr.getTopRow(1)
+		assert.Equal(t, "", cell.Text)
+
+		cell = fr.getTopRow(2)
+		assert.Equal(t, "", cell.Text)
+
+		cell = fr.getTopRow(3)
+		assert.Nil(t, cell)
+	})
+}

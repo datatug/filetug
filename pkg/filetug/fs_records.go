@@ -106,69 +106,71 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 	if i < 0 {
 		return nil
 	}
-	if i >= len(r.VisibleEntries) {
+	if i >= len(r.VisibleEntries) && len(r.VisibleEntries) > 0 {
 		return nil
 	}
+	var cell *tview.TableCell
 	if len(r.VisibleEntries) == 0 {
 		if col == nameColIndex {
-			return tview.NewTableCell("[::i]No entries[::-]").SetTextColor(tcell.ColorGray)
-		}
-		return nil
-	}
-	dirEntry := r.VisibleEntries[i]
-
-	var cell *tview.TableCell
-	name := dirEntry.Name()
-	if col == nameColIndex {
-		if dirEntry.IsDir() {
-			cell = tview.NewTableCell(dirEmoji + name)
+			cell = tview.NewTableCell("[::i]No entries[::-]").SetTextColor(tcell.ColorGray)
 		} else {
-			cell = tview.NewTableCell("📄" + name)
-		}
-	} else {
-		fi := r.VisualInfos[i]
-		if fi == nil || reflect.ValueOf(fi).IsNil() {
-			var err error
-			fi, err = dirEntry.Info()
-			if err != nil {
-				return tview.NewTableCell(err.Error()).SetBackgroundColor(tcell.ColorRed)
-			}
-			r.Infos[i] = fi
-		}
-
-		switch col {
-		case sizeColIndex:
-			var sizeText string
-			if !dirEntry.IsDir() {
-				if fi != nil && !reflect.ValueOf(fi).IsNil() {
-					size := fi.Size()
-					sizeText = fsutils.GetSizeShortText(size)
-				}
-			}
-			cell = tview.NewTableCell(sizeText).
-				SetAlign(tview.AlignRight).
-				SetExpansion(1)
-		case modifiedColIndex:
-			var s string
-			if fi != nil && !reflect.ValueOf(fi).IsNil() {
-				if modTime := fi.ModTime(); fi.ModTime().After(time.Now().Add(24 * time.Hour)) {
-					s = modTime.Format("15:04:05")
-				} else {
-					s = modTime.Format("2006-01-02")
-				}
-			}
-			cell = tview.NewTableCell(s)
-		default:
 			return nil
 		}
+	} else {
+		dirEntry := r.VisibleEntries[i]
+
+		name := dirEntry.Name()
+		if col == nameColIndex {
+			if dirEntry.IsDir() {
+				cell = tview.NewTableCell(dirEmoji + name)
+			} else {
+				cell = tview.NewTableCell("📄" + name)
+			}
+		} else {
+			fi := r.VisualInfos[i]
+			if fi == nil || reflect.ValueOf(fi).IsNil() {
+				var err error
+				fi, err = dirEntry.Info()
+				if err != nil {
+					return tview.NewTableCell(err.Error()).SetBackgroundColor(tcell.ColorRed)
+				}
+				r.Infos[i] = fi
+			}
+
+			switch col {
+			case sizeColIndex:
+				var sizeText string
+				if !dirEntry.IsDir() {
+					if fi != nil && !reflect.ValueOf(fi).IsNil() {
+						size := fi.Size()
+						sizeText = fsutils.GetSizeShortText(size)
+					}
+				}
+				cell = tview.NewTableCell(sizeText).
+					SetAlign(tview.AlignRight).
+					SetExpansion(1)
+			case modifiedColIndex:
+				var s string
+				if fi != nil && !reflect.ValueOf(fi).IsNil() {
+					if modTime := fi.ModTime(); fi.ModTime().After(time.Now().Add(24 * time.Hour)) {
+						s = modTime.Format("15:04:05")
+					} else {
+						s = modTime.Format("2006-01-02")
+					}
+				}
+				cell = tview.NewTableCell(s)
+			default:
+				return nil
+			}
+		}
+		color := GetColorByFileExt(name)
+		cell.SetTextColor(color)
+		ref := DirEntry{
+			DirEntry: dirEntry,
+			Path:     path.Join(fsutils.ExpandHome(r.Dir.Path), dirEntry.Name()),
+		}
+		cell.SetReference(ref)
 	}
-	color := GetColorByFileExt(name)
-	cell.SetTextColor(color)
-	ref := DirEntry{
-		DirEntry: dirEntry,
-		Path:     path.Join(fsutils.ExpandHome(r.Dir.Path), dirEntry.Name()),
-	}
-	cell.SetReference(ref)
 	return cell
 }
 
