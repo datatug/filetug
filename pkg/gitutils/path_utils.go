@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-var osStat = os.Stat
+var OsStat = os.Stat
 
 // GetRepositoryRoot check parent directories if this is a subdirectory of a repo
 func GetRepositoryRoot(dirPath string) (repoRootDir string) {
@@ -14,7 +14,7 @@ func GetRepositoryRoot(dirPath string) (repoRootDir string) {
 		return ""
 	}
 	for {
-		if stat, err := osStat(filepath.Join(dirPath, ".git")); err == nil {
+		if stat, err := OsStat(filepath.Join(dirPath, ".git")); err == nil {
 			if stat.IsDir() {
 				return dirPath
 			}

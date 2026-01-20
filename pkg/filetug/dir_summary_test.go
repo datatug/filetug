@@ -19,10 +19,13 @@ func TestNewDirSummary(t *testing.T) {
 
 type mockFileInfo struct {
 	os.FileInfo
-	size int64
+	size  int64
+	isDir bool
 }
 
 func (m mockFileInfo) Size() int64 { return m.size }
+
+func (m mockFileInfo) IsDir() bool { return m.isDir }
 
 type mockDirEntryWithInfo struct {
 	mockDirEntry

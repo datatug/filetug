@@ -282,8 +282,19 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 	t.Run("NoApp", func(t *testing.T) {
 		nav.app = nil
 		status := &gitutils.RepoStatus{Branch: "main"}
-		nav.gitStatusCache["/cached2"] = status
-		nav.updateGitStatus(ctx, nil, "/cached2", node, "prefix: ")
+		// Path matches repo root to ensure status is shown even if clean
+		path := "/repo"
+		oldOsStat := gitutils.OsStat
+		gitutils.OsStat = func(name string) (os.FileInfo, error) {
+			if name == "/repo/.git" {
+				return mockFileInfo{isDir: true}, nil // exists and is a dir
+			}
+			return oldOsStat(name)
+		}
+		defer func() { gitutils.OsStat = oldOsStat }()
+
+		nav.gitStatusCache[path] = status
+		nav.updateGitStatus(ctx, nil, path, node, "prefix: ")
 		assert.Equal(t, "prefix: "+status.String(), node.GetText())
 	})
 
@@ -296,8 +307,19 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 		defer func() { nav.queueUpdateDraw = oldQueueUpdateDraw }()
 
 		status := &gitutils.RepoStatus{Branch: "main"}
-		nav.gitStatusCache["/cached3"] = status
-		nav.updateGitStatus(ctx, nil, "/cached3", node, "prefix: ")
+		// Path matches repo root to ensure status is shown even if clean
+		path := "/repo"
+		oldOsStat := gitutils.OsStat
+		gitutils.OsStat = func(name string) (os.FileInfo, error) {
+			if name == "/repo/.git" {
+				return mockFileInfo{isDir: true}, nil // exists and is a dir
+			}
+			return oldOsStat(name)
+		}
+		defer func() { gitutils.OsStat = oldOsStat }()
+
+		nav.gitStatusCache[path] = status
+		nav.updateGitStatus(ctx, nil, path, node, "prefix: ")
 		assert.Equal(t, "prefix: "+status.String(), node.GetText())
 	})
 }
