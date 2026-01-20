@@ -204,3 +204,14 @@ func TestFilesPanel_OnStoreChange(t *testing.T) {
 	assert.Equal(t, 0, fp.loadingProgress)
 	assert.Equal(t, "Loading...", fp.table.GetCell(0, 0).Text)
 }
+
+func TestFilesPanel_selectionChangedNavFunc(t *testing.T) {
+	app := tview.NewApplication()
+	nav := &Navigator{app: app}
+	nav.right = newContainer(2, nav)
+	nav.previewer = &previewer{textView: tview.NewTextView()}
+	fp := newFiles(nav)
+
+	fp.table.SetCell(1, 0, tview.NewTableCell(" file1.txt"))
+	fp.selectionChangedNavFunc(1, 0)
+}
