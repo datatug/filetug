@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/datatug/filetug/pkg/files"
+	"github.com/datatug/filetug/pkg/filetug/ftui"
 	"github.com/datatug/filetug/pkg/fsutils"
-	"github.com/datatug/filetug/pkg/ftui"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )

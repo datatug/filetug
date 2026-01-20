@@ -1,4 +1,4 @@
-package previewers
+package viewers
 
 import "github.com/rivo/tview"
 

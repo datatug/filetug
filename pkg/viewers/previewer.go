@@ -1,4 +1,4 @@
-package previewers
+package viewers
 
 type Previewer interface {
 	GetMeta(path string) (meta *Meta)

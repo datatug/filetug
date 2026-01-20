@@ -1,4 +1,4 @@
-package dsstore
+package dsstoreviewer
 
 import (
 	"bytes"

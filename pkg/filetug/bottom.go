@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/datatug/filetug/pkg/ftui"
+	"github.com/datatug/filetug/pkg/filetug/ftui"
 	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

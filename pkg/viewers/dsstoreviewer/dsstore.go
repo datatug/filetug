@@ -1,4 +1,4 @@
-package dsstore
+package dsstoreviewer
 
 // Record in .DS_Store
 type Record struct {

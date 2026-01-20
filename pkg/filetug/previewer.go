@@ -11,9 +11,10 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/datatug/filetug/pkg/chroma2tcell"
 	"github.com/datatug/filetug/pkg/fsutils"
-	"github.com/datatug/filetug/pkg/previewers"
-	"github.com/datatug/filetug/pkg/previewers/dsstore"
 	"github.com/datatug/filetug/pkg/sneatv"
+	"github.com/datatug/filetug/pkg/viewers"
+	"github.com/datatug/filetug/pkg/viewers/dsstoreviewer"
+	"github.com/datatug/filetug/pkg/viewers/imageviewer"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -122,7 +123,7 @@ func (p *previewer) PreviewFile(name, fullName string) {
 			return
 		}
 		bufferRead := bytes.NewBuffer(data)
-		var s dsstore.Store
+		var s dsstoreviewer.Store
 		err = s.Read(bufferRead)
 		if err != nil {
 			p.SetErr(err)
@@ -148,8 +149,8 @@ func (p *previewer) PreviewFile(name, fullName string) {
 		case ".log":
 			data, err = p.readFile(fullName, -1024)
 		case ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".riff", ".tiff", ".vp8", ".webp":
-			metaTable := previewers.NewMetaTable()
-			meta := previewers.ImagePreviewer{}.GetMeta(fullName)
+			metaTable := viewers.NewMetaTable()
+			meta := imageviewer.ImagePreviewer{}.GetMeta(fullName)
 			metaTable.SetMeta(meta)
 			p.nav.right.SetContent(metaTable)
 			return

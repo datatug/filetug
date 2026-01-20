@@ -1,4 +1,4 @@
-package previewers
+package imageviewer
 
 import (
 	"image"
@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/datatug/filetug/pkg/viewers"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/riff"
 	_ "golang.org/x/image/vp8"
@@ -16,12 +17,12 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-var _ Previewer = (*ImagePreviewer)(nil)
+var _ viewers.Previewer = (*ImagePreviewer)(nil)
 
 type ImagePreviewer struct {
 }
 
-func (i ImagePreviewer) GetMeta(path string) (meta *Meta) {
+func (i ImagePreviewer) GetMeta(path string) (meta *viewers.Meta) {
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -33,26 +34,26 @@ func (i ImagePreviewer) GetMeta(path string) (meta *Meta) {
 	if err != nil {
 		return
 	}
-	main := MetaGroup{
+	main := viewers.MetaGroup{
 		ID:    "main",
 		Title: "Format: " + strings.ToUpper(format),
 	}
 	main.Records = append(main.Records,
-		&MetaRecord{
+		&viewers.MetaRecord{
 			ID:         "width",
 			Title:      "Width",
 			Value:      strconv.Itoa(cfg.Width),
-			ValueAlign: AlignRight,
+			ValueAlign: viewers.AlignRight,
 		},
-		&MetaRecord{
+		&viewers.MetaRecord{
 			ID:         "height",
 			Title:      "Height",
 			Value:      strconv.Itoa(cfg.Height),
-			ValueAlign: AlignRight,
+			ValueAlign: viewers.AlignRight,
 		},
 	)
-	return &Meta{
-		Groups: []*MetaGroup{
+	return &viewers.Meta{
+		Groups: []*viewers.MetaGroup{
 			&main,
 		},
 	}
