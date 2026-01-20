@@ -42,7 +42,7 @@ ft <PATH_TO_DIRECTORY_OR_FILE>
 ## Libraries used
 
 - [tview](https://github.com/rivo/tview) - Modern, rich, and extensible Go UI library for terminal applications
-- [chrome](https://github.com/alecthomas/chroma) - Go syntax highlighting library
+- [chroma](https://github.com/alecthomas/chroma) - Go syntax highlighting library
 
 ## Contributing
 
