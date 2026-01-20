@@ -1,0 +1,29 @@
+package gitutils
+
+import (
+	"os"
+	"path/filepath"
+)
+
+var osStat = os.Stat
+
+// GetRepositoryRoot check parent directories if this is a subdirectory of a repo
+func GetRepositoryRoot(dirPath string) (repoRootDir string) {
+	dirPath, err := filepath.Abs(dirPath)
+	if err != nil {
+		return ""
+	}
+	for {
+		if stat, err := osStat(filepath.Join(dirPath, ".git")); err == nil {
+			if stat.IsDir() {
+				return dirPath
+			}
+		}
+		parent := filepath.Dir(dirPath)
+		if parent == dirPath {
+			break
+		}
+		dirPath = parent
+	}
+	return ""
+}

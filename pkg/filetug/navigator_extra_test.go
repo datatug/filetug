@@ -121,6 +121,12 @@ func TestNavigator_UpdateGitStatus_RealCall(t *testing.T) {
 	// and see it doesn't crash.
 	app := tview.NewApplication()
 	nav := NewNavigator(app)
+	nav.queueUpdateDraw = func(f func()) {
+		f()
+	}
+	nav.setAppFocus = func(p tview.Primitive) {
+		// do nothing
+	}
 	node := tview.NewTreeNode("test")
 	ctx := context.Background()
 

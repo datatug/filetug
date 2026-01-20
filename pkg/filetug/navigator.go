@@ -304,7 +304,7 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 		return
 	}
 
-	status := gitutils.GetRepositoryStatus(ctx, fullPath)
+	status := gitutils.GetDirStatus(ctx, fullPath)
 	if status == nil {
 		return
 	}

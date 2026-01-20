@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -58,14 +57,11 @@ func (s *RepoStatus) String() string {
 	return separator + fmt.Sprintf("[darkgray]%s[-]%s[darkgray]ƒ%d[-]%s", s.Branch, separator, s.FilesChanged, s.FileGitStatus.String())
 }
 
-// GetRepositoryStatus returns a brief git status for the given directory.
+// GetDirStatus returns a brief git status for the given directory.
 // It uses a context to allow cancellation and a semaphore to limit concurrency.
-func GetRepositoryStatus(ctx context.Context, dir string) *RepoStatus {
-	// Quick check if .git exists to avoid expensive go-git calls for non-git dirs
-	dotGit := filepath.Join(dir, ".git")
-	if _, err := os.Stat(dotGit); os.IsNotExist(err) {
-		// Also check parent directories if this is a subdirectory of a repo
-		// but for now let's just optimize the current dir check
+func GetDirStatus(ctx context.Context, dir string) *RepoStatus {
+	repoRoot := GetRepositoryRoot(dir)
+	if repoRoot == "" {
 		return nil
 	}
 
@@ -76,7 +72,7 @@ func GetRepositoryStatus(ctx context.Context, dir string) *RepoStatus {
 		defer func() { <-gitStatusSemaphore }()
 	}
 
-	repo, err := git.PlainOpen(dir)
+	repo, err := git.PlainOpen(repoRoot)
 	if err != nil {
 		return nil
 	}
@@ -132,8 +128,22 @@ func GetRepositoryStatus(ctx context.Context, dir string) *RepoStatus {
 		return res
 	}
 
+	relPath, err := filepath.Rel(repoRoot, dir)
+	if err != nil {
+		relPath = ""
+	}
+	if relPath == "." {
+		relPath = ""
+	}
+	if relPath != "" && !strings.HasSuffix(relPath, string(filepath.Separator)) {
+		relPath += string(filepath.Separator)
+	}
+
 	res.FilesChanged = 0
-	for _, s := range status {
+	for fileName, s := range status {
+		if relPath != "" && !strings.HasPrefix(fileName, relPath) {
+			continue
+		}
 		if s.Worktree != git.Unmodified || s.Staging != git.Unmodified {
 			res.FilesChanged++
 		}
@@ -154,6 +164,10 @@ func GetRepositoryStatus(ctx context.Context, dir string) *RepoStatus {
 				default:
 				}
 
+				if relPath != "" && !strings.HasPrefix(fileName, relPath) {
+					continue
+				}
+
 				if fileStatus.Worktree == git.Unmodified && fileStatus.Staging == git.Unmodified {
 					continue
 				}
@@ -166,9 +180,7 @@ func GetRepositoryStatus(ctx context.Context, dir string) *RepoStatus {
 						b := make([]byte, maxRead)
 						n, _ := f.Read(b)
 						res.Insertions += strings.Count(string(b[:n]), "\n")
-						go func() {
-							_ = f.Close()
-						}()
+						_ = f.Close()
 					}
 					continue
 				}

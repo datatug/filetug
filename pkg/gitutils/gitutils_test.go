@@ -82,7 +82,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 	}()
 
 	t.Run("non-git directory", func(t *testing.T) {
-		status := GetRepositoryStatus(context.Background(), tempDir)
+		status := GetDirStatus(context.Background(), tempDir)
 		if status != nil {
 			t.Errorf("Expected nil status for non-git directory, got %v", status)
 		}
@@ -94,7 +94,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			t.Fatalf("Failed to init git repo: %v", err)
 		}
 
-		status := GetRepositoryStatus(context.Background(), tempDir)
+		status := GetDirStatus(context.Background(), tempDir)
 		if status == nil {
 			t.Fatal("Expected status, got nil")
 		}
@@ -116,7 +116,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 		})
 
 		t.Run("clean repo", func(t *testing.T) {
-			status := GetRepositoryStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), tempDir)
 			if status == nil {
 				t.Fatal("Expected status, got nil")
 			}
@@ -129,7 +129,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err := os.WriteFile(filename, []byte("line1\nline2\nline3\n"), 0644); err != nil {
 				t.Fatalf("Failed to write file: %v", err)
 			}
-			status := GetRepositoryStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), tempDir)
 			if status == nil {
 				t.Fatal("Expected status, got nil")
 			}
@@ -143,7 +143,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err := os.WriteFile(untrackedFile, []byte("newfile\nline2\n"), 0644); err != nil {
 				t.Fatalf("Failed to write untracked file: %v", err)
 			}
-			status := GetRepositoryStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), tempDir)
 			if status.FilesChanged < 1 {
 				t.Errorf("Expected files changed, got %d", status.FilesChanged)
 			}
@@ -166,7 +166,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err := os.Remove(filepath.Join(tempDir, "untracked.txt")); err != nil {
 				t.Fatalf("Failed to remove file: %v", err)
 			}
-			status := GetRepositoryStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), tempDir)
 			if status.Deletions == 0 {
 				t.Errorf("Expected deletions > 0 for deleted file, got %d", status.Deletions)
 			}
@@ -180,7 +180,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to checkout hash: %v", err)
 			}
-			status := GetRepositoryStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), tempDir)
 			if len(status.Branch) != 7 {
 				t.Errorf("Expected short hash (7 chars) for detached HEAD, got %s", status.Branch)
 			}
@@ -189,7 +189,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 		t.Run("context cancelled", func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
-			status := GetRepositoryStatus(ctx, tempDir)
+			status := GetDirStatus(ctx, tempDir)
 			// It might return nil if it was cancelled BEFORE semaphore
 			// OR it might return a partial RepoStatus if it was cancelled after Branch was determined.
 			// In our test, it seems it's getting past the semaphore.
@@ -203,7 +203,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
 			defer cancel()
 			time.Sleep(2 * time.Millisecond)
-			status := GetRepositoryStatus(ctx, tempDir)
+			status := GetDirStatus(ctx, tempDir)
 			if status != nil && status.FilesChanged != 0 {
 				t.Logf("Status is not nil and has files changed, but context was cancelled: %v", status)
 			}
@@ -218,7 +218,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 				t.Fatalf("Failed to create .git directory: %v", err)
 			}
 			// No actual git data in .git
-			status := GetRepositoryStatus(context.Background(), corruptedDir)
+			status := GetDirStatus(context.Background(), corruptedDir)
 			if status != nil {
 				t.Errorf("Expected nil status for corrupted git repo, got %v", status)
 			}
@@ -239,11 +239,61 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to corrupt HEAD: %v", err)
 			}
-			status := GetRepositoryStatus(context.Background(), corruptedHeadDir)
+			status := GetDirStatus(context.Background(), corruptedHeadDir)
 			if status == nil {
 				t.Errorf("Expected non-nil status for repo with corrupted HEAD, got nil")
 			} else if status.Branch != "unknown" && status.Branch != "master" {
 				t.Errorf("Expected branch unknown or master, got %s", status.Branch)
+			}
+		})
+
+		t.Run("subdirectory of a git repo", func(t *testing.T) {
+			subDir := filepath.Join(tempDir, "subdir", "deep", "dir")
+			if err := os.MkdirAll(subDir, 0755); err != nil {
+				t.Fatalf("Failed to create subdir: %v", err)
+			}
+			status := GetDirStatus(context.Background(), subDir)
+			if status == nil {
+				t.Fatal("Expected status for subdirectory, got nil")
+			}
+			if status.Branch == "" {
+				t.Error("Expected branch to be set")
+			}
+		})
+
+		t.Run("stats only for current dir", func(t *testing.T) {
+			subDir := filepath.Join(tempDir, "target_subdir")
+			otherDir := filepath.Join(tempDir, "other_subdir")
+			if err := os.MkdirAll(subDir, 0755); err != nil {
+				t.Fatalf("Failed to create subDir: %v", err)
+			}
+			if err := os.MkdirAll(otherDir, 0755); err != nil {
+				t.Fatalf("Failed to create otherDir: %v", err)
+			}
+
+			// Create a change in target_subdir
+			if err := os.WriteFile(filepath.Join(subDir, "file1.txt"), []byte("content\n"), 0644); err != nil {
+				t.Fatalf("Failed to write file in subDir: %v", err)
+			}
+
+			// Create a change in other_subdir
+			if err := os.WriteFile(filepath.Join(otherDir, "file2.txt"), []byte("content\n"), 0644); err != nil {
+				t.Fatalf("Failed to write file in otherDir: %v", err)
+			}
+
+			// Create a change in root
+			if err := os.WriteFile(filepath.Join(tempDir, "root_file.txt"), []byte("content\n"), 0644); err != nil {
+				t.Fatalf("Failed to write file in root: %v", err)
+			}
+
+			status := GetDirStatus(context.Background(), subDir)
+			if status == nil {
+				t.Fatal("Expected status, got nil")
+			}
+
+			// It should only see 1 file changed (file1.txt in subDir)
+			if status.FilesChanged != 1 {
+				t.Errorf("Expected 1 file changed for subDir, got %d. It probably counted changes in parent/sibling dirs.", status.FilesChanged)
 			}
 		})
 	})
