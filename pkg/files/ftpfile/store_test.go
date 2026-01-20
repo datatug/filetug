@@ -39,6 +39,193 @@ func (m *mockFtpClient) Quit() error {
 	return nil
 }
 
+func TestStore_RootURL_and_Title(t *testing.T) {
+	root, _ := url.Parse("ftp://user:pass@example.com/some/path/f")
+	s := NewStore(*root)
+
+	rootURL := s.RootURL()
+	assert.Equal(t, "ftp://example.com/some/path/f", rootURL.String())
+	assert.Nil(t, rootURL.User)
+
+	rootTitle := s.RootTitle()
+	assert.Equal(t, "ftp://example.com/some/path/f", rootTitle)
+
+	// Test the suffix trimming
+	rootWithSuffix, _ := url.Parse("ftp://example.com/path/ƒ")
+	s2 := NewStore(*rootWithSuffix)
+	assert.Equal(t, "ftp://example.com/path", s2.RootTitle())
+}
+
+func TestNewStore_Panic(t *testing.T) {
+	root, _ := url.Parse("http://example.com")
+	assert.Panics(t, func() {
+		NewStore(*root)
+	})
+}
+
+func TestStore_SetTLS(t *testing.T) {
+	root, _ := url.Parse("ftp://example.com")
+	s := NewStore(*root)
+	s.SetTLS(true, true)
+	assert.True(t, s.explicit)
+	assert.True(t, s.implicit)
+}
+
+func TestStore_ReadDir_Errors(t *testing.T) {
+	root, _ := url.Parse("ftp://user:pass@example.com/")
+
+	t.Run("dial_error", func(t *testing.T) {
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return nil, fmt.Errorf("dial error")
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		_, err := s.ReadDir(context.Background(), ".")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to connect to ftp server")
+	})
+
+	t.Run("missing_password", func(t *testing.T) {
+		rootNoPass, _ := url.Parse("ftp://user@example.com/")
+		s := NewStore(*rootNoPass, WithFtpClientFactory(func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return &mockFtpClient{}, nil
+		}))
+		_, err := s.ReadDir(context.Background(), ".")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing password")
+	})
+
+	t.Run("login_error", func(t *testing.T) {
+		mockClient := &mockFtpClient{
+			LoginFunc: func(user, password string) error {
+				return fmt.Errorf("login failed")
+			},
+		}
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return mockClient, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		_, err := s.ReadDir(context.Background(), ".")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to login to ftp server")
+	})
+
+	t.Run("list_error", func(t *testing.T) {
+		mockClient := &mockFtpClient{
+			ListFunc: func(path string) ([]*ftp.Entry, error) {
+				return nil, fmt.Errorf("list failed")
+			},
+		}
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return mockClient, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		_, err := s.ReadDir(context.Background(), ".")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to list directory")
+	})
+
+	t.Run("context_cancelled_login", func(t *testing.T) {
+		mockClient := &mockFtpClient{
+			LoginFunc: func(user, password string) error {
+				time.Sleep(100 * time.Millisecond)
+				return nil
+			},
+		}
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return mockClient, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+		_, err := s.ReadDir(ctx, ".")
+		assert.Error(t, err)
+		assert.Equal(t, context.Canceled, err)
+	})
+
+	t.Run("context_cancelled_list", func(t *testing.T) {
+		mockClient := &mockFtpClient{
+			ListFunc: func(path string) ([]*ftp.Entry, error) {
+				time.Sleep(100 * time.Millisecond)
+				return nil, nil
+			},
+		}
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return mockClient, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+		_, err := s.ReadDir(ctx, ".")
+		assert.Error(t, err)
+		assert.Equal(t, context.Canceled, err)
+	})
+
+	t.Run("dot_and_dotdot_skipped", func(t *testing.T) {
+		mockClient := &mockFtpClient{
+			ListFunc: func(path string) ([]*ftp.Entry, error) {
+				return []*ftp.Entry{
+					{Name: ".", Type: ftp.EntryTypeFolder},
+					{Name: "..", Type: ftp.EntryTypeFolder},
+					{Name: "realfile.txt", Type: ftp.EntryTypeFile},
+				}, nil
+			},
+		}
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return mockClient, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		entries, err := s.ReadDir(context.Background(), ".")
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(entries))
+		assert.Equal(t, "realfile.txt", entries[0].Name())
+	})
+
+	t.Run("real_dial_error", func(t *testing.T) {
+		// Use a port that is likely not used to trigger an error in ftp.Dial
+		rootInvalid, _ := url.Parse("ftp://localhost:1")
+		s := NewStore(*rootInvalid) // No factory
+		_, err := s.ReadDir(context.Background(), ".")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to connect to ftp server")
+	})
+}
+
+func TestStore_ReadDir_TLS_Options(t *testing.T) {
+	root, _ := url.Parse("ftp://example.com")
+
+	t.Run("explicit_tls", func(t *testing.T) {
+		dialed := false
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			dialed = true
+			// We can't easily inspect options because they are functions,
+			// but we can at least ensure it doesn't crash and we cover the branches.
+			return &mockFtpClient{}, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		s.SetTLS(true, false)
+		_, _ = s.ReadDir(context.Background(), ".")
+		assert.True(t, dialed)
+	})
+
+	t.Run("implicit_tls", func(t *testing.T) {
+		dialed := false
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			dialed = true
+			return &mockFtpClient{}, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		s.SetTLS(false, true)
+		_, _ = s.ReadDir(context.Background(), ".")
+		assert.True(t, dialed)
+	})
+}
+
 func TestStore_ReadDir_Mock(t *testing.T) {
 	root, _ := url.Parse("ftp://demo:password@example.com/")
 	mockClient := &mockFtpClient{

@@ -31,7 +31,11 @@ func (s *Store) RootURL() url.URL {
 
 func (s *Store) RootTitle() string {
 	root := s.RootURL()
-	return strings.TrimSuffix(root.String(), "/ƒ")
+	sRoot := root.String()
+	if strings.HasSuffix(sRoot, "/%C6%92") {
+		return strings.TrimSuffix(sRoot, "/%C6%92")
+	}
+	return strings.TrimSuffix(sRoot, "/ƒ")
 }
 
 type FtpClient interface {
