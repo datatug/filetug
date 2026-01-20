@@ -7,11 +7,10 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"runtime"
 	"runtime/pprof"
-	"time"
 
 	"github.com/datatug/filetug/pkg/filetug"
+	"github.com/datatug/filetug/pkg/profiling"
 	"github.com/rivo/tview"
 )
 
@@ -36,41 +35,15 @@ func newFileTugApp() (app *tview.Application) {
 	}
 
 	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		defer func() {
-			_ = f.Close() // error handling omitted for brevity
-		}()
-		if err = pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-		defer pprof.StopCPUProfile()
+		defer profiling.DoCPUProfiling(*cpuprofile)
+	}
+
+	if *memprofile != "" {
+		defer profiling.DoMemProfiling(*memprofile)
 	}
 
 	app = newApp()
-	if *memprofile != "" {
-		go func() {
-			writeMemProfile := func() {
-				f, err := os.Create(*memprofile)
-				if err != nil {
-					log.Fatal("could not create memory profile: ", err)
-				}
-				defer func() {
-					_ = f.Close() // error handling omitted for brevity
-				}()
-				runtime.GC() // get up-to-date statistics
-				if err = pprof.WriteHeapProfile(f); err != nil {
-					log.Fatal("could not write memory profile: ", err)
-				}
-			}
-			for {
-				time.Sleep(time.Second)
-				writeMemProfile()
-			}
-		}()
-	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovered from panic: %v", r)

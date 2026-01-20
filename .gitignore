@@ -18,7 +18,10 @@ coverage*.out
 coverage*.html
 *.coverprofile
 profile.cov
+
 cpuprofile
+**/mem.prof
+**/cpu.prof
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
