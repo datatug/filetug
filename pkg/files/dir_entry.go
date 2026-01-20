@@ -32,5 +32,8 @@ func (d DirEntry) Type() os.FileMode {
 	return 0
 }
 func (d DirEntry) Info() (os.FileInfo, error) {
+	if d.info == nil {
+		return nil, nil
+	}
 	return d.info, nil
 }
