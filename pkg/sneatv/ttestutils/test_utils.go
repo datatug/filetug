@@ -1,4 +1,4 @@
-package sneatest
+package ttestutils
 
 import (
 	"strings"
@@ -7,7 +7,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-// helper to read a full line from the screen
+// ReadLine reads a full line from the screen
 func ReadLine(screen tcell.Screen, y, width int) string {
 	var b strings.Builder
 	for x := 0; x < width; x++ {
@@ -22,6 +22,7 @@ func ReadLine(screen tcell.Screen, y, width int) string {
 	return b.String()
 }
 
+// NewSimScreen creates a new simulation screen for testing
 func NewSimScreen(t *testing.T, width, height int) tcell.Screen {
 	t.Helper()
 	s := tcell.NewSimulationScreen("UTF-8")
