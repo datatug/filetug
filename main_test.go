@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/rivo/tview"
 )
 
 func TestMainRoot(t *testing.T) {
@@ -29,9 +31,21 @@ func TestMainRoot(t *testing.T) {
 }
 
 func Test_newApp(t *testing.T) {
+	oldSetupApp := setupApp
+	defer func() {
+		setupApp = oldSetupApp
+	}()
+	setupAppCalled := false
+	setupApp = func(app *tview.Application) {
+		setupAppCalled = true
+	}
+
 	app := newApp()
 	if app == nil {
 		t.Errorf("newApp returned nil")
+	}
+	if !setupAppCalled {
+		t.Errorf("expected newApp to call setupApp")
 	}
 }
 

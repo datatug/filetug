@@ -55,9 +55,13 @@ func (f *filesPanel) doLoadingAnimation(loading *tview.TableCell) {
 	if f.table.GetCell(1, 0) == loading {
 		q, r := f.loadingProgress/len(spinner), f.loadingProgress%len(spinner)
 		progressBar := strings.Repeat("█", q) + string(spinner[r])
-		f.nav.app.QueueUpdateDraw(func() {
+		if f.nav != nil && f.nav.queueUpdateDraw != nil {
+			f.nav.queueUpdateDraw(func() {
+				loading.SetText(progressBar)
+			})
+		} else {
 			loading.SetText(progressBar)
-		})
+		}
 		f.loadingProgress += 1
 		f.doLoadingAnimation(loading)
 	}
@@ -74,9 +78,11 @@ func (f *filesPanel) SetRows(rows *FileRows, showDirs bool) {
 	}
 	go func() {
 		time.Sleep(time.Millisecond)
-		f.nav.app.QueueUpdateDraw(func() {
-			f.table.ScrollToBeginning()
-		})
+		if f.nav != nil && f.nav.queueUpdateDraw != nil {
+			f.nav.queueUpdateDraw(func() {
+				f.table.ScrollToBeginning()
+			})
+		}
 	}()
 
 }

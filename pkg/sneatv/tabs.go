@@ -46,6 +46,11 @@ type Tabs struct {
 
 	tabs   []*Tab
 	active int
+
+	focusFunc               func()
+	textViewFocusFunc       func()
+	textViewBlurFunc        func()
+	textViewHighlightedFunc func(added, removed, remaining []string)
 }
 
 type tabsOptions struct {
@@ -145,11 +150,12 @@ func NewTabs(app *tview.Application, style TabsStyle, options ...TabsOption) *Ta
 			SetRegions(true).
 			SetWrap(false),
 	}
-	t.SetFocusFunc(func() {
+	t.focusFunc = func() {
 		if t.app != nil {
 			t.app.SetFocus(t.TextView)
 		}
-	})
+	}
+	t.SetFocusFunc(t.focusFunc)
 	for _, set := range options {
 		set(&t.tabsOptions)
 	}
@@ -167,15 +173,17 @@ func NewTabs(app *tview.Application, style TabsStyle, options ...TabsOption) *Ta
 		}
 	}
 
-	t.TextView.SetFocusFunc(func() {
+	t.textViewFocusFunc = func() {
 		setIsFocused(true)
-	})
+	}
+	t.TextView.SetFocusFunc(t.textViewFocusFunc)
 
-	t.TextView.SetBlurFunc(func() {
+	t.textViewBlurFunc = func() {
 		setIsFocused(false)
-	})
+	}
+	t.TextView.SetBlurFunc(t.textViewBlurFunc)
 
-	t.TextView.SetHighlightedFunc(func(added, removed, remaining []string) {
+	t.textViewHighlightedFunc = func(added, removed, remaining []string) {
 		if len(added) == 0 {
 			return
 		}
@@ -188,7 +196,8 @@ func NewTabs(app *tview.Application, style TabsStyle, options ...TabsOption) *Ta
 		}
 		//t.tabs[index].Title = fmt.Sprintf("Tab %d", index)
 		t.SwitchTo(index)
-	})
+	}
+	t.TextView.SetHighlightedFunc(t.textViewHighlightedFunc)
 
 	t.
 		AddItem(t.TextView, 1, 0, false).

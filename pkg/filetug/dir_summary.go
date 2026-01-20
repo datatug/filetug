@@ -160,7 +160,7 @@ func (d *dirSummary) SetDir(dir *DirContext) {
 
 	go func() {
 		if err := d.GetSizes(); err == nil {
-			d.nav.app.QueueUpdateDraw(func() {
+			d.nav.queueUpdateDraw(func() {
 				d.updateTable()
 			})
 		}

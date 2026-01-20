@@ -23,8 +23,9 @@ import (
 )
 
 type Navigator struct {
-	app *tview.Application
-	o   navigatorOptions
+	app             *tview.Application
+	queueUpdateDraw func(f func()) *tview.Application
+	o               navigatorOptions
 
 	store files.Store
 
@@ -100,8 +101,9 @@ func OnMoveFocusUp(f func(source tview.Primitive)) NavigatorOption {
 func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator {
 
 	nav := &Navigator{
-		app:   app,
-		store: osfile.NewStore("/"),
+		app:             app,
+		queueUpdateDraw: app.QueueUpdateDraw,
+		store:           osfile.NewStore("/"),
 		breadcrumbs: crumbs.NewBreadcrumbs(
 			crumbs.NewBreadcrumb("FileTug: ", func() error {
 				return nil
@@ -277,9 +279,13 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 	nav.gitStatusCacheMu.RUnlock()
 
 	if ok && node != nil {
-		nav.app.QueueUpdateDraw(func() {
+		if nav.app != nil {
+			nav.queueUpdateDraw(func() {
+				node.SetText(prefix + cachedStatus.String())
+			})
+		} else {
 			node.SetText(prefix + cachedStatus.String())
-		})
+		}
 		return
 	}
 
@@ -298,9 +304,13 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 	nav.gitStatusCache[fullPath] = status
 	nav.gitStatusCacheMu.Unlock()
 
-	nav.app.QueueUpdateDraw(func() {
+	if nav.app != nil {
+		nav.queueUpdateDraw(func() {
+			node.SetText(prefix + status.String())
+		})
+	} else {
 		node.SetText(prefix + status.String())
-	})
+	}
 }
 
 var saveCurrentDir = ftstate.SaveCurrentDir
@@ -325,7 +335,7 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dir str
 
 	go func() {
 		dirContext, err := nav.getDirData(ctx)
-		nav.app.QueueUpdateDraw(func() {
+		nav.queueUpdateDraw(func() {
 			if err != nil {
 				nav.showNodeError(node, err)
 				return

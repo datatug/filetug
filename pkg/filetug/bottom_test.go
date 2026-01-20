@@ -112,6 +112,8 @@ func TestBottom_Highlighted_Ctrl(t *testing.T) {
 	b.isCtrl = true
 
 	actionCalled := false
+	oldArchiveAction := archiveAction
+	defer func() { archiveAction = oldArchiveAction }()
 	archiveAction = func() {
 		actionCalled = true
 	}
@@ -120,4 +122,9 @@ func TestBottom_Highlighted_Ctrl(t *testing.T) {
 	// So we just call it to cover the branches.
 	b.highlighted([]string{"A"}, nil, nil)
 	assert.True(t, actionCalled)
+
+	// Test no action for unknown region in CTRL menu
+	actionCalled = false
+	b.highlighted([]string{"Z"}, nil, nil)
+	assert.False(t, actionCalled)
 }

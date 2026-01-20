@@ -128,3 +128,71 @@ func TestTabs_Callbacks(t *testing.T) {
 	tabsNoApp := NewTabs(nil, UnderlineTabsStyle)
 	tabsNoApp.AddTabs(&Tab{ID: "1", Title: "T1", Primitive: tview.NewBox()})
 }
+
+func TestTabs_Options(t *testing.T) {
+	focusUpCalled := false
+	focusDownCalled := false
+	focusLeftCalled := false
+	focusRightCalled := false
+
+	app := tview.NewApplication()
+	tabs := NewTabs(app, UnderlineTabsStyle,
+		FocusUp(func(current tview.Primitive) { focusUpCalled = true }),
+		FocusDown(func(current tview.Primitive) { focusDownCalled = true }),
+		FocusLeft(func(current tview.Primitive) { focusLeftCalled = true }),
+		FocusRight(func(current tview.Primitive) { focusRightCalled = true }),
+	)
+
+	tabs.focusUp(nil)
+	assert.True(t, focusUpCalled)
+	tabs.focusDown(nil)
+	assert.True(t, focusDownCalled)
+	tabs.focusLeft(nil)
+	assert.True(t, focusLeftCalled)
+	tabs.focusRight(nil)
+	assert.True(t, focusRightCalled)
+}
+
+func TestTabs_FocusCallbacks(t *testing.T) {
+	app := tview.NewApplication()
+	tabs := NewTabs(app, UnderlineTabsStyle)
+
+	// Test FocusFunc
+	if tabs.focusFunc != nil {
+		tabs.focusFunc()
+	}
+
+	// Test TextView FocusFunc
+	if tabs.textViewFocusFunc != nil {
+		tabs.textViewFocusFunc()
+	}
+	assert.True(t, tabs.isFocused)
+
+	// Test TextView BlurFunc
+	if tabs.textViewBlurFunc != nil {
+		tabs.textViewBlurFunc()
+	}
+	assert.False(t, tabs.isFocused)
+}
+
+func TestTabs_HighlightedFunc(t *testing.T) {
+	app := tview.NewApplication()
+	tabs := NewTabs(app, UnderlineTabsStyle)
+	tab1 := &Tab{ID: "1", Title: "Tab 1", Primitive: tview.NewBox()}
+	tab2 := &Tab{ID: "2", Title: "Tab 2", Primitive: tview.NewBox()}
+	tabs.AddTabs(tab1, tab2)
+
+	assert.NotNil(t, tabs.textViewHighlightedFunc)
+
+	// Valid tab highlight
+	tabs.textViewHighlightedFunc([]string{"tab-1"}, nil, nil)
+	assert.Equal(t, 1, tabs.active)
+
+	// Invalid tab highlight
+	tabs.textViewHighlightedFunc([]string{"invalid"}, nil, nil)
+	assert.Equal(t, 1, tabs.active)
+
+	// Empty added
+	tabs.textViewHighlightedFunc([]string{}, nil, nil)
+	assert.Equal(t, 1, tabs.active)
+}

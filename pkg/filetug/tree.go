@@ -23,7 +23,6 @@ type Tree struct {
 	rootNode        *tview.TreeNode
 	search          string
 	loadingProgress int
-	queueUpdateDraw func(f func()) *tview.Application
 }
 
 func (t *Tree) onStoreChange() {
@@ -49,9 +48,13 @@ func (t *Tree) doLoadingAnimation(loading *tview.TreeNode) {
 	if children := t.rootNode.GetChildren(); len(children) == 1 && children[0] == loading {
 		q, r := t.loadingProgress/len(spinner), t.loadingProgress%len(spinner)
 		progressBar := strings.Repeat("█", q) + string(spinner[r])
-		t.queueUpdateDraw(func() {
+		if t.nav != nil && t.nav.queueUpdateDraw != nil {
+			t.nav.queueUpdateDraw(func() {
+				loading.SetText(" Loading... " + progressBar)
+			})
+		} else {
 			loading.SetText(" Loading... " + progressBar)
-		})
+		}
 		t.loadingProgress += 1
 		t.doLoadingAnimation(loading)
 	}
@@ -81,7 +84,7 @@ func NewTree(nav *Navigator) *Tree {
 	t.SetInputCapture(t.inputCapture)
 	t.SetFocusFunc(t.focus)
 	t.SetBlurFunc(t.blur)
-	t.queueUpdateDraw = nav.app.QueueUpdateDraw
+	t.nav.queueUpdateDraw = nav.queueUpdateDraw
 	return t
 }
 
