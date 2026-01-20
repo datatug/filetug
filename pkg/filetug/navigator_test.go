@@ -3,11 +3,14 @@ package filetug
 import (
 	"context"
 	"errors"
+	"net/url"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/alecthomas/assert/v2"
+	"github.com/datatug/filetug/pkg/files"
+	"github.com/datatug/filetug/pkg/filetug/ftstate"
 	"github.com/datatug/filetug/pkg/gitutils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -148,4 +151,180 @@ func TestNavigator_goDir(t *testing.T) {
 		nav.showNodeError(node, err)
 		nav.showNodeError(nil, err)
 	})
+}
+
+func TestNavigator_onDataLoaded_isTreeRootChanged(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+	node := tview.NewTreeNode("test").SetReference("/test")
+	dirContext := &DirContext{
+		Path:     "/test",
+		children: []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}},
+	}
+	nav.onDataLoaded(node, dirContext, true)
+}
+
+func TestNavigator_setBreadcrumbs_Complex(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+	if nav == nil {
+		t.Fatal("nav is nil")
+	}
+
+	// Mock store with specific root
+	mStore := &mockNavigatorStore{
+		rootURL: url.URL{Scheme: "file", Path: "/root/dir"},
+	}
+	nav.store = mStore
+	nav.current.dir = "/root/dir/subdir/subsubdir"
+
+	nav.setBreadcrumbs()
+
+	// Test empty path item
+	nav.current.dir = "/root/dir/subdir//subsubdir"
+	nav.setBreadcrumbs()
+
+	// Test breadcrumb actions by simulating Enter key on breadcrumbs
+	nav.breadcrumbs.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone), func(p tview.Primitive) {})
+}
+
+func TestNewNavigator_States(t *testing.T) {
+	oldGetState := getState
+	defer func() { getState = oldGetState }()
+
+	app := tview.NewApplication()
+
+	t.Run("HTTP_State", func(t *testing.T) {
+		getState = func() (*ftstate.State, error) {
+			return &ftstate.State{
+				Store:      "http://example.com",
+				CurrentDir: "http://example.com/path",
+			}, nil
+		}
+		nav := NewNavigator(app)
+		assert.True(t, nav != nil)
+	})
+
+	t.Run("FTP_State", func(t *testing.T) {
+		getState = func() (*ftstate.State, error) {
+			return &ftstate.State{
+				Store:      "ftp://example.com",
+				CurrentDir: "/path",
+			}, nil
+		}
+		nav := NewNavigator(app)
+		assert.True(t, nav != nil)
+	})
+
+	t.Run("File_State_With_Entry", func(t *testing.T) {
+		getState = func() (*ftstate.State, error) {
+			return &ftstate.State{
+				Store:           "file:",
+				CurrentDir:      "/tmp",
+				CurrentDirEntry: "test.txt",
+			}, nil
+		}
+		nav := NewNavigator(app)
+		assert.True(t, nav != nil)
+		assert.Equal(t, "/tmp", nav.current.dir)
+	})
+
+	t.Run("HTTPS_State_Prefix", func(t *testing.T) {
+		getState = func() (*ftstate.State, error) {
+			return &ftstate.State{
+				CurrentDir: "https://example.com/path",
+			}, nil
+		}
+		nav := NewNavigator(app)
+		assert.True(t, nav != nil)
+	})
+
+	t.Run("HTTP_State_No_Schema", func(t *testing.T) {
+		getState = func() (*ftstate.State, error) {
+			return &ftstate.State{
+				Store: "http",
+			}, nil
+		}
+		nav := NewNavigator(app)
+		assert.True(t, nav != nil)
+	})
+}
+
+type mockNavigatorStore struct {
+	files.Store
+	rootURL url.URL
+}
+
+func (m *mockNavigatorStore) RootURL() url.URL {
+	return m.rootURL
+}
+
+func (m *mockNavigatorStore) RootTitle() string {
+	return "Root"
+}
+
+func (m *mockNavigatorStore) ReadDir(ctx context.Context, path string) ([]os.DirEntry, error) {
+	_, _ = ctx, path
+	return nil, nil
+}
+
+func TestNavigator_updateGitStatus_Success(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+	node := tview.NewTreeNode("test")
+
+	// Mock git status
+	ctx := context.Background()
+	// Using a path that likely doesn't exist but we want to see it NOT return early if possible.
+	// Actually we want to cover the case where status is NOT nil.
+	// We can't easily mock gitutils without changing it, but we can try to find a real git repo.
+	// Or we can just test the "app == nil" branch which is easy.
+
+	t.Run("NoApp", func(t *testing.T) {
+		nav.app = nil
+		status := &gitutils.RepoStatus{Branch: "main"}
+		nav.gitStatusCache["/cached2"] = status
+		nav.updateGitStatus(ctx, "/cached2", node, "prefix: ")
+		assert.Equal(t, "prefix: "+status.String(), node.GetText())
+	})
+
+	t.Run("WithAppCached", func(t *testing.T) {
+		nav.app = app
+		oldQueueUpdateDraw := nav.queueUpdateDraw
+		nav.queueUpdateDraw = func(f func()) *tview.Application {
+			f()
+			return app
+		}
+		defer func() { nav.queueUpdateDraw = oldQueueUpdateDraw }()
+
+		status := &gitutils.RepoStatus{Branch: "main"}
+		nav.gitStatusCache["/cached3"] = status
+		nav.updateGitStatus(ctx, "/cached3", node, "prefix: ")
+		assert.Equal(t, "prefix: "+status.String(), node.GetText())
+	})
+}
+
+func TestNavigator_showDir_FileScheme(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+	if nav == nil {
+		t.Fatal("navigator is nil")
+	}
+	nav.queueUpdateDraw = func(f func()) *tview.Application {
+		f()
+		return app
+	}
+	node := tview.NewTreeNode("test")
+
+	// Mock store with file scheme
+	mStore := &mockNavigatorStore{
+		rootURL: url.URL{Scheme: "file", Path: "/"},
+	}
+	nav.store = mStore
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nav.showDir(ctx, node, "/tmp", true)
+	time.Sleep(100 * time.Millisecond) // Give some time for goroutine
 }

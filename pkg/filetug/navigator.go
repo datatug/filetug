@@ -98,6 +98,8 @@ func OnMoveFocusUp(f func(source tview.Primitive)) NavigatorOption {
 	}
 }
 
+var getState = ftstate.GetState
+
 func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator {
 
 	nav := &Navigator{
@@ -141,7 +143,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 
 	nav.createColumns()
 
-	if state, stateErr := ftstate.GetState(); state != nil {
+	if state, stateErr := getState(); state != nil {
 		if state.Store == "" {
 			state.Store = "file:"
 		}
