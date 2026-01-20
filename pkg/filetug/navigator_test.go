@@ -102,16 +102,16 @@ func TestNavigator_GitStatus(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Not in cache, git status returns nil
-	nav.updateGitStatus(ctx, "/non-existent", node, "prefix: ")
+	nav.updateGitStatus(ctx, nil, "/non-existent", node, "prefix: ")
 
 	// 2. In cache
 	nav.gitStatusCache["/cached"] = &gitutils.RepoStatus{Branch: "main"}
-	nav.updateGitStatus(ctx, "/cached", node, "prefix: ")
+	nav.updateGitStatus(ctx, nil, "/cached", node, "prefix: ")
 
 	// 3. Cancelled context
 	cancelledCtx, cancel := context.WithCancel(context.Background())
 	cancel()
-	nav.updateGitStatus(cancelledCtx, "/any", node, "prefix: ")
+	nav.updateGitStatus(cancelledCtx, nil, "/any", node, "prefix: ")
 
 	time.Sleep(100 * time.Millisecond)
 }
@@ -283,7 +283,7 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 		nav.app = nil
 		status := &gitutils.RepoStatus{Branch: "main"}
 		nav.gitStatusCache["/cached2"] = status
-		nav.updateGitStatus(ctx, "/cached2", node, "prefix: ")
+		nav.updateGitStatus(ctx, nil, "/cached2", node, "prefix: ")
 		assert.Equal(t, "prefix: "+status.String(), node.GetText())
 	})
 
@@ -297,7 +297,7 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 
 		status := &gitutils.RepoStatus{Branch: "main"}
 		nav.gitStatusCache["/cached3"] = status
-		nav.updateGitStatus(ctx, "/cached3", node, "prefix: ")
+		nav.updateGitStatus(ctx, nil, "/cached3", node, "prefix: ")
 		assert.Equal(t, "prefix: "+status.String(), node.GetText())
 	})
 }

@@ -9,8 +9,10 @@ import (
 
 	"github.com/datatug/filetug/pkg/filetug/ftstate"
 	"github.com/datatug/filetug/pkg/fsutils"
+	"github.com/datatug/filetug/pkg/gitutils"
 	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
+	"github.com/go-git/go-git/v5"
 	"github.com/rivo/tview"
 )
 
@@ -277,6 +279,15 @@ func (t *Tree) setCurrentDir(dir string) (nodePath string) {
 
 func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirContext *DirContext) {
 	node.ClearChildren()
+
+	var repo *git.Repository
+	if t.nav.store.RootURL().Scheme == "file" {
+		repoRoot := gitutils.GetRepositoryRoot(dirContext.Path)
+		if repoRoot != "" {
+			repo, _ = git.PlainOpen(repoRoot)
+		}
+	}
+
 	for _, child := range dirContext.children {
 		name := child.Name()
 		if strings.HasPrefix(name, ".") {
@@ -320,7 +331,7 @@ func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirConte
 			node.AddChild(n)
 
 			fullPath := fsutils.ExpandHome(childPath)
-			go t.nav.updateGitStatus(ctx, fullPath, n, prefix+" ")
+			go t.nav.updateGitStatus(ctx, repo, fullPath, n, prefix+" ")
 		}
 	}
 }

@@ -132,13 +132,13 @@ func TestNavigator_UpdateGitStatus_RealCall(t *testing.T) {
 
 	// Try a path that definitely exists (project root)
 	cwd, _ := os.Getwd()
-	nav.updateGitStatus(ctx, cwd, node, "prefix: ")
+	nav.updateGitStatus(ctx, nil, cwd, node, "prefix: ")
 
 	// Wait a bit as it might be doing something
 	time.Sleep(200 * time.Millisecond)
 
 	// Coverage for case where it's already in cache (first call should have cached it if it's a git repo)
-	nav.updateGitStatus(ctx, cwd, node, "prefix: ")
+	nav.updateGitStatus(ctx, nil, cwd, node, "prefix: ")
 }
 
 func TestNavigator_ShowNodeError_Extra(t *testing.T) {

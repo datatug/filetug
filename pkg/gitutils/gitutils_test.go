@@ -62,7 +62,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 	}()
 
 	t.Run("non-git directory", func(t *testing.T) {
-		status := GetDirStatus(context.Background(), tempDir)
+		status := GetDirStatus(context.Background(), nil, tempDir)
 		if status != nil {
 			t.Errorf("Expected nil status for non-git directory, got %v", status)
 		}
@@ -74,7 +74,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			t.Fatalf("Failed to init git repo: %v", err)
 		}
 
-		status := GetDirStatus(context.Background(), tempDir)
+		status := GetDirStatus(context.Background(), repo, tempDir)
 		if status == nil {
 			t.Fatal("Expected status, got nil")
 		}
@@ -96,7 +96,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 		})
 
 		t.Run("clean repo", func(t *testing.T) {
-			status := GetDirStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), repo, tempDir)
 			if status == nil {
 				t.Fatal("Expected status, got nil")
 			}
@@ -109,7 +109,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err := os.WriteFile(filename, []byte("line1\nline2\nline3\n"), 0644); err != nil {
 				t.Fatalf("Failed to write file: %v", err)
 			}
-			status := GetDirStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), repo, tempDir)
 			if status == nil {
 				t.Fatal("Expected status, got nil")
 			}
@@ -123,7 +123,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err := os.WriteFile(untrackedFile, []byte("newfile\nline2\n"), 0644); err != nil {
 				t.Fatalf("Failed to write untracked file: %v", err)
 			}
-			status := GetDirStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), repo, tempDir)
 			if status.FilesChanged < 1 {
 				t.Errorf("Expected files changed, got %d", status.FilesChanged)
 			}
@@ -146,7 +146,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err := os.Remove(filepath.Join(tempDir, "untracked.txt")); err != nil {
 				t.Fatalf("Failed to remove file: %v", err)
 			}
-			status := GetDirStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), repo, tempDir)
 			if status.Deletions == 0 {
 				t.Errorf("Expected deletions > 0 for deleted file, got %d", status.Deletions)
 			}
@@ -160,7 +160,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to checkout hash: %v", err)
 			}
-			status := GetDirStatus(context.Background(), tempDir)
+			status := GetDirStatus(context.Background(), repo, tempDir)
 			if len(status.Branch) != 7 {
 				t.Errorf("Expected short hash (7 chars) for detached HEAD, got %s", status.Branch)
 			}
@@ -169,7 +169,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 		t.Run("context cancelled", func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
-			status := GetDirStatus(ctx, tempDir)
+			status := GetDirStatus(ctx, repo, tempDir)
 			// It might return nil if it was cancelled BEFORE semaphore
 			// OR it might return a partial RepoStatus if it was cancelled after Branch was determined.
 			// In our test, it seems it's getting past the semaphore.
@@ -183,7 +183,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
 			defer cancel()
 			time.Sleep(2 * time.Millisecond)
-			status := GetDirStatus(ctx, tempDir)
+			status := GetDirStatus(ctx, repo, tempDir)
 			if status != nil && status.FilesChanged != 0 {
 				t.Logf("Status is not nil and has files changed, but context was cancelled: %v", status)
 			}
@@ -198,7 +198,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 				t.Fatalf("Failed to create .git directory: %v", err)
 			}
 			// No actual git data in .git
-			status := GetDirStatus(context.Background(), corruptedDir)
+			status := GetDirStatus(context.Background(), nil, corruptedDir)
 			if status != nil {
 				t.Errorf("Expected nil status for corrupted git repo, got %v", status)
 			}
@@ -209,7 +209,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			defer func() {
 				_ = os.RemoveAll(corruptedHeadDir)
 			}()
-			_, err := git.PlainInit(corruptedHeadDir, false)
+			corruptedRepo, err := git.PlainInit(corruptedHeadDir, false)
 			if err != nil {
 				t.Fatalf("Failed to init git repo: %v", err)
 			}
@@ -219,7 +219,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to corrupt HEAD: %v", err)
 			}
-			status := GetDirStatus(context.Background(), corruptedHeadDir)
+			status := GetDirStatus(context.Background(), corruptedRepo, corruptedHeadDir)
 			if status == nil {
 				t.Errorf("Expected non-nil status for repo with corrupted HEAD, got nil")
 			} else if status.Branch != "unknown" && status.Branch != "master" {
@@ -232,7 +232,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 			if err := os.MkdirAll(subDir, 0755); err != nil {
 				t.Fatalf("Failed to create subdir: %v", err)
 			}
-			status := GetDirStatus(context.Background(), subDir)
+			status := GetDirStatus(context.Background(), repo, subDir)
 			if status == nil {
 				t.Fatal("Expected status for subdirectory, got nil")
 			}
@@ -266,7 +266,7 @@ func TestGetRepositoryStatus(t *testing.T) {
 				t.Fatalf("Failed to write file in root: %v", err)
 			}
 
-			status := GetDirStatus(context.Background(), subDir)
+			status := GetDirStatus(context.Background(), repo, subDir)
 			if status == nil {
 				t.Fatal("Expected status, got nil")
 			}

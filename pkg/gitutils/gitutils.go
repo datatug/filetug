@@ -17,9 +17,8 @@ var (
 
 // GetDirStatus returns a brief git status for the given directory.
 // It uses a context to allow cancellation and a semaphore to limit concurrency.
-func GetDirStatus(ctx context.Context, dir string) *RepoStatus {
-	repoRoot := GetRepositoryRoot(dir)
-	if repoRoot == "" {
+func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoStatus {
+	if repo == nil {
 		return nil
 	}
 
@@ -28,11 +27,6 @@ func GetDirStatus(ctx context.Context, dir string) *RepoStatus {
 		return nil
 	case gitStatusSemaphore <- struct{}{}:
 		defer func() { <-gitStatusSemaphore }()
-	}
-
-	repo, err := git.PlainOpen(repoRoot)
-	if err != nil {
-		return nil
 	}
 
 	res := &RepoStatus{}
@@ -85,6 +79,12 @@ func GetDirStatus(ctx context.Context, dir string) *RepoStatus {
 	if status.IsClean() {
 		return res
 	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return res
+	}
+	repoRoot := wt.Filesystem.Root()
 
 	relPath, err := filepath.Rel(repoRoot, dir)
 	if err != nil {

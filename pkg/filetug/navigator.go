@@ -19,6 +19,7 @@ import (
 	"github.com/datatug/filetug/pkg/gitutils"
 	"github.com/datatug/filetug/pkg/sneatv/crumbs"
 	"github.com/gdamore/tcell/v2"
+	"github.com/go-git/go-git/v5"
 	"github.com/rivo/tview"
 )
 
@@ -288,7 +289,7 @@ func (nav *Navigator) goDir(dir string) {
 	saveCurrentDir(root.String(), dir)
 }
 
-func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node *tview.TreeNode, prefix string) {
+func (nav *Navigator) updateGitStatus(ctx context.Context, repo *git.Repository, fullPath string, node *tview.TreeNode, prefix string) {
 	nav.gitStatusCacheMu.RLock()
 	cachedStatus, ok := nav.gitStatusCache[fullPath]
 	nav.gitStatusCacheMu.RUnlock()
@@ -304,7 +305,20 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, fullPath string, node
 		return
 	}
 
-	status := gitutils.GetDirStatus(ctx, fullPath)
+	if repo == nil {
+		repoRoot := gitutils.GetRepositoryRoot(fullPath)
+		if repoRoot == "" {
+			return
+		}
+
+		var err error
+		repo, err = git.PlainOpen(repoRoot)
+		if err != nil {
+			return
+		}
+	}
+
+	status := gitutils.GetDirStatus(ctx, repo, fullPath)
 	if status == nil {
 		return
 	}
@@ -339,9 +353,14 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dir str
 	if node != nil {
 		node.SetReference(nav.current.dir)
 	}
-	if nav.store.RootURL().Scheme == "file" {
-		name, _ := path.Split(dir)
-		go nav.updateGitStatus(ctx, nav.current.dir, node, name)
+	if nav.store.RootURL().Scheme == "file" && node != nil {
+		name := node.GetText()
+		repoRoot := gitutils.GetRepositoryRoot(nav.current.dir)
+		var repo *git.Repository
+		if repoRoot != "" {
+			repo, _ = git.PlainOpen(repoRoot)
+		}
+		go nav.updateGitStatus(ctx, repo, nav.current.dir, node, name)
 	}
 
 	nav.setBreadcrumbs()
