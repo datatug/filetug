@@ -54,6 +54,10 @@ func TestStore_RootURL_and_Title(t *testing.T) {
 	rootWithSuffix, _ := url.Parse("ftp://example.com/path/ƒ")
 	s2 := NewStore(*rootWithSuffix)
 	assert.Equal(t, "ftp://example.com/path", s2.RootTitle())
+
+	rootWithEncodedSuffix, _ := url.Parse("ftp://example.com/path/%C6%92")
+	s3 := NewStore(*rootWithEncodedSuffix)
+	assert.Equal(t, "ftp://example.com/path", s3.RootTitle())
 }
 
 func TestNewStore_Panic(t *testing.T) {
@@ -124,6 +128,22 @@ func TestStore_ReadDir_Errors(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to list directory")
 	})
 
+	t.Run("context_cancelled_dial", func(t *testing.T) {
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			time.Sleep(100 * time.Millisecond)
+			return &mockFtpClient{}, nil
+		}
+		s := NewStore(*root, WithFtpClientFactory(factory))
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+		_, err := s.ReadDir(ctx, ".")
+		assert.Error(t, err)
+		assert.Equal(t, context.Canceled, err)
+	})
+
 	t.Run("context_cancelled_login", func(t *testing.T) {
 		mockClient := &mockFtpClient{
 			LoginFunc: func(user, password string) error {
@@ -185,6 +205,20 @@ func TestStore_ReadDir_Errors(t *testing.T) {
 		assert.Equal(t, 1, len(entries))
 		assert.Equal(t, "realfile.txt", entries[0].Name())
 	})
+
+	// Commented out as hanging. Needs proper testing that will perform quick
+	//t.Run("real_dial_success", func(t *testing.T) {
+	//	// We can't easily have a real FTP server here without external dependencies,
+	//	// but we can try to dial something that exists but isn't an FTP server.
+	//	// It will fail, but it will cover the ftp.Dial(addr, options...) line.
+	//	rootInvalid, _ := url.Parse("ftp://google.com:80")
+	//	s := NewStore(*rootInvalid)
+	//	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	//	defer cancel()
+	//	_, err := s.ReadDir(ctx, ".")
+	//	assert.Error(t, err)
+	//	// It could be a context deadline exceeded OR a connection error depending on environment
+	//})
 
 	t.Run("real_dial_error", func(t *testing.T) {
 		// Use a port that is likely not used to trigger an error in ftp.Dial

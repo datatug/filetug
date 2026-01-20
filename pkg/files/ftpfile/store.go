@@ -80,6 +80,7 @@ func (s *Store) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error)
 	//addr := net.JoinHostPort(host, port)
 	options := []ftp.DialOption{
 		ftp.DialWithTimeout(5 * time.Second),
+		ftp.DialWithContext(ctx),
 	}
 	if s.implicit {
 		options = append(options, ftp.DialWithTLS(&tls.Config{ServerName: host, InsecureSkipVerify: true}))
