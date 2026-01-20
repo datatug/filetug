@@ -12,7 +12,7 @@ func ReadLine(screen tcell.Screen, y, width int) string {
 	var b strings.Builder
 	for x := 0; x < width; x++ {
 		str, _, _ := screen.Get(x, y)
-		if str != "" && str != "\x00" {
+		if str != "" && str != "\x00" && str != " " {
 			b.WriteString(str)
 		} else {
 			b.WriteRune(' ')
