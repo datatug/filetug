@@ -9,7 +9,7 @@ import (
 
 	"github.com/datatug/filetug/pkg/fsutils"
 	"github.com/datatug/filetug/pkg/ftstate"
-	"github.com/datatug/filetug/pkg/ftui"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -17,7 +17,7 @@ import (
 const dirEmoji = "📁"
 
 type Tree struct {
-	boxed *ftui.Boxed
+	boxed *sneatv.Boxed
 	*tview.TreeView
 	nav             *Navigator
 	rootNode        *tview.TreeNode
@@ -72,7 +72,7 @@ func (t *Tree) Draw(screen tcell.Screen) {
 func NewTree(nav *Navigator) *Tree {
 	tv := tview.NewTreeView()
 	t := &Tree{nav: nav, TreeView: tv,
-		boxed: ftui.NewBoxed(tv, ftui.WithRightBorder(0, 1)),
+		boxed: sneatv.NewBoxed(tv, sneatv.WithRightBorder(0, 1)),
 	}
 	t.rootNode = tview.NewTreeNode("~")
 	t.SetRoot(t.rootNode)
@@ -111,7 +111,7 @@ func getNodePath(node *tview.TreeNode) string {
 }
 
 func (t *Tree) focus() {
-	t.nav.left.SetBorderColor(ftui.CurrentTheme.FocusedBorderColor)
+	t.nav.left.SetBorderColor(sneatv.CurrentTheme.FocusedBorderColor)
 	t.nav.activeCol = 0
 	t.nav.right.SetContent(t.nav.dirSummary)
 	t.nav.dirSummary.Blur()
@@ -123,17 +123,17 @@ func (t *Tree) focus() {
 		t.SetCurrentNode(currentNode)
 	}
 	if currentNode != nil {
-		currentNode.SetSelectedTextStyle(ftui.CurrentTheme.FocusedSelectedTextStyle)
+		currentNode.SetSelectedTextStyle(sneatv.CurrentTheme.FocusedSelectedTextStyle)
 	}
 	t.SetGraphicsColor(tcell.ColorWhite)
 }
 
 func (t *Tree) blur() {
-	t.nav.left.SetBorderColor(ftui.CurrentTheme.BlurredBorderColor)
-	t.SetGraphicsColor(ftui.CurrentTheme.BlurredGraphicsColor)
+	t.nav.left.SetBorderColor(sneatv.CurrentTheme.BlurredBorderColor)
+	t.SetGraphicsColor(sneatv.CurrentTheme.BlurredGraphicsColor)
 	currentNode := t.GetCurrentNode()
 	if currentNode != nil {
-		currentNode.SetSelectedTextStyle(ftui.CurrentTheme.BlurredSelectedTextStyle)
+		currentNode.SetSelectedTextStyle(sneatv.CurrentTheme.BlurredSelectedTextStyle)
 	}
 }
 

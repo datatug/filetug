@@ -10,12 +10,13 @@ import (
 
 	"github.com/datatug/filetug/pkg/fsutils"
 	"github.com/datatug/filetug/pkg/ftui"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type dirSummary struct {
-	*ftui.Boxed
+	*sneatv.Boxed
 	flex     *tview.Flex
 	nav      *Navigator
 	extTable *tview.Table
@@ -34,9 +35,9 @@ func newDirSummary(nav *Navigator) *dirSummary {
 	flex.SetTitle("Dir Summary")
 	d := &dirSummary{
 		nav: nav,
-		Boxed: ftui.NewBoxed(
+		Boxed: sneatv.NewBoxed(
 			flex,
-			ftui.WithLeftBorder(0, -1),
+			sneatv.WithLeftBorder(0, -1),
 		),
 		flex:     flex,
 		extTable: tview.NewTable().SetSelectable(true, false),

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/datatug/filetug/pkg/ftui"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -41,7 +42,7 @@ func (b *bottom) render() {
 	for _, mi := range b.menuItems {
 		title := mi.Title
 		for _, key := range mi.HotKeys {
-			title = strings.Replace(title, key, fmt.Sprintf("[%s]%s[-]", ftui.CurrentTheme.HotkeyColor, key), 1)
+			title = strings.Replace(title, key, fmt.Sprintf("[%s]%s[-]", sneatv.CurrentTheme.HotkeyColor, key), 1)
 		}
 		title = fmt.Sprintf(`["%s"]%s[""]`, mi.HotKeys[0], title)
 		sb.WriteString(title)

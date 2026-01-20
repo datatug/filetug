@@ -1,4 +1,4 @@
-package ftui
+package sneatv
 
 import (
 	"github.com/gdamore/tcell/v2"

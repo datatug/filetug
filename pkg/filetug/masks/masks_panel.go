@@ -1,7 +1,7 @@
 package masks
 
 import (
-	"github.com/datatug/filetug/pkg/ftui"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -13,7 +13,7 @@ type Selected struct {
 
 type Panel struct {
 	*tview.Table
-	boxed *ftui.Boxed
+	boxed *sneatv.Boxed
 	masks []Mask
 }
 
@@ -34,8 +34,8 @@ func NewPanel() *Panel {
 	p.SetSelectable(true, true)
 	p.SetFixed(1, 1)
 
-	p.boxed = ftui.NewBoxed(p.Table,
-		ftui.WithLeftBorder(0, -1),
+	p.boxed = sneatv.NewBoxed(p.Table,
+		sneatv.WithLeftBorder(0, -1),
 	)
 
 	p.SetCell(0, 0, tview.NewTableCell("Mask").SetExpansion(1))

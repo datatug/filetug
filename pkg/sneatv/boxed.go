@@ -1,4 +1,4 @@
-package ftui
+package sneatv
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ type boxOptions struct {
 	rightPadding int
 	rightOffset  int
 
-	tabs []*Tab
+	tabs []*PanelTab
 }
 
 type BoxOption func(*boxOptions)
@@ -69,13 +69,13 @@ func WithRightBorder(padding, offset int) BoxOption {
 	}
 }
 
-func WithTabs(tabs ...*Tab) BoxOption {
+func WithTabs(tabs ...*PanelTab) BoxOption {
 	return func(opts *boxOptions) {
 		opts.tabs = append(opts.tabs, tabs...)
 	}
 }
 
-type Tab struct {
+type PanelTab struct {
 	ID      string
 	Title   string
 	Hotkey  rune

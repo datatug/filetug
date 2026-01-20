@@ -11,16 +11,16 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/datatug/filetug/pkg/chroma2tcell"
 	"github.com/datatug/filetug/pkg/fsutils"
-	"github.com/datatug/filetug/pkg/ftui"
 	"github.com/datatug/filetug/pkg/previewers"
 	"github.com/datatug/filetug/pkg/previewers/dsstore"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type previewer struct {
 	*tview.Flex
-	boxed    *ftui.Boxed
+	boxed    *sneatv.Boxed
 	nav      *Navigator
 	textView *tview.TextView
 }
@@ -33,9 +33,9 @@ func newPreviewer(nav *Navigator) *previewer {
 	flex := tview.NewFlex()
 	p := previewer{
 		Flex: flex,
-		boxed: ftui.NewBoxed(
+		boxed: sneatv.NewBoxed(
 			flex,
-			ftui.WithLeftBorder(0, -1),
+			sneatv.WithLeftBorder(0, -1),
 		),
 		nav: nav,
 	}
@@ -55,18 +55,18 @@ func newPreviewer(nav *Navigator) *previewer {
 
 	p.SetFocusFunc(func() {
 		nav.activeCol = 2
-		p.SetBorderColor(ftui.CurrentTheme.FocusedBorderColor)
+		p.SetBorderColor(sneatv.CurrentTheme.FocusedBorderColor)
 		//nav.app.SetFocus(tv)
 	})
 	nav.previewerFocusFunc = func() {
 		nav.activeCol = 2
-		p.SetBorderColor(ftui.CurrentTheme.FocusedBorderColor)
+		p.SetBorderColor(sneatv.CurrentTheme.FocusedBorderColor)
 	}
 	p.SetBlurFunc(func() {
-		p.SetBorderColor(ftui.CurrentTheme.BlurredBorderColor)
+		p.SetBorderColor(sneatv.CurrentTheme.BlurredBorderColor)
 	})
 	nav.previewerBlurFunc = func() {
-		p.SetBorderColor(ftui.CurrentTheme.BlurredBorderColor)
+		p.SetBorderColor(sneatv.CurrentTheme.BlurredBorderColor)
 	}
 
 	p.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

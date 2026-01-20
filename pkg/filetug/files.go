@@ -9,12 +9,13 @@ import (
 
 	"github.com/datatug/filetug/pkg/ftstate"
 	"github.com/datatug/filetug/pkg/ftui"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type filesPanel struct {
-	*ftui.Boxed
+	*sneatv.Boxed
 	table *tview.Table
 	rows  *FileRows
 	nav   *Navigator
@@ -150,17 +151,17 @@ func (f *filesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 
 type filterTabs struct {
 	nav       *Navigator
-	filesTab  *ftui.Tab
-	dirsTab   *ftui.Tab
-	hiddenTab *ftui.Tab
+	filesTab  *sneatv.PanelTab
+	dirsTab   *sneatv.PanelTab
+	hiddenTab *sneatv.PanelTab
 }
 
 func newFilterTabs(nav *Navigator) filterTabs {
 	return filterTabs{
 		nav:       nav,
-		filesTab:  &ftui.Tab{Title: "Files", Hotkey: 'e', Checked: true},
-		dirsTab:   &ftui.Tab{Title: "Dirs", Hotkey: 'r', Checked: false},
-		hiddenTab: &ftui.Tab{Title: "Hidden", Hotkey: 'H', Checked: false},
+		filesTab:  &sneatv.PanelTab{Title: "Files", Hotkey: 'e', Checked: true},
+		dirsTab:   &sneatv.PanelTab{Title: "Dirs", Hotkey: 'r', Checked: false},
+		hiddenTab: &sneatv.PanelTab{Title: "Hidden", Hotkey: 'H', Checked: false},
 	}
 }
 
@@ -189,11 +190,11 @@ func newFiles(nav *Navigator) *filesPanel {
 	f := &filesPanel{
 		nav:   nav,
 		table: table,
-		Boxed: ftui.NewBoxed(
+		Boxed: sneatv.NewBoxed(
 			flex,
-			ftui.WithLeftBorder(0, -1),
-			ftui.WithRightBorder(0, +1),
-			ftui.WithTabs(tabs.filesTab, tabs.dirsTab, tabs.hiddenTab),
+			sneatv.WithLeftBorder(0, -1),
+			sneatv.WithRightBorder(0, +1),
+			sneatv.WithTabs(tabs.filesTab, tabs.dirsTab, tabs.hiddenTab),
 		),
 		filterTabs: tabs,
 	}
@@ -212,11 +213,11 @@ func newFiles(nav *Navigator) *filesPanel {
 func (f *filesPanel) focus() {
 	f.nav.activeCol = 1
 	f.nav.right.SetContent(f.nav.previewer)
-	f.table.SetSelectedStyle(ftui.CurrentTheme.FocusedSelectedTextStyle)
+	f.table.SetSelectedStyle(sneatv.CurrentTheme.FocusedSelectedTextStyle)
 }
 
 func (f *filesPanel) blur() {
-	f.table.SetSelectedStyle(ftui.CurrentTheme.BlurredSelectedTextStyle)
+	f.table.SetSelectedStyle(sneatv.CurrentTheme.BlurredSelectedTextStyle)
 }
 
 // selectionChangedNavFunc: TODO: is it a duplicate of selectionChangedNavFunc?

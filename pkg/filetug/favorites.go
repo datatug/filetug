@@ -10,7 +10,7 @@ import (
 	"github.com/datatug/filetug/pkg/files/httpfile"
 	"github.com/datatug/filetug/pkg/files/osfile"
 	"github.com/datatug/filetug/pkg/fsutils"
-	"github.com/datatug/filetug/pkg/ftui"
+	"github.com/datatug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -24,7 +24,7 @@ type favorite struct {
 
 type favorites struct {
 	*tview.Flex
-	boxed *ftui.Boxed
+	boxed *sneatv.Boxed
 	nav   *Navigator
 	list  *tview.List
 	items []favorite
@@ -62,9 +62,9 @@ func newFavorites(nav *Navigator) *favorites {
 		list:  list,
 		nav:   nav,
 		items: builtInFavorites(),
-		boxed: ftui.NewBoxed(
+		boxed: sneatv.NewBoxed(
 			flex,
-			ftui.WithLeftBorder(1, -1),
+			sneatv.WithLeftBorder(1, -1),
 		),
 	}
 	f.AddItem(f.list, 0, 1, true)
