@@ -17,8 +17,8 @@ We are targeting to achieve 100% test coverage (_with a minimum threshold of 90%
     - Non-blocking progressive UI (_that pulls data in the background_).
     - Predictive pre-fetching
     - Caching of data for network resources (_with in-background refresh_)
-- Smart previewers showing summary and key info for a file/directory
 - Smart summarizer that provides a concise overview of directory contents
+- Smart previewers showing summary and key info for a file
 - Quick selection of files and directories by mask with a collection of named patterns
 - Quick navigation to favotite, frequently used and recent directories
 - Build-in git client that provides git status and allows to stage/commit/rollback/etc.
