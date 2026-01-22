@@ -10,7 +10,7 @@ import (
 )
 
 func TestDirExists(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "datatug_test")
+	tmpDir, err := os.MkdirTemp("", "filetug_test")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}

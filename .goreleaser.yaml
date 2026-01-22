@@ -48,7 +48,7 @@ checksum:
 
 release:
   github:
-    owner: datatug
+    owner: filetug
     name: filetug
 
 brews:
@@ -68,7 +68,7 @@ brews:
     license: MIT
 
     repository:
-      owner: datatug
+      owner: filetug
       name: homebrew-filetug
       token: "{{ .Env.HOMEBREW_FILETUG_GITHUB_TOKEN }}"
 
