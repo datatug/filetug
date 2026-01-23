@@ -3,6 +3,7 @@ package filetug
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -250,6 +251,8 @@ func highlightTreeNodes(n *tview.TreeNode, search *search) {
 	}
 }
 
+var userHomeDir, _ = os.UserHomeDir()
+
 func (t *Tree) setCurrentDir(dir string) {
 	t.SetSearch("")
 	t.rootNode.ClearChildren()
@@ -259,7 +262,7 @@ func (t *Tree) setCurrentDir(dir string) {
 		root.Path = "/"
 	}
 
-	var text string
+	var panelTitle, text string
 	if dir == root.Path {
 		if dir == "/" {
 			text = "/"
@@ -267,15 +270,17 @@ func (t *Tree) setCurrentDir(dir string) {
 			text = strings.TrimSuffix(root.Path, "/")
 		}
 	} else {
-		_, dirName := path.Split(strings.TrimSuffix(dir, "/"))
-		t.SetTitle(dirName)
 		text = ".."
+		_, panelTitle = path.Split(strings.TrimSuffix(dir, "/"))
+		if root.Scheme == "file" && strings.TrimSuffix(dir, "/") == userHomeDir {
+			panelTitle = "~"
+		}
 	}
+	t.SetTitle(panelTitle)
 
 	t.rootNode.SetText(text)
 	t.rootNode.SetReference(dir)
 	t.rootNode.SetColor(tcell.ColorWhite)
-	return
 }
 
 func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirContext *DirContext) {

@@ -47,12 +47,13 @@ func NewNewPanel(nav *Navigator) *NewPanel {
 	p.Boxed = sneatv.NewBoxed(p.flex,
 		sneatv.WithLeftBorder(0, -1),
 	)
-	p.Boxed.SetTitle("New")
+	p.SetTitle("New")
 
 	p.input.SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEnter {
+		switch key {
+		case tcell.KeyEnter:
 			p.createFile()
-		} else if key == tcell.KeyEsc {
+		case tcell.KeyEscape:
 			p.nav.right.SetContent(p.nav.dirSummary)
 			p.nav.SetFocus()
 		}
