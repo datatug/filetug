@@ -18,6 +18,17 @@ type DirContext struct {
 	children []os.DirEntry
 }
 
+func (c *DirContext) Entries() []files.EntryWithDirPath {
+	entries := make([]files.EntryWithDirPath, len(c.children))
+	for i, child := range c.children {
+		entries[i] = files.EntryWithDirPath{
+			DirEntry: child,
+			Dir:      c.Path,
+		}
+	}
+	return entries
+}
+
 func newDirContext(store files.Store, path string, children []os.DirEntry) *DirContext {
 	return &DirContext{
 		Store:    store,

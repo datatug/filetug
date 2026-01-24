@@ -126,7 +126,7 @@ func TestNavigator_goDir(t *testing.T) {
 	})
 
 	t.Run("goDir_NonExistent", func(t *testing.T) {
-		nav.goDir("/non-existent-Path-12345")
+		nav.goDir("/non-existent-Dir-12345")
 	})
 
 	t.Run("Extra", func(t *testing.T) {
@@ -292,7 +292,7 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 	t.Run("NoApp", func(t *testing.T) {
 		nav.app = nil
 		status := &gitutils.RepoStatus{Branch: "main"}
-		// Path matches repo root to ensure status is shown even if clean
+		// Dir matches repo root to ensure status is shown even if clean
 		path := "/repo"
 		oldOsStat := gitutils.OsStat
 		gitutils.OsStat = func(name string) (os.FileInfo, error) {
@@ -317,7 +317,7 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 		defer func() { nav.queueUpdateDraw = oldQueueUpdateDraw }()
 
 		status := &gitutils.RepoStatus{Branch: "main"}
-		// Path matches repo root to ensure status is shown even if clean
+		// Dir matches repo root to ensure status is shown even if clean
 		path := "/repo"
 		oldOsStat := gitutils.OsStat
 		gitutils.OsStat = func(name string) (os.FileInfo, error) {

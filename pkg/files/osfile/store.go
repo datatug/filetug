@@ -11,12 +11,17 @@ import (
 
 var osReadDir = os.ReadDir
 var osHostname = os.Hostname
+var osRemove = os.Remove
 
 var _ files.Store = (*Store)(nil)
 
 type Store struct {
 	title string
 	root  string
+}
+
+func (s Store) Delete(ctx context.Context, path string) error {
+	return os.Remove(path)
 }
 
 func (s Store) RootURL() url.URL {

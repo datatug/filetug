@@ -38,6 +38,11 @@ type HttpStore struct {
 	client *http.Client
 }
 
+func (h HttpStore) Delete(ctx context.Context, path string) error {
+	_, _ = ctx, path
+	return files.ErrNotImplemented
+}
+
 func (h HttpStore) RootURL() url.URL {
 	return h.Root
 }

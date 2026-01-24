@@ -17,6 +17,8 @@ func NewDirEntry(name string, isDir bool, o ...FileInfoOption) DirEntry {
 	return dirEntry
 }
 
+var _ os.DirEntry = (*DirEntry)(nil)
+
 type DirEntry struct {
 	name  string
 	isDir bool

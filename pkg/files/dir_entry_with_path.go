@@ -1,0 +1,28 @@
+package files
+
+import (
+	"os"
+	"path"
+	"path/filepath"
+)
+
+type EntryWithDirPath struct {
+	os.DirEntry
+	Dir string
+}
+
+func (c EntryWithDirPath) Path() string {
+	name := c.DirEntry.Name()
+	return filepath.Join(c.Dir, name)
+}
+
+func (c EntryWithDirPath) String() string {
+	return path.Join(c.Dir, c.Name())
+}
+
+func NewEntryWithDirPath(entry os.DirEntry, dir string) *EntryWithDirPath {
+	return &EntryWithDirPath{
+		Dir:      dir,
+		DirEntry: entry,
+	}
+}

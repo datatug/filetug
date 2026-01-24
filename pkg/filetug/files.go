@@ -7,12 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/filetug/ftstate"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
 	"github.com/filetug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+var _ browser = (*filesPanel)(nil)
 
 type filesPanel struct {
 	*sneatv.Boxed
@@ -23,6 +26,25 @@ type filesPanel struct {
 	filter          ftui.Filter
 	currentFileName string
 	loadingProgress int
+}
+
+func (f *filesPanel) GetCurrentEntry() *files.EntryWithDirPath {
+	row, _ := f.table.GetSelection()
+	if row >= len(f.rows.VisibleEntries) {
+		return nil
+	}
+	entry := f.rows.VisibleEntries[row]
+	if entry.Dir == "" {
+		if f.rows.Dir == nil {
+			panic("got a dir entry without a dir path and the filesPanel directory is not set")
+		}
+		entry = files.EntryWithDirPath{
+			DirEntry: entry.DirEntry,
+			Dir:      f.rows.Dir.Path,
+		}
+	}
+
+	return &entry
 }
 
 //func (f *filesPanel) Clear() {
@@ -144,8 +166,8 @@ func (f *filesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := table.GetSelection()
 		nameCell := table.GetCell(row, 0)
 		switch ref := nameCell.GetReference().(type) {
-		case DirEntry:
-			f.nav.goDir(ref.Path)
+		case files.EntryWithDirPath:
+			f.nav.goDir(ref.Dir)
 			return nil
 		default:
 			return event
@@ -229,10 +251,13 @@ func (f *filesPanel) blur() {
 // selectionChangedNavFunc: TODO: is it a duplicate of selectionChangedNavFunc?
 func (f *filesPanel) selectionChangedNavFunc(row, _ int) {
 	cell := f.table.GetCell(row, 0)
-	name := cell.Text[1:]
-	fullName := filepath.Join(f.nav.current.dir, name)
+	ref := cell.GetReference()
+	if ref == nil {
+		return
+	}
+	entry := ref.(*files.EntryWithDirPath)
 	f.nav.right.SetContent(f.nav.previewer)
-	f.nav.previewer.PreviewFile(name, fullName)
+	f.nav.previewer.PreviewFile(*entry)
 }
 
 // selectionChanged: TODO: is it a duplicate of selectionChangedNavFunc?
@@ -249,8 +274,8 @@ func (f *filesPanel) selectionChanged(row, _ int) {
 		return
 	}
 
-	dirEntry := ref.(DirEntry)
-	fullName := filepath.Join(dirEntry.Path, dirEntry.Name())
+	dirEntry := ref.(*files.EntryWithDirPath)
+	fullName := filepath.Join(dirEntry.Dir, dirEntry.Name())
 	f.rememberCurrent(fullName)
 
 	stat, err := os.Stat(fullName)
@@ -264,7 +289,7 @@ func (f *filesPanel) selectionChanged(row, _ int) {
 		return
 	}
 
-	f.nav.previewer.PreviewFile("", fullName)
+	f.nav.previewer.PreviewFile(*dirEntry)
 }
 
 func (f *filesPanel) rememberCurrent(fullName string) {

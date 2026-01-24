@@ -7,10 +7,18 @@ import (
 	"testing"
 
 	"github.com/alecthomas/assert/v2"
+	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/sneatv/ttestutils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+type mockDirEntryForPreviewer struct {
+	os.DirEntry
+	name string
+}
+
+func (m mockDirEntryForPreviewer) Name() string { return m.name }
 
 func TestPreviewer(t *testing.T) {
 	app := tview.NewApplication()
@@ -19,6 +27,15 @@ func TestPreviewer(t *testing.T) {
 		t.Fatal("navigator is nil")
 	}
 	p := nav.previewer
+
+	previewFile := func(name, fullName string) {
+		p.PreviewFile(files.EntryWithDirPath{
+			DirEntry: mockDirEntryForPreviewer{name: name},
+			Dir:      filepath.Dir(fullName),
+		})
+	}
+
+	p.textView.SetText("")
 
 	t.Run("Draw", func(t *testing.T) {
 		s := ttestutils.NewSimScreen(t, "UTF-8", 80, 24)
@@ -44,7 +61,7 @@ func TestPreviewer(t *testing.T) {
 		// See https://en.wikipedia.org/wiki/.DS_Store
 		header := []byte{0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31}
 		_ = os.WriteFile(tmpFile.Name(), header, 0644)
-		p.PreviewFile(".DS_Store", tmpFile.Name())
+		previewFile(".DS_Store", tmpFile.Name())
 	})
 
 	t.Run("FocusBlur", func(t *testing.T) {
@@ -56,8 +73,8 @@ func TestPreviewer(t *testing.T) {
 	})
 
 	t.Run("PreviewFile_NotFound", func(t *testing.T) {
-		p.PreviewFile("non-existent.txt", "non-existent.txt")
-		assert.Contains(t, p.textView.GetText(false), "Error reading file")
+		previewFile("non-existent.txt", "non-existent.txt")
+		assert.Contains(t, p.textView.GetText(false), "Failed to read file")
 	})
 
 	t.Run("PreviewFile_PlainText", func(t *testing.T) {
@@ -68,7 +85,7 @@ func TestPreviewer(t *testing.T) {
 		err := os.WriteFile(tmpFile.Name(), []byte("hello world"), 0644)
 		assert.NoError(t, err)
 
-		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 		assert.Contains(t, p.textView.GetText(false), "hello world")
 	})
 
@@ -80,7 +97,7 @@ func TestPreviewer(t *testing.T) {
 		err := os.WriteFile(tmpFile.Name(), []byte(`{"a":1}`), 0644)
 		assert.NoError(t, err)
 
-		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 		// Colorized output will have tags, but GetText(false) should strip them or show them depending on dynamic colors
 		// tview.TextView.GetText(false) returns the text without tags if dynamic colors are enabled.
 		assert.Contains(t, p.textView.GetText(false), "a")
@@ -104,18 +121,18 @@ func TestPreviewer(t *testing.T) {
 		}()
 		err := os.WriteFile(tmpFile.Name(), []byte("hello world"), 0644)
 		assert.NoError(t, err)
-		p.PreviewFile("", tmpFile.Name())
+		previewFile("", tmpFile.Name())
 	})
 
 	t.Run("PreviewFile_NoLexer", func(t *testing.T) {
-		tmpFile, _ := os.CreateTemp("", "test*")
+		tmpFile, _ := os.CreateTemp("", "test")
 		defer func() {
 			_ = os.Remove(tmpFile.Name())
 		}()
 		err := os.WriteFile(tmpFile.Name(), []byte("hello world"), 0644)
 		assert.NoError(t, err)
 
-		p.PreviewFile("noext", tmpFile.Name())
+		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 		assert.Contains(t, p.textView.GetText(false), "hello world")
 	})
 
@@ -127,7 +144,7 @@ func TestPreviewer(t *testing.T) {
 		err := os.WriteFile(tmpFile.Name(), []byte(`{invalid}`), 0644)
 		assert.NoError(t, err)
 
-		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 		assert.Contains(t, p.textView.GetText(true), "{invalid}")
 	})
 
@@ -150,7 +167,7 @@ func TestPreviewer(t *testing.T) {
 			0x44, 0xAE, 0x42, 0x60, 0x82,
 		}
 		_ = os.WriteFile(tmpFile.Name(), pngData, 0644)
-		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 	})
 
 	t.Run("PreviewFile_ChromaError", func(t *testing.T) {
@@ -162,7 +179,7 @@ func TestPreviewer(t *testing.T) {
 			_ = os.Remove(tmpFile.Name())
 		}()
 		_ = os.WriteFile(tmpFile.Name(), []byte{0xff, 0xfe, 0xfd}, 0644)
-		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 	})
 
 	t.Run("PreviewFile_Log", func(t *testing.T) {
@@ -173,7 +190,7 @@ func TestPreviewer(t *testing.T) {
 		err := os.WriteFile(tmpFile.Name(), []byte("log line"), 0644)
 		assert.NoError(t, err)
 
-		p.PreviewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
+		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 		assert.Contains(t, p.textView.GetText(false), "log line")
 	})
 
@@ -185,7 +202,7 @@ func TestPreviewer(t *testing.T) {
 		}()
 		dsPath := filepath.Join(tmpDir, ".DS_Store")
 		_ = os.Mkdir(dsPath, 0755) // Create as directory to cause read error
-		p.PreviewFile(".DS_Store", dsPath)
+		previewFile(".DS_Store", dsPath)
 	})
 
 	t.Run("readFileError", func(t *testing.T) {
@@ -197,7 +214,7 @@ func TestPreviewer(t *testing.T) {
 		}()
 		_, err := p.readFile(tmpDir, 0)
 		assert.Error(t, err)
-		assert.Contains(t, p.textView.GetText(false), "Error reading file")
+		assert.Contains(t, p.textView.GetText(false), "Failed to read file")
 	})
 
 	t.Run("readFile", func(t *testing.T) {

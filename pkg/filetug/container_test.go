@@ -34,8 +34,8 @@ func TestContainer_SetContent(t *testing.T) {
 	p := tview.NewBox()
 	c.SetContent(p)
 
-	if c.inner != p {
-		t.Error("Expected inner to be set to p")
+	if c.content != p {
+		t.Error("Expected content to be set to p")
 	}
 
 	// Verify AddItem was called (indirectly by checking children count)
@@ -46,8 +46,8 @@ func TestContainer_SetContent(t *testing.T) {
 	// Verify Clear and AddItem work by setting content again
 	p2 := tview.NewBox()
 	c.SetContent(p2)
-	if c.inner != p2 {
-		t.Error("Expected inner to be updated to p2")
+	if c.content != p2 {
+		t.Error("Expected content to be updated to p2")
 	}
 	if c.GetItemCount() != 1 {
 		t.Errorf("Expected 1 item in Flex after second SetContent, got %d", c.GetItemCount())
@@ -67,17 +67,17 @@ func TestContainer_Focus(t *testing.T) {
 	p := tview.NewBox()
 	c.SetContent(p)
 
-	// Test case when inner is not nil
+	// Test case when content is not nil
 	c.Focus(func(p tview.Primitive) {})
 	if app.GetFocus() != p {
-		t.Errorf("Expected focus to be set to inner primitive, got %v", app.GetFocus())
+		t.Errorf("Expected focus to be set to content primitive, got %v", app.GetFocus())
 	}
 
-	// Test case when inner is nil
+	// Test case when content is nil
 	app.SetFocus(nil)
-	c.inner = nil
+	c.content = nil
 	c.Focus(func(p tview.Primitive) {})
 	if app.GetFocus() != nil {
-		t.Errorf("Expected focus to remain nil when inner is nil, got %v", app.GetFocus())
+		t.Errorf("Expected focus to remain nil when content is nil, got %v", app.GetFocus())
 	}
 }

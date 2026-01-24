@@ -4,9 +4,9 @@ import "github.com/rivo/tview"
 
 type container struct {
 	*tview.Flex
-	index int
-	inner tview.Primitive
-	nav   *Navigator
+	index   int
+	content tview.Primitive
+	nav     *Navigator
 }
 
 func newContainer(index int, nav *Navigator) *container {
@@ -16,15 +16,15 @@ func newContainer(index int, nav *Navigator) *container {
 		nav:   nav,
 	}
 	r.SetFocusFunc(func() {
-		if r.inner != nil {
-			r.nav.setAppFocus(r.inner)
+		if r.content != nil {
+			r.nav.setAppFocus(r.content)
 		}
 	})
 	return r
 }
 
 func (r *container) SetContent(p tview.Primitive) {
-	r.inner = p
+	r.content = p
 	r.Clear()
 	r.AddItem(p, 0, 1, false)
 }

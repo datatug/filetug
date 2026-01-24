@@ -30,6 +30,10 @@ func (m mockStore) CreateFile(ctx context.Context, path string) error {
 	_, _ = ctx, path
 	return nil
 }
+func (m mockStore) Delete(ctx context.Context, path string) error {
+	_, _ = ctx, path
+	return nil
+}
 
 type mockDirEntry struct {
 	name  string
@@ -55,10 +59,10 @@ func TestNewFileRows(t *testing.T) {
 
 func TestFileRows_SetFilter(t *testing.T) {
 	fr := NewFileRows(&DirContext{})
-	fr.AllEntries = []os.DirEntry{
-		mockDirEntry{name: "file.txt", isDir: false},
-		mockDirEntry{name: ".hidden", isDir: false},
-		mockDirEntry{name: "dir", isDir: true},
+	fr.AllEntries = []files.EntryWithDirPath{
+		{DirEntry: mockDirEntry{name: "file.txt", isDir: false}},
+		{DirEntry: mockDirEntry{name: ".hidden", isDir: false}},
+		{DirEntry: mockDirEntry{name: "dir", isDir: true}},
 	}
 	fr.Infos = make([]os.FileInfo, len(fr.AllEntries))
 
@@ -79,8 +83,8 @@ func TestFileRows_SetFilter(t *testing.T) {
 func TestFileRows_GetRowCount(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
 	fr := NewFileRows(&DirContext{Store: store, Path: "/home"})
-	fr.VisibleEntries = []os.DirEntry{
-		mockDirEntry{name: "f1", isDir: false},
+	fr.VisibleEntries = []files.EntryWithDirPath{
+		{DirEntry: mockDirEntry{name: "f1", isDir: false}},
 	}
 	fr.VisualInfos = make([]os.FileInfo, 1)
 	// With parent row (..)
@@ -94,8 +98,8 @@ func TestFileRows_GetRowCount(t *testing.T) {
 func TestFileRows_GetCell(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
 	fr := NewFileRows(&DirContext{Store: store, Path: "/home"})
-	fr.VisibleEntries = []os.DirEntry{
-		mockDirEntry{name: "file.go", isDir: false},
+	fr.VisibleEntries = []files.EntryWithDirPath{
+		{DirEntry: mockDirEntry{name: "file.go", isDir: false}},
 	}
 	fr.VisualInfos = []os.FileInfo{
 		files.NewFileInfo(files.NewDirEntry("file.go", false), files.Size(1024), files.ModTime(time.Now())),
@@ -125,8 +129,8 @@ func TestFileRows_GetCell(t *testing.T) {
 func TestFileRows_Extra(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
 	fr := NewFileRows(&DirContext{Store: store, Path: "/"})
-	fr.VisibleEntries = []os.DirEntry{
-		mockDirEntry{name: "dir1", isDir: true},
+	fr.VisibleEntries = []files.EntryWithDirPath{
+		{DirEntry: mockDirEntry{name: "dir1", isDir: true}},
 	}
 	fr.VisualInfos = make([]os.FileInfo, 1)
 
@@ -182,7 +186,7 @@ func TestFileRows_Extra(t *testing.T) {
 		assert.Nil(t, fr.GetCell(-1, 0))
 
 		// i >= len(r.VisibleEntries)
-		fr.VisibleEntries = []os.DirEntry{mockDirEntry{name: "f1"}}
+		fr.VisibleEntries = []files.EntryWithDirPath{{DirEntry: mockDirEntry{name: "f1"}}}
 		assert.Nil(t, fr.GetCell(2, 0))
 
 		// Err != nil and col != nameColIndex
@@ -195,7 +199,7 @@ func TestFileRows_Extra(t *testing.T) {
 		assert.Nil(t, fr.GetCell(0, 1))
 
 		// dirEntry.IsDir() true for column 0
-		fr.VisibleEntries = []os.DirEntry{mockDirEntry{name: "my_dir", isDir: true}}
+		fr.VisibleEntries = []files.EntryWithDirPath{{DirEntry: mockDirEntry{name: "my_dir", isDir: true}}}
 		fr.VisualInfos = make([]os.FileInfo, 1)
 		cell := fr.GetCell(0, 0)
 		assert.Contains(t, cell.Text, "📁")
@@ -207,13 +211,13 @@ func TestFileRows_Extra(t *testing.T) {
 		assert.NotNil(t, cell)
 
 		// dirEntry.Info() error
-		fr.VisibleEntries = []os.DirEntry{mockDirEntry{name: "error.txt"}}
+		fr.VisibleEntries = []files.EntryWithDirPath{{DirEntry: mockDirEntry{name: "error.txt"}}}
 		fr.VisualInfos = make([]os.FileInfo, 1)
 		cell = fr.GetCell(0, 1)
 		assert.NotNil(t, cell)
 
 		// fi.ModTime() in the future
-		fr.VisibleEntries = []os.DirEntry{mockDirEntry{name: "future.txt"}}
+		fr.VisibleEntries = []files.EntryWithDirPath{{DirEntry: mockDirEntry{name: "future.txt"}}}
 		futureTime := time.Now().Add(48 * time.Hour)
 		fr.VisualInfos = []os.FileInfo{
 			files.NewFileInfo(files.NewDirEntry("future.txt", false), files.ModTime(futureTime)),

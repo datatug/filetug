@@ -221,6 +221,15 @@ const (
 	decrease resizeMode = -1
 )
 
+func (nav *Navigator) getCurrentBrowser() browser {
+	if nav.left.HasFocus() {
+		return nav.left.content.(browser)
+	} else if nav.files.HasFocus() {
+		return nav.files
+	}
+	return nil
+}
+
 func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	nav.bottom.isCtrl = event.Modifiers()&tcell.ModCtrl != 0
 	switch event.Key() {
@@ -229,6 +238,12 @@ func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case tcell.KeyF7:
 		nav.showNewPanel()
+		return nil
+	case tcell.KeyF8:
+		nav.delete()
+		return nil
+	case tcell.KeyF10:
+		nav.showScriptsPanel()
 		return nil
 	case tcell.KeyRune:
 		if event.Modifiers()&tcell.ModAlt != 0 {

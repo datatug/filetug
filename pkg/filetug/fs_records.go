@@ -22,13 +22,14 @@ func NewFileRows(dir *DirContext) *FileRows {
 	if dir.Path != "/" {
 		dir.Path = strings.TrimSuffix(dir.Path, "/")
 	}
+	entries := dir.Entries()
 	return &FileRows{
 		store:          dir.Store,
 		Dir:            dir,
-		AllEntries:     dir.children,
-		VisibleEntries: dir.children,
-		Infos:          make([]os.FileInfo, len(dir.children)),
-		VisualInfos:    make([]os.FileInfo, len(dir.children)),
+		AllEntries:     entries,
+		VisibleEntries: entries,
+		Infos:          make([]os.FileInfo, len(entries)),
+		VisualInfos:    make([]os.FileInfo, len(entries)),
 	}
 }
 
@@ -37,8 +38,8 @@ type FileRows struct {
 	hideParent     bool
 	store          files.Store
 	Dir            *DirContext
-	AllEntries     []os.DirEntry
-	VisibleEntries []os.DirEntry
+	AllEntries     []files.EntryWithDirPath
+	VisibleEntries []files.EntryWithDirPath
 	Infos          []os.FileInfo
 	VisualInfos    []os.FileInfo
 	Err            error
@@ -62,7 +63,7 @@ func (r *FileRows) SetFilter(filter ftui.Filter) {
 }
 
 func (r *FileRows) applyFilter() {
-	r.VisibleEntries = make([]os.DirEntry, 0, len(r.AllEntries))
+	r.VisibleEntries = make([]files.EntryWithDirPath, 0, len(r.AllEntries))
 	r.VisualInfos = make([]os.FileInfo, 0, len(r.VisibleEntries))
 	for i, entry := range r.AllEntries {
 		if r.filter.IsVisible(entry) {
@@ -165,10 +166,7 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 		}
 		color := GetColorByFileExt(name)
 		cell.SetTextColor(color)
-		ref := DirEntry{
-			DirEntry: dirEntry,
-			Path:     path.Join(fsutils.ExpandHome(r.Dir.Path), dirEntry.Name()),
-		}
+		ref := files.NewEntryWithDirPath(dirEntry, path.Join(fsutils.ExpandHome(r.Dir.Path)))
 		cell.SetReference(ref)
 	}
 	return cell
@@ -208,11 +206,8 @@ func (r *FileRows) getTopRowName() *tview.TableCell {
 	if parentDir != "/" {
 		parentDir = strings.TrimSuffix(parentDir, "/")
 	}
-	ref := DirEntry{Path: parentDir}
+	parentDirName, parentDirPath := path.Split(parentDir)
+	parentDirEntry := files.NewDirEntry(parentDirName, true)
+	ref := files.NewEntryWithDirPath(parentDirEntry, parentDirPath)
 	return cell.SetReference(ref)
-}
-
-type DirEntry struct {
-	Path string
-	os.DirEntry
 }

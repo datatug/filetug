@@ -77,7 +77,7 @@ func TestFavorites(t *testing.T) {
 
 	t.Run("setItems_coverage", func(t *testing.T) {
 		f.items = append(f.items, favorite{Store: "https://www.example.com", Path: "/abc", Description: "Example"})
-		f.items = append(f.items, favorite{Store: "file:", Path: "/some/path", Description: "Path"})
+		f.items = append(f.items, favorite{Store: "file:", Path: "/some/path", Description: "Dir"})
 		f.setItems()
 	})
 }

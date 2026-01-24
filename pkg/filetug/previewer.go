@@ -3,13 +3,16 @@ package filetug
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/filetug/filetug/pkg/chroma2tcell"
+	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/fsutils"
 	"github.com/filetug/filetug/pkg/sneatv"
 	"github.com/filetug/filetug/pkg/viewers"
@@ -21,26 +24,27 @@ import (
 
 type previewer struct {
 	*sneatv.Boxed
-	flex     *tview.Flex
-	nav      *Navigator
-	textView *tview.TextView
+	flex       *tview.Flex
+	nav        *Navigator
+	attributes *tview.Table
+	separator  *tview.TextView
+	textView   *tview.TextView
 }
 
 func newPreviewer(nav *Navigator) *previewer {
 	flex := tview.NewFlex()
 	p := previewer{
-		flex: flex,
 		Boxed: sneatv.NewBoxed(
 			flex,
 			sneatv.WithLeftBorder(0, -1),
 		),
-		nav: nav,
+		flex:       flex,
+		attributes: tview.NewTable(),
+		separator:  tview.NewTextView().SetText(strings.Repeat("─", 20)).SetTextColor(tview.Styles.BorderColor),
+		textView:   tview.NewTextView(),
+		nav:        nav,
 	}
-	p.SetTitle("Previewer")
-	//p.SetBorder(true)
-	//p.SetBorderColor(theme.BlurredBorderColor)
 
-	p.textView = tview.NewTextView()
 	p.textView.SetWrap(false)
 	p.textView.SetDynamicColors(true)
 	p.textView.SetText("To be implemented.")
@@ -48,12 +52,13 @@ func newPreviewer(nav *Navigator) *previewer {
 		nav.activeCol = 2
 	})
 
+	p.flex.AddItem(p.attributes, 2, 0, false)
+	p.flex.AddItem(p.separator, 1, 0, false)
 	p.flex.AddItem(p.textView, 0, 1, false)
 
 	p.flex.SetFocusFunc(func() {
 		nav.activeCol = 2
 		p.flex.SetBorderColor(sneatv.CurrentTheme.FocusedBorderColor)
-		//nav.setAppFocus(tv)
 	})
 	nav.previewerFocusFunc = func() {
 		nav.activeCol = 2
@@ -98,18 +103,21 @@ func (p *previewer) SetText(text string) {
 
 func (p *previewer) readFile(fullName string, max int) (data []byte, err error) {
 	data, err = fsutils.ReadFileData(fullName, max)
-	if err != nil {
-		p.textView.SetText(fmt.Sprintf("Error reading file %s: %s", fullName, err.Error()))
+	if err != nil && !errors.Is(err, io.EOF) {
+		p.textView.SetText(fmt.Sprintf("Failed to read file %s: %s", fullName, err.Error()))
 		p.textView.SetTextColor(tcell.ColorRed)
 		return
 	}
 	return
 }
 
-func (p *previewer) PreviewFile(name, fullName string) {
+func (p *previewer) PreviewFile(entry files.EntryWithDirPath) {
+	name := entry.Name()
+	fullName := entry.Path()
 	if name == "" {
 		_, name = path.Split(fullName)
 	}
+	p.SetTitle(name)
 	var data []byte
 	var err error
 	switch name {
@@ -157,7 +165,7 @@ func (p *previewer) PreviewFile(name, fullName string) {
 	lexer := lexers.Match(name)
 	if data == nil && err == nil {
 		data, err = p.readFile(fullName, 1024*1024)
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return
 		}
 	}

@@ -23,6 +23,11 @@ type Store struct {
 	implicit bool
 }
 
+func (s *Store) Delete(ctx context.Context, path string) error {
+	_, _ = ctx, path
+	return files.ErrNotImplemented
+}
+
 func (s *Store) RootURL() url.URL {
 	root := s.root
 	root.User = nil
