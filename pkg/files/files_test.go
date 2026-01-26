@@ -102,3 +102,26 @@ func TestFileInfo_NilReceiver(t *testing.T) {
 		t.Errorf("expected nil for Sys() for nil FileInfo")
 	}
 }
+
+func TestEntryWithDirPath(t *testing.T) {
+	entry := NewDirEntry("test.txt", false)
+	dir := "/home/user"
+	e := NewEntryWithDirPath(entry, dir)
+
+	if e.Dir != dir {
+		t.Errorf("expected Dir = %v, got %v", dir, e.Dir)
+	}
+	if e.Name() != "test.txt" {
+		t.Errorf("expected Name() = %v, got %v", "test.txt", e.Name())
+	}
+
+	expectedPath := "/home/user/test.txt"
+	if e.Path() != expectedPath {
+		t.Errorf("expected Path() = %v, got %v", expectedPath, e.Path())
+	}
+
+	expectedString := "/home/user/test.txt"
+	if e.String() != expectedString {
+		t.Errorf("expected String() = %v, got %v", expectedString, e.String())
+	}
+}

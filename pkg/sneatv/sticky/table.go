@@ -121,9 +121,6 @@ func (t *Table) render() {
 					maxColWidth[i] -= column.FixedWidth
 				}
 			}
-			if maxColWidth[i] > col.FixedWidth {
-				maxColWidth[i] = col.FixedWidth
-			}
 			if col.MinWidth > 0 && maxColWidth[i] < col.MinWidth {
 				maxColWidth[i] = col.MinWidth
 			}

@@ -1,10 +1,54 @@
 package ttestutils
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
 )
+
+type failScreen struct {
+	tcell.SimulationScreen
+}
+
+func (f *failScreen) Init() error {
+	return errors.New("init failed")
+}
+
+type mockT struct {
+	failed bool
+}
+
+func (m *mockT) Fatalf(format string, args ...any) {
+	m.failed = true
+	// We need to stop execution of the current goroutine as Fatalf would do.
+	panic("mockT.Fatalf")
+}
+
+func (m *mockT) Helper() {}
+
+func TestNewSimScreen_Error(t *testing.T) {
+	oldNewSimulationScreen := NewSimulationScreen
+	defer func() { NewSimulationScreen = oldNewSimulationScreen }()
+
+	NewSimulationScreen = func(charset string) tcell.SimulationScreen {
+		return &failScreen{}
+	}
+
+	mt := &mockT{}
+	defer func() {
+		if r := recover(); r != nil {
+			if r != "mockT.Fatalf" {
+				panic(r)
+			}
+		}
+		if !mt.failed {
+			t.Error("expected NewSimScreen to call Fatalf on error")
+		}
+	}()
+
+	NewSimScreen(mt, "UTF-8", 80, 24)
+}
 
 func TestNewSimScreen(t *testing.T) {
 	width, height := 80, 24

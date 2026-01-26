@@ -11,8 +11,9 @@ import (
 
 var osReadDir = os.ReadDir
 var osHostname = os.Hostname
-
-//var osRemove = os.Remove
+var osMkdir = os.Mkdir
+var osCreate = os.Create
+var osRemove = os.Remove
 
 var _ files.Store = (*Store)(nil)
 
@@ -23,7 +24,7 @@ type Store struct {
 
 func (s Store) Delete(ctx context.Context, path string) error {
 	_ = ctx
-	return os.Remove(path)
+	return osRemove(path)
 }
 
 func (s Store) RootURL() url.URL {
@@ -47,14 +48,14 @@ func (s Store) CreateDir(ctx context.Context, path string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return os.Mkdir(path, 0755)
+	return osMkdir(path, 0755)
 }
 
 func (s Store) CreateFile(ctx context.Context, path string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	f, err := os.Create(path)
+	f, err := osCreate(path)
 	if err != nil {
 		return err
 	}

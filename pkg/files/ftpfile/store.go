@@ -75,6 +75,10 @@ func (s *Store) SetTLS(explicit, implicit bool) {
 	s.implicit = implicit
 }
 
+var ftpDial = func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+	return ftp.Dial(addr, options...)
+}
+
 func (s *Store) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error) {
 	root := s.root
 	host := root.Hostname()
@@ -105,7 +109,7 @@ func (s *Store) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error)
 			c, err := s.factory(addr, options...)
 			dialChan <- dialResult{c, err}
 		} else {
-			conn, err := ftp.Dial(addr, options...)
+			conn, err := ftpDial(addr, options...)
 			if err != nil {
 				dialChan <- dialResult{nil, err}
 			} else {

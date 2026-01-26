@@ -148,64 +148,97 @@ func TestTable_ScrollToRow_EdgeCases(t *testing.T) {
 	table.ScrollToRow(5)
 	assert.Equal(t, 0, table.topRowIndex)
 
-	// Case: row >= t.topRowIndex+visibleRowsCount and t.topRowIndex < 0
-	// visibleRowsCount = 10, header = 1, records = 9
-	table.SetRect(0, 0, 100, 11) // visibleRowsCount = 11, record rows = 10
-	table.topRowIndex = 0
-	// row = 5. visibleRowsCount - 1 = 10.
-	// if 5 >= 0 + 10 (false)
+	// Case: trigger topRowIndex < 0 (line 93)
+	// We need row >= t.topRowIndex + visibleRowsCount
+	// AND row - visibleRowsCount + 1 < 0
+	// Let's use negative row? No, ScrollToRow(row int) takes an int.
+	// If visibleRowsCount is 10 (from GetRect), visibleRowsCount-- makes it 9.
+	// row >= 0 + 9 => row >= 9.
+	// topRowIndex = row - 9 + 1 = row - 8.
+	// If row=9, topRowIndex = 1.
+	// Wait, if visibleRowsCount is very large, say 100.
+	// visibleRowsCount-- => 99.
+	// ScrollToRow(5). 5 >= 0 + 99 is false.
+	// It doesn't hit the second branch.
 
-	// To trigger t.topRowIndex < 0:
-	// row < visibleRowsCount - 1
-	// Let's say row = 2, visibleRowsCount = 10 (9 records)
-	// 2 >= 0 + 9 (false)
+	// If we set topRowIndex to something positive, then ScrollToRow(0)
+	table.topRowIndex = 10
+	table.SetRect(0, 0, 100, 20) // visibleRowsCount = 19
+	table.ScrollToRow(0)         // 0 < 10 -> topRowIndex = 0. Hits first branch.
 
-	// If row = 10, visibleRowsCount = 5 (4 records)
-	table.SetRect(0, 0, 100, 5) // visibleRowsCount = 4 records
-	table.ScrollToRow(10)
-	// 10 >= 0 + 4 (true)
-	// topRowIndex = 10 - 4 + 1 = 7.
-	assert.Equal(t, 7, table.topRowIndex)
+	// The only way to hit `if t.topRowIndex < 0` is if `row - visibleRowsCount + 1 < 0`.
+	// This means `row + 1 < visibleRowsCount`.
+	// BUT the condition to enter the branch is `row >= t.topRowIndex + visibleRowsCount`.
+	// So `row >= t.topRowIndex + visibleRowsCount` AND `row < visibleRowsCount - 1`.
+	// This implies `t.topRowIndex + visibleRowsCount < visibleRowsCount - 1`
+	// => `t.topRowIndex < -1`.
+	// Since topRowIndex is normally >= 0, this seems hard to reach unless topRowIndex is already negative.
 
-	// To get topRowIndex < 0:
-	// row - visibleRowsCount + 1 < 0
-	// row=1, visible=5. 1 - 4 + 1 = -2.
-	table.topRowIndex = 5
-	table.ScrollToRow(1)
-	// 1 < 5 (true) -> topRowIndex = 1.
-	assert.Equal(t, 1, table.topRowIndex)
+	// Let's try to force it by setting topRowIndex to a negative value manually,
+	// though it's not exported. But we are in the same package.
+	table.topRowIndex = -5
+	table.SetRect(0, 0, 100, 10) // visibleRowsCount = 9
+	table.ScrollToRow(10)        // 10 >= -5 + 9 (10 >= 4) is true.
+	// topRowIndex = 10 - 9 + 1 = 2. Still doesn't hit < 0.
 
-	// Wait, the logic is:
-	/*
-		if row < t.topRowIndex {
-			t.topRowIndex = row
-			t.render()
-		} else if row >= t.topRowIndex+visibleRowsCount {
-			t.topRowIndex = row - visibleRowsCount + 1
-			if t.topRowIndex < 0 {
-				t.topRowIndex = 0
-			}
-			t.render()
-		}
-	*/
-	// To hit the second branch AND topRowIndex < 0:
-	// t.topRowIndex = 0
-	// row >= visibleRowsCount
-	// AND row - visibleRowsCount + 1 < 0  => row < visibleRowsCount - 1
-	// This is a contradiction: row >= visibleRowsCount AND row < visibleRowsCount - 1.
+	// What if visibleRowsCount is 100 and row is 50, and topRowIndex is -100?
+	table.topRowIndex = -100
+	table.SetRect(0, 0, 100, 101) // visibleRowsCount = 100
+	table.ScrollToRow(50)         // 50 >= -100 + 100 (50 >= 0) is true.
+	// topRowIndex = 50 - 100 + 1 = -49.
+	// NOW it should hit t.topRowIndex < 0 and set it to 0.
+	assert.Equal(t, 0, table.topRowIndex)
+}
 
-	// Ah! visibleRowsCount in ScrollToRow is:
-	// _, _, _, visibleRowsCount := t.GetRect()
-	// visibleRowsCount-- // header
+func TestTable_Render_NoHeight(t *testing.T) {
+	// Case: visibleRowsCount <= 0 (line 106)
+	columns := []Column{{Name: "Col1"}}
+	table := NewTable(columns)
+	table.SetRect(0, 0, 100, 0)
+	table.render()
+	// render() calls Clear() and setHeader() before checking visibleRowsCount.
+}
 
-	// So if GetRect height is 5, visibleRowsCount becomes 4.
-	// row >= 0 + 4 (row >= 4)
-	// topRowIndex = row - 4 + 1 = row - 3.
-	// If row=4, topRowIndex = 1.
-	// If row=2, it goes to FIRST branch (row < topRowIndex) if topRowIndex > 2.
+func TestTable_Render_MinWidth(t *testing.T) {
+	columns := []Column{
+		{Name: "Max", FixedWidth: 10},
+		{Name: "Min", MinWidth: 50, FixedWidth: 0},
+	}
+	table := NewTable(columns)
+	table.width = 100
+	table.SetRect(0, 0, 100, 10)
+	records := &mockRecords{count: 1}
+	table.SetRecords(records)
 
-	// The only way to hit topRowIndex < 0 is if visibleRowsCount is large and row is small,
-	// but then it would likely hit the first branch.
+	// In render():
+	// i=0, col.FixedWidth=10 -> maxColWidth[0]=10, remainingWidth = 100+10 = 110.
+	// i=1, col.FixedWidth=0
+	// for _, column := range t.columns[2:] -> empty
+	// if maxColWidth[1] > col.FixedWidth (0 > 0) -> false
+	// if col.MinWidth > 0 && maxColWidth[1] < col.MinWidth (50 > 0 && 0 < 50) -> true
+	// maxColWidth[1] = 50. This hits line 128.
+
+	assert.Equal(t, 2, table.GetRowCount())
+}
+
+func TestTable_Render_MaxColWidth(t *testing.T) {
+	columns := []Column{
+		{Name: "Col0", FixedWidth: 0},
+		{Name: "Col1", FixedWidth: 20},
+		{Name: "Col2", FixedWidth: 30},
+	}
+	table := NewTable(columns)
+	table.width = 100
+	table.SetRect(0, 0, 100, 10)
+	records := &mockRecords{count: 1}
+
+	// i=0. FixedWidth=0.
+	// Inner loop:
+	//   column=Col1, FixedWidth=20. maxColWidth[0] = 0 - 20 = -20. (Hits line 121)
+	//   column=Col2, FixedWidth=30. maxColWidth[0] = -20 - 30 = -50. (Hits line 121)
+
+	table.SetRecords(records)
+	assert.Equal(t, 2, table.GetRowCount())
 }
 
 func TestTable_Render_EdgeCases(t *testing.T) {

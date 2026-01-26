@@ -221,6 +221,12 @@ func TestStore_ReadDir_Errors(t *testing.T) {
 	//})
 
 	t.Run("real_dial_error", func(t *testing.T) {
+		origFtpDial := ftpDial
+		defer func() { ftpDial = origFtpDial }()
+		ftpDial = func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return nil, fmt.Errorf("dial error")
+		}
+
 		// Use a port that is likely not used to trigger an error in ftp.Dial
 		rootInvalid, _ := url.Parse("ftp://localhost:1")
 		s := NewStore(*rootInvalid) // No factory
@@ -228,6 +234,53 @@ func TestStore_ReadDir_Errors(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to connect to ftp server")
 	})
+
+	t.Run("real_dial_success_mock", func(t *testing.T) {
+		origFtpDial := ftpDial
+		defer func() { ftpDial = origFtpDial }()
+		ftpDial = func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			return &mockFtpClient{}, nil
+		}
+
+		root, _ := url.Parse("ftp://example.com/")
+		s := NewStore(*root) // No factory
+		_, err := s.ReadDir(context.Background(), ".")
+		assert.NoError(t, err)
+	})
+
+	t.Run("default_port_assignment", func(t *testing.T) {
+		dialedAddr := ""
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			dialedAddr = addr
+			return &mockFtpClient{}, nil
+		}
+		rootNoPort, _ := url.Parse("ftp://example.com/")
+		s := NewStore(*rootNoPort, WithFtpClientFactory(factory))
+		_, _ = s.ReadDir(context.Background(), ".")
+		assert.Equal(t, "example.com:21", dialedAddr)
+	})
+
+	t.Run("with_port_assignment", func(t *testing.T) {
+		dialedAddr := ""
+		factory := func(addr string, options ...ftp.DialOption) (FtpClient, error) {
+			dialedAddr = addr
+			return &mockFtpClient{}, nil
+		}
+		rootWithPort, _ := url.Parse("ftp://example.com:2121/")
+		s := NewStore(*rootWithPort, WithFtpClientFactory(factory))
+		_, _ = s.ReadDir(context.Background(), ".")
+		assert.Equal(t, "example.com:2121", dialedAddr)
+	})
+}
+
+func TestStore_Create_Delete_NotImplemented(t *testing.T) {
+	root, _ := url.Parse("ftp://example.com")
+	s := NewStore(*root)
+	ctx := context.Background()
+
+	assert.Error(t, s.Delete(ctx, "/path"))
+	assert.Error(t, s.CreateDir(ctx, "/path"))
+	assert.Error(t, s.CreateFile(ctx, "/path"))
 }
 
 func TestStore_ReadDir_TLS_Options(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filetug/filetug/pkg/files"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -161,4 +162,32 @@ func TestHttpStore_RootTitle(t *testing.T) {
 	root, _ := url.Parse("https://user:pass@example.com/pub/")
 	store := NewStore(*root)
 	assert.Equal(t, "https://example.com/pub/", store.RootTitle())
+}
+
+func TestHttpStore_Delete(t *testing.T) {
+	ctx := context.Background()
+	root, _ := url.Parse("https://example.com/pub/")
+	store := NewStore(*root)
+	err := store.Delete(ctx, "/tmp/file.txt")
+	assert.ErrorIs(t, err, files.ErrNotImplemented)
+}
+
+func TestHttpStore_CreateDir(t *testing.T) {
+	ctx := context.Background()
+	root, _ := url.Parse("https://example.com/pub/")
+	store := NewStore(*root)
+	err := store.CreateDir(ctx, "/tmp/newdir")
+	assert.Error(t, err)
+	msg := err.Error()
+	assert.Contains(t, msg, "CreateDir not implemented for HTTP")
+}
+
+func TestHttpStore_CreateFile(t *testing.T) {
+	ctx := context.Background()
+	root, _ := url.Parse("https://example.com/pub/")
+	store := NewStore(*root)
+	err := store.CreateFile(ctx, "/tmp/newfile.txt")
+	assert.Error(t, err)
+	msg := err.Error()
+	assert.Contains(t, msg, "CreateFile not implemented for HTTP")
 }
