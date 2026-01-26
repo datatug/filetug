@@ -13,7 +13,7 @@ func (nav *Navigator) delete() {
 		return
 	}
 	NewOperation(deleteOperation, func(ctx context.Context, reportProgress ProgressReporter) error {
-		currentItemPath := currentItem.Path()
+		currentItemPath := currentItem.FullName()
 		if err := deleteEntries(ctx, nav.store, []string{currentItemPath}, reportProgress); err != nil {
 			return err
 		}

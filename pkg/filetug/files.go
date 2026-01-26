@@ -257,7 +257,7 @@ func (f *filesPanel) selectionChangedNavFunc(row, _ int) {
 	}
 	entry := ref.(*files.EntryWithDirPath)
 	f.nav.right.SetContent(f.nav.previewer)
-	f.nav.previewer.PreviewFile(*entry)
+	f.nav.previewer.PreviewEntry(*entry)
 }
 
 // selectionChanged: TODO: is it a duplicate of selectionChangedNavFunc?
@@ -275,7 +275,8 @@ func (f *filesPanel) selectionChanged(row, _ int) {
 	}
 
 	dirEntry := ref.(*files.EntryWithDirPath)
-	fullName := filepath.Join(dirEntry.Dir, dirEntry.Name())
+	name := dirEntry.Name()
+	fullName := filepath.Join(dirEntry.Dir, name)
 	f.rememberCurrent(fullName)
 
 	stat, err := os.Stat(fullName)
@@ -285,11 +286,12 @@ func (f *filesPanel) selectionChanged(row, _ int) {
 	}
 
 	if stat.IsDir() {
-		f.nav.previewer.SetText("Directory: " + fullName)
+		f.nav.previewer.SetTitle("Directory: " + name)
+		f.nav.previewer.SetText("")
 		return
 	}
 
-	f.nav.previewer.PreviewFile(*dirEntry)
+	f.nav.previewer.PreviewEntry(*dirEntry)
 }
 
 func (f *filesPanel) rememberCurrent(fullName string) {

@@ -50,8 +50,8 @@ type Navigator struct {
 	previewerFocusFunc func()
 	previewerBlurFunc  func()
 
-	left  *container
-	right *container
+	left  *Container
+	right *Container
 
 	dirsTree  *Tree
 	favorites *favorites
@@ -62,7 +62,7 @@ type Navigator struct {
 
 	dirSummary *dirSummary
 
-	previewer *previewer
+	previewer *previewerPanel
 
 	bottom *bottom
 
@@ -134,7 +134,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		gitStatusCache: make(map[string]*gitutils.RepoStatus),
 	}
 	nav.bottom = newBottom(nav)
-	nav.right = newContainer(2, nav)
+	nav.right = NewContainer(2, nav)
 	nav.favorites = newFavorites(nav)
 	nav.dirsTree = NewTree(nav)
 	nav.newPanel = NewNewPanel(nav)
@@ -143,7 +143,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 	copy(nav.proportions, defaultProportions)
 
 	nav.files = newFiles(nav)
-	nav.previewer = newPreviewer(nav)
+	nav.previewer = newPreviewerPanel(nav)
 	nav.dirSummary = newDirSummary(nav)
 	nav.right.SetContent(nav.dirSummary)
 

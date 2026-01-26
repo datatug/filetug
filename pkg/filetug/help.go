@@ -14,7 +14,7 @@ func createHelpModal(nav *Navigator, root tview.Primitive) (modal tview.Primitiv
 	const helpText = `F1 - Help
 Alt+F - Favorites
 Alt+G - Go to...
-Al+P - Show/Hide previewer
+Al+P - Show/Hide previewerPanel
 Alt+C - Copy filesPanel & directories
 Alt+M - Move filesPanel & directories
 Alt+D - Delete filesPanel & directories

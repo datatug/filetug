@@ -116,8 +116,8 @@ func TestEntryWithDirPath(t *testing.T) {
 	}
 
 	expectedPath := "/home/user/test.txt"
-	if e.Path() != expectedPath {
-		t.Errorf("expected Path() = %v, got %v", expectedPath, e.Path())
+	if e.FullName() != expectedPath {
+		t.Errorf("expected FullName() = %v, got %v", expectedPath, e.FullName())
 	}
 
 	expectedString := "/home/user/test.txt"

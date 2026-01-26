@@ -11,7 +11,7 @@ type EntryWithDirPath struct {
 	Dir string
 }
 
-func (c EntryWithDirPath) Path() string {
+func (c EntryWithDirPath) FullName() string {
 	name := c.Name()
 	return filepath.Join(c.Dir, name)
 }

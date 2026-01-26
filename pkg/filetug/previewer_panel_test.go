@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/alecthomas/assert/v2"
 	"github.com/filetug/filetug/pkg/files"
@@ -20,19 +22,38 @@ type mockDirEntryForPreviewer struct {
 
 func (m mockDirEntryForPreviewer) Name() string { return m.name }
 
+func waitForText(t *testing.T, getText func() string, needle string) {
+	t.Helper()
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if strings.Contains(getText(), needle) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	assert.Contains(t, getText(), needle)
+}
+
 func TestPreviewer(t *testing.T) {
 	app := tview.NewApplication()
 	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
+	nav.queueUpdateDraw = func(f func()) { f() }
 	p := nav.previewer
 
 	previewFile := func(name, fullName string) {
-		p.PreviewFile(files.EntryWithDirPath{
+		p.PreviewEntry(files.EntryWithDirPath{
 			DirEntry: mockDirEntryForPreviewer{name: name},
 			Dir:      filepath.Dir(fullName),
 		})
+	}
+	previewText := func() string {
+		if tv, ok := p.previewer.Main().(*tview.TextView); ok {
+			return tv.GetText(true)
+		}
+		return ""
 	}
 
 	p.textView.SetText("")
@@ -74,7 +95,7 @@ func TestPreviewer(t *testing.T) {
 
 	t.Run("PreviewFile_NotFound", func(t *testing.T) {
 		previewFile("non-existent.txt", "non-existent.txt")
-		assert.Contains(t, p.textView.GetText(false), "Failed to read file")
+		waitForText(t, previewText, "Failed to read file")
 	})
 
 	t.Run("PreviewFile_PlainText", func(t *testing.T) {
@@ -86,7 +107,7 @@ func TestPreviewer(t *testing.T) {
 		assert.NoError(t, err)
 
 		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
-		assert.Contains(t, p.textView.GetText(false), "hello world")
+		waitForText(t, previewText, "hello world")
 	})
 
 	t.Run("PreviewFile_JSON", func(t *testing.T) {
@@ -100,18 +121,18 @@ func TestPreviewer(t *testing.T) {
 		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
 		// Colorized output will have tags, but GetText(false) should strip them or show them depending on dynamic colors
 		// tview.TextView.GetText(false) returns the text without tags if dynamic colors are enabled.
-		assert.Contains(t, p.textView.GetText(false), "a")
+		waitForText(t, previewText, "a")
 	})
 
 	t.Run("InputCapture", func(t *testing.T) {
 		event := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
-		p.flex.GetInputCapture()(event)
+		p.rows.GetInputCapture()(event)
 
 		event = tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
-		p.flex.GetInputCapture()(event)
+		p.rows.GetInputCapture()(event)
 
 		event = tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone)
-		p.flex.GetInputCapture()(event)
+		p.rows.GetInputCapture()(event)
 	})
 
 	t.Run("PreviewFile_NoName", func(t *testing.T) {
@@ -133,7 +154,7 @@ func TestPreviewer(t *testing.T) {
 		assert.NoError(t, err)
 
 		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
-		assert.Contains(t, p.textView.GetText(false), "hello world")
+		waitForText(t, previewText, "hello world")
 	})
 
 	t.Run("PreviewFile_JSON_Invalid_Pretty", func(t *testing.T) {
@@ -145,12 +166,7 @@ func TestPreviewer(t *testing.T) {
 		assert.NoError(t, err)
 
 		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
-		assert.Contains(t, p.textView.GetText(true), "{invalid}")
-	})
-
-	t.Run("prettyJSON_Error", func(t *testing.T) {
-		_, err := prettyJSON("{invalid}")
-		assert.Error(t, err)
+		waitForText(t, previewText, "{invalid}")
 	})
 
 	t.Run("PreviewFile_Image_Meta", func(t *testing.T) {
@@ -191,7 +207,7 @@ func TestPreviewer(t *testing.T) {
 		assert.NoError(t, err)
 
 		previewFile(filepath.Base(tmpFile.Name()), tmpFile.Name())
-		assert.Contains(t, p.textView.GetText(false), "log line")
+		waitForText(t, previewText, "log line")
 	})
 
 	t.Run("PreviewFile_DSStore_Error_ReadFile", func(t *testing.T) {
@@ -203,51 +219,5 @@ func TestPreviewer(t *testing.T) {
 		dsPath := filepath.Join(tmpDir, ".DS_Store")
 		_ = os.Mkdir(dsPath, 0755) // Create as directory to cause read error
 		previewFile(".DS_Store", dsPath)
-	})
-
-	t.Run("readFileError", func(t *testing.T) {
-		// Test readFile error handling.
-		// We can try to read a directory as a file.
-		tmpDir, _ := os.MkdirTemp("", "testdir")
-		defer func() {
-			_ = os.RemoveAll(tmpDir)
-		}()
-		_, err := p.readFile(tmpDir, 0)
-		assert.Error(t, err)
-		assert.Contains(t, p.textView.GetText(false), "Failed to read file")
-	})
-
-	t.Run("readFile", func(t *testing.T) {
-		tmpFile, _ := os.CreateTemp("", "test*.txt")
-		defer func() {
-			_ = os.Remove(tmpFile.Name())
-		}()
-		content := "0123456789"
-		err := os.WriteFile(tmpFile.Name(), []byte(content), 0644)
-		assert.NoError(t, err)
-
-		t.Run("max_0", func(t *testing.T) {
-			data, err := p.readFile(tmpFile.Name(), 0)
-			assert.NoError(t, err)
-			assert.Equal(t, content, string(data))
-		})
-
-		t.Run("max_5", func(t *testing.T) {
-			data, err := p.readFile(tmpFile.Name(), 5)
-			assert.NoError(t, err)
-			assert.Equal(t, "01234", string(data))
-		})
-
-		t.Run("max_minus_5", func(t *testing.T) {
-			data, err := p.readFile(tmpFile.Name(), -5)
-			assert.NoError(t, err)
-			assert.Equal(t, "56789", string(data))
-		})
-
-		t.Run("max_minus_20", func(t *testing.T) {
-			data, err := p.readFile(tmpFile.Name(), -20)
-			assert.NoError(t, err)
-			assert.Equal(t, content, string(data))
-		})
 	})
 }

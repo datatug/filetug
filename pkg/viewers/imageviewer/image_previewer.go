@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/viewers"
+	"github.com/rivo/tview"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/riff"
 	_ "golang.org/x/image/vp8"
@@ -20,9 +22,35 @@ import (
 var _ viewers.Previewer = (*ImagePreviewer)(nil)
 
 type ImagePreviewer struct {
+	metaTable *viewers.MetaTable
 }
 
-func (i ImagePreviewer) GetMeta(path string) (meta *viewers.Meta) {
+func NewImagePreviewer() *ImagePreviewer {
+	return &ImagePreviewer{
+		metaTable: viewers.NewMetaTable(),
+	}
+}
+
+func (p ImagePreviewer) Preview(entry files.EntryWithDirPath, _ []byte, queueUpdateDraw func(func())) {
+	fullName := entry.FullName()
+	meta := p.GetMeta(fullName)
+	if meta != nil {
+		queueUpdateDraw(func() {
+			metaTable := viewers.NewMetaTable()
+			metaTable.SetMeta(meta)
+		})
+	}
+}
+
+func (p ImagePreviewer) Meta() tview.Primitive {
+	return p.metaTable
+}
+
+func (p ImagePreviewer) Main() tview.Primitive {
+	return nil
+}
+
+func (p ImagePreviewer) GetMeta(path string) (meta *viewers.Meta) {
 	f, err := os.Open(path)
 	if err != nil {
 		return

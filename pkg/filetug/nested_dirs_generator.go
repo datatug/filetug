@@ -39,7 +39,7 @@ func newNestedDirsGeneratorPanel(nav *Navigator, active tview.Primitive) tview.P
 
 	//var spacer tview.Primitive = nil
 	//buttons := tview.NewFlex()
-	//flex.AddItem(buttons, 3, 0, false)
+	//rows.AddItem(buttons, 3, 0, false)
 	//
 	//generateBtn := tview.NewButton("Generate")
 	//buttons.AddItem(generateBtn, 0, len(generateBtn.GetLabel()), false)

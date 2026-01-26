@@ -10,10 +10,10 @@ func TestNewContainer(t *testing.T) {
 	app := tview.NewApplication()
 	nav := &Navigator{app: app}
 	index := 1
-	c := newContainer(index, nav)
+	c := NewContainer(index, nav)
 
 	if c == nil {
-		t.Fatal("Expected container to be not nil")
+		t.Fatal("Expected Container to be not nil")
 	}
 	if c.index != index {
 		t.Errorf("Expected index %d, got %d", index, c.index)
@@ -29,7 +29,7 @@ func TestNewContainer(t *testing.T) {
 func TestContainer_SetContent(t *testing.T) {
 	app := tview.NewApplication()
 	nav := &Navigator{app: app}
-	c := newContainer(1, nav)
+	c := NewContainer(1, nav)
 
 	p := tview.NewBox()
 	c.SetContent(p)
@@ -62,7 +62,7 @@ func TestContainer_Focus(t *testing.T) {
 			app.SetFocus(p)
 		},
 	}
-	c := newContainer(1, nav)
+	c := NewContainer(1, nav)
 
 	p := tview.NewBox()
 	c.SetContent(p)

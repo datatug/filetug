@@ -1,12 +1,20 @@
 package viewers
 
+import (
+	"github.com/filetug/filetug/pkg/files"
+	"github.com/rivo/tview"
+)
+
 type Previewer interface {
-	GetMeta(path string) (meta *Meta)
+	Preview(entry files.EntryWithDirPath, data []byte, queueUpdateDraw func(func()))
+	Meta() tview.Primitive
+	Main() tview.Primitive
 }
 
 type Meta struct {
 	Groups []*MetaGroup
 }
+
 type MetaGroup struct {
 	ID      string        `json:"id"`
 	Title   string        `json:"title"`

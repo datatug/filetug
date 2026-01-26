@@ -19,8 +19,8 @@ func setupNavigatorForFilesTest(app *tview.Application) *Navigator {
 			app.SetFocus(p)
 		},
 	}
-	nav.right = newContainer(2, nav)
-	nav.previewer = &previewer{textView: tview.NewTextView()}
+	nav.right = NewContainer(2, nav)
+	nav.previewer = &previewerPanel{textView: tview.NewTextView()}
 	nav.dirsTree = &Tree{tv: tview.NewTreeView()}
 	return nav
 }

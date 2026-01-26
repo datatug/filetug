@@ -43,7 +43,7 @@ func newDirSummary(nav *Navigator) *dirSummary {
 		extTable: tview.NewTable().SetSelectable(true, false),
 	}
 	d.extTable.SetSelectedStyle(tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(tcell.ColorWhiteSmoke))
-	//flex.AddItem(tview.NewTextView().SetText("By extension").SetTextColor(tcell.ColorDarkGray), 1, 0, false)
+	//rows.AddItem(tview.NewTextView().SetText("By extension").SetTextColor(tcell.ColorDarkGray), 1, 0, false)
 	flex.AddItem(d.extTable, 0, 1, false)
 
 	d.extTable.SetInputCapture(d.inputCapture)

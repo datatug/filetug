@@ -147,8 +147,8 @@ func TestNavigator_ShowNodeError_Extra(t *testing.T) {
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
-	nav.right = newContainer(2, nav)
-	nav.previewer = newPreviewer(nav)
+	nav.right = NewContainer(2, nav)
+	nav.previewer = newPreviewerPanel(nav)
 
 	node := tview.NewTreeNode("test").SetReference("/test")
 	nav.showNodeError(node, os.ErrNotExist)
