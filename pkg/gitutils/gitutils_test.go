@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -274,6 +275,87 @@ func TestGetRepositoryStatus(t *testing.T) {
 			// It should only see 1 file changed (file1.txt in subDir)
 			if status.FilesChanged != 1 {
 				t.Errorf("Expected 1 file changed for subDir, got %d. It probably counted changes in parent/sibling dirs.", status.FilesChanged)
+			}
+		})
+
+		t.Run("empty directory stats", func(t *testing.T) {
+			emptyDir := filepath.Join(tempDir, "empty_dir")
+			if err := os.Mkdir(emptyDir, 0755); err != nil {
+				t.Fatalf("Failed to create empty_dir: %v", err)
+			}
+			status := GetDirStatus(context.Background(), repo, emptyDir)
+			if status == nil {
+				t.Fatal("Expected status for empty dir, got nil")
+			}
+			if status.FilesChanged != 0 {
+				t.Errorf("Expected 0 files changed for empty dir, got %d", status.FilesChanged)
+			}
+		})
+
+		t.Run("non-existent directory", func(t *testing.T) {
+			status := GetDirStatus(context.Background(), repo, filepath.Join(tempDir, "non-existent"))
+			if status == nil {
+				t.Fatal("Expected status for non-existent dir, got nil")
+			}
+			if status.FilesChanged != 0 {
+				t.Errorf("Expected 0 files changed for non-existent dir, got %d", status.FilesChanged)
+			}
+		})
+
+		t.Run("large untracked file line count", func(t *testing.T) {
+			largeFile := filepath.Join(tempDir, "large.txt")
+			content := strings.Repeat("line\n", 100)
+			if err := os.WriteFile(largeFile, []byte(content), 0644); err != nil {
+				t.Fatalf("Failed to write large file: %v", err)
+			}
+			status := GetDirStatus(context.Background(), repo, tempDir)
+			if status.Insertions < 100 {
+				t.Errorf("Expected at least 100 insertions, got %d", status.Insertions)
+			}
+		})
+
+		t.Run("deleted file line count", func(t *testing.T) {
+			delFile := filepath.Join(tempDir, "to_be_deleted.txt")
+			content := "line1\nline2\nline3\n"
+			if err := os.WriteFile(delFile, []byte(content), 0644); err != nil {
+				t.Fatalf("Failed to write file to be deleted: %v", err)
+			}
+			wt, _ := repo.Worktree()
+			_, _ = wt.Add("to_be_deleted.txt")
+			_, _ = wt.Commit("add file to be deleted", &git.CommitOptions{
+				Author: &object.Signature{Name: "T", Email: "e", When: time.Now()},
+			})
+
+			if err := os.Remove(delFile); err != nil {
+				t.Fatalf("Failed to remove file: %v", err)
+			}
+
+			status := GetDirStatus(context.Background(), repo, tempDir)
+			if status.Deletions != 3 {
+				t.Errorf("Expected 3 deletions, got %d", status.Deletions)
+			}
+		})
+
+		t.Run("repo without head", func(t *testing.T) {
+			emptyRepoDir, _ := os.MkdirTemp("", "empty-repo-*")
+			defer os.RemoveAll(emptyRepoDir)
+			emptyRepo, _ := git.PlainInit(emptyRepoDir, false)
+			status := GetDirStatus(context.Background(), emptyRepo, emptyRepoDir)
+			if status.Branch != "master" {
+				t.Errorf("Expected branch master for empty repo, got %v", status.Branch)
+			}
+		})
+
+		t.Run("detached head", func(t *testing.T) {
+			// Already has commits from previous tests
+			head, _ := repo.Head()
+			wt, _ := repo.Worktree()
+			_ = wt.Checkout(&git.CheckoutOptions{
+				Hash: head.Hash(),
+			})
+			status := GetDirStatus(context.Background(), repo, tempDir)
+			if len(status.Branch) != 7 {
+				t.Errorf("Expected short hash for detached head, got %v", status.Branch)
 			}
 		})
 	})

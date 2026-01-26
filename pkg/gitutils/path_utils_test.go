@@ -53,6 +53,16 @@ func TestGetRepositoryRoot(t *testing.T) {
 			dirPath:  nonRepoDir,
 			expected: "",
 		},
+		{
+			name:     "file_in_repo",
+			dirPath:  filepath.Join(repoRoot, "a", "file.txt"),
+			expected: repoRoot,
+		},
+	}
+
+	// Create a file in repo
+	if err := os.WriteFile(filepath.Join(repoRoot, "a", "file.txt"), []byte("test"), 0644); err != nil {
+		t.Fatal(err)
 	}
 
 	for _, tt := range tests {

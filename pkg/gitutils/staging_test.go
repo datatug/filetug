@@ -130,6 +130,143 @@ func TestStaging(t *testing.T) {
 	}
 }
 
+func TestStagingErrors(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-staging-errors-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	// Test StageFile for non-existent file in non-git repo
+	err = StageFile(filepath.Join(tempDir, "non-existent"))
+	if err == nil {
+		t.Error("Expected error for non-existent file in non-git repo")
+	}
+
+	// Init git repo
+	_, err = git.PlainInit(tempDir, false)
+	if err != nil {
+		t.Fatalf("Failed to init git repo: %v", err)
+	}
+
+	// Test StageFile for non-existent file in git repo
+	err = StageFile(filepath.Join(tempDir, "non-existent"))
+	if err == nil {
+		t.Error("Expected error for non-existent file in git repo")
+	}
+
+	// Test UnstageFile for non-existent file
+	err = UnstageFile(filepath.Join(tempDir, "non-existent"))
+	if err == nil {
+		t.Error("Expected error for non-existent file in UnstageFile")
+	}
+
+	// Test StageDir for non-existent dir
+	err = StageDir(filepath.Join(tempDir, "non-existent-dir"), false)
+	if err == nil {
+		t.Error("Expected error for non-existent dir in StageDir")
+	}
+
+	// Test getWorktreeAndRelPath symlink coverage (macOS specific often, but good to try)
+	// We'll just trigger the symlink logic if possible
+	if realTempDir, err := filepath.EvalSymlinks(tempDir); err == nil && realTempDir != tempDir {
+		// If we are already in a symlinked path, CanBeStaged will trigger EvalSymlinks
+		_, _ = CanBeStaged(filepath.Join(tempDir, "file.txt"))
+	}
+
+	// Try to create a symlink to test EvalSymlinks explicitly
+	linkDir := filepath.Join(os.TempDir(), "gitutils-link")
+	_ = os.Remove(linkDir)
+	if err := os.Symlink(tempDir, linkDir); err == nil {
+		defer os.Remove(linkDir)
+		_, _ = CanBeStaged(filepath.Join(linkDir, "file.txt"))
+	}
+
+	// Test CanBeStaged for a file that exists but is not in status (Clean)
+	// file.txt was committed in TestStaging, but this is a fresh tempDir.
+	cleanFile := filepath.Join(tempDir, "clean.txt")
+	_ = os.WriteFile(cleanFile, []byte("clean"), 0644)
+	w, _ := (func() (*git.Worktree, error) {
+		r, _ := git.PlainOpen(tempDir)
+		return r.Worktree()
+	})()
+	_, _ = w.Add("clean.txt")
+	_, _ = w.Commit("clean", &git.CommitOptions{
+		Author: &object.Signature{Name: "T", Email: "e", When: time.Now()},
+	})
+
+	can, _ := CanBeStaged(cleanFile)
+	if can {
+		t.Error("Expected CanBeStaged to be false for clean file")
+	}
+
+	// Test StageDir with recursive=true
+	err = StageDir(tempDir, true)
+	if err != nil {
+		t.Errorf("Expected no error for StageDir(recursive=true), got %v", err)
+	}
+
+	// Test UnstageFile error (e.g. invalid path outside repo)
+	err = UnstageFile("/invalid/path/far/away")
+	if err == nil {
+		t.Error("Expected error for UnstageFile on path outside repo")
+	}
+
+	// Test CanBeStaged for non-existent file in git repo
+	can, err = CanBeStaged(filepath.Join(tempDir, "actually-missing.txt"))
+	if can || err != nil {
+		t.Errorf("Expected false and nil error for actually missing file in CanBeStaged (not in status), got %v, %v", can, err)
+	}
+
+	// Test CanBeStaged for a directory
+	can, err = CanBeStaged(tempDir)
+	if can || err != nil {
+		t.Errorf("Expected false and nil error for directory in CanBeStaged (only files currently supported by its logic), got %v, %v", can, err)
+	}
+
+	// Test StageDir non-recursive
+	err = StageDir(tempDir, false)
+	if err != nil {
+		t.Errorf("Expected no error for StageDir(recursive=false), got %v", err)
+	}
+
+	// Create a subdirectory with a file and test non-recursive StageDir on it
+	subDir := filepath.Join(tempDir, "sub")
+	_ = os.Mkdir(subDir, 0755)
+	_ = os.WriteFile(filepath.Join(subDir, "subfile.txt"), []byte("sub"), 0644)
+	err = StageDir(subDir, false)
+	if err != nil {
+		t.Errorf("Expected no error for StageDir(recursive=false) on subDir, got %v", err)
+	}
+
+	// Test findRepoRoot for a file at the root of a repo
+	rootFile := filepath.Join(tempDir, "root_file.txt")
+	_ = os.WriteFile(rootFile, []byte("root"), 0644)
+	can, _ = CanBeStaged(rootFile)
+	// it can be staged because it's untracked
+	if !can {
+		t.Error("Expected CanBeStaged to be true for new root file")
+	}
+
+	// Test findRepoRoot for a path that doesn't exist but its parent does
+	// It doesn't error because findRepoRoot goes up until it finds .git or root
+	_, _ = CanBeStaged(filepath.Join(tempDir, "missing-dir", "file.txt"))
+
+	// Test findRepoRoot for a path that cannot be statted (if possible, but hard to mock)
+
+	// Test findRepoRoot starting from a file that is not in a git repo
+	nonGitDir, _ := os.MkdirTemp("", "non-git-*")
+	defer os.RemoveAll(nonGitDir)
+	nonGitFile := filepath.Join(nonGitDir, "file.txt")
+	_ = os.WriteFile(nonGitFile, []byte("test"), 0644)
+	_, err = findRepoRoot(nonGitFile)
+	if err == nil {
+		t.Error("Expected error for findRepoRoot on non-git file")
+	}
+}
+
 func TestStageDir(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "gitutils-stagedir-test-*")
 	if err != nil {
