@@ -12,7 +12,7 @@ type EntryWithDirPath struct {
 }
 
 func (c EntryWithDirPath) Path() string {
-	name := c.DirEntry.Name()
+	name := c.Name()
 	return filepath.Join(c.Dir, name)
 }
 

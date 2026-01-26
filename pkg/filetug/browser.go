@@ -1,8 +1,6 @@
 package filetug
 
 import (
-	"os"
-
 	"github.com/filetug/filetug/pkg/files"
 	"github.com/rivo/tview"
 )
@@ -13,6 +11,6 @@ type browser interface {
 }
 
 type current struct {
-	dir   string
-	entry os.DirEntry
+	dir string
+	//entry os.DirEntry
 }

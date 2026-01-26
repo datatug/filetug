@@ -11,7 +11,8 @@ import (
 
 var osReadDir = os.ReadDir
 var osHostname = os.Hostname
-var osRemove = os.Remove
+
+//var osRemove = os.Remove
 
 var _ files.Store = (*Store)(nil)
 
@@ -21,6 +22,7 @@ type Store struct {
 }
 
 func (s Store) Delete(ctx context.Context, path string) error {
+	_ = ctx
 	return os.Remove(path)
 }
 

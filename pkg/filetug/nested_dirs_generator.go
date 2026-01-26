@@ -53,6 +53,8 @@ func newNestedDirsGeneratorPanel(nav *Navigator, active tview.Primitive) tview.P
 
 	p := nestedDirsGeneratorPanel{
 		Boxed: sneatv.NewBoxed(flex),
+		flex:  flex,
+		form:  form,
 	}
 	return &p
 }
@@ -70,6 +72,7 @@ func GeneratedNestedDirs(ctx context.Context, store files.Store, dirPath, subDir
 	var wg sync.WaitGroup
 	wg.Add(subDirsCount)
 	for i := 0; i < subDirsCount; i++ {
+		i := i
 		go func() {
 			defer wg.Done()
 			subDirName := fmt.Sprintf(subDirNameFormat, i)

@@ -2,14 +2,14 @@ package filetug
 
 import "os"
 
-type basket struct {
+type Basket struct {
 	entries []os.DirEntry
 }
 
-func (b *basket) AddToBasket(entry os.DirEntry) {
+func (b *Basket) AddToBasket(entry os.DirEntry) {
 	b.entries = append(b.entries, entry)
 }
 
-func (b *basket) Clear() {
+func (b *Basket) Clear() {
 	b.entries = []os.DirEntry{}
 }
