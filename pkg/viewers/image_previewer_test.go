@@ -1,4 +1,4 @@
-package imageviewer
+package viewers
 
 import (
 	"image"

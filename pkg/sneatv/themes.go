@@ -13,6 +13,8 @@ type Theme struct {
 	BlurredGraphicsColor     tcell.Color
 	BlurredSelectedTextStyle tcell.Style
 
+	LabelColor tcell.Color
+
 	TableHeaderColor tcell.Color
 
 	HotkeyColor tcell.Color
@@ -31,6 +33,7 @@ var CurrentTheme = Theme{
 		Background(tcell.ColorGray).
 		Foreground(tcell.ColorWhite),
 
+	LabelColor:       tcell.ColorDarkGray,
 	TableHeaderColor: tcell.ColorWhiteSmoke,
 	HotkeyColor:      tcell.ColorWhite,
 }

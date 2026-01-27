@@ -1,4 +1,4 @@
-package imageviewer
+package viewers
 
 import (
 	"image"
@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/filetug/filetug/pkg/files"
-	"github.com/filetug/filetug/pkg/viewers"
 	"github.com/rivo/tview"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/riff"
@@ -19,38 +18,41 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-var _ viewers.Previewer = (*ImagePreviewer)(nil)
+var _ Previewer = (*ImagePreviewer)(nil)
 
 type ImagePreviewer struct {
-	metaTable *viewers.MetaTable
+	metaTable *MetaTable
 }
 
 func NewImagePreviewer() *ImagePreviewer {
-	return &ImagePreviewer{
-		metaTable: viewers.NewMetaTable(),
+	previewer := &ImagePreviewer{
+		metaTable: NewMetaTable(),
 	}
+	previewer.metaTable.SetSelectable(true, true)
+	return previewer
 }
 
 func (p ImagePreviewer) Preview(entry files.EntryWithDirPath, _ []byte, queueUpdateDraw func(func())) {
-	fullName := entry.FullName()
-	meta := p.GetMeta(fullName)
-	if meta != nil {
-		queueUpdateDraw(func() {
-			metaTable := viewers.NewMetaTable()
-			metaTable.SetMeta(meta)
-		})
-	}
+	go func() {
+		fullName := entry.FullName()
+		meta := p.GetMeta(fullName)
+		if meta != nil {
+			queueUpdateDraw(func() {
+				p.metaTable.SetMeta(meta)
+			})
+		}
+	}()
 }
 
 func (p ImagePreviewer) Meta() tview.Primitive {
-	return p.metaTable
-}
-
-func (p ImagePreviewer) Main() tview.Primitive {
 	return nil
 }
 
-func (p ImagePreviewer) GetMeta(path string) (meta *viewers.Meta) {
+func (p ImagePreviewer) Main() tview.Primitive {
+	return p.metaTable
+}
+
+func (p ImagePreviewer) GetMeta(path string) (meta *Meta) {
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -62,26 +64,26 @@ func (p ImagePreviewer) GetMeta(path string) (meta *viewers.Meta) {
 	if err != nil {
 		return
 	}
-	main := viewers.MetaGroup{
+	main := MetaGroup{
 		ID:    "main",
 		Title: "Format: " + strings.ToUpper(format),
 	}
 	main.Records = append(main.Records,
-		&viewers.MetaRecord{
+		&MetaRecord{
 			ID:         "width",
 			Title:      "Width",
 			Value:      strconv.Itoa(cfg.Width),
-			ValueAlign: viewers.AlignRight,
+			ValueAlign: AlignRight,
 		},
-		&viewers.MetaRecord{
+		&MetaRecord{
 			ID:         "height",
 			Title:      "Height",
 			Value:      strconv.Itoa(cfg.Height),
-			ValueAlign: viewers.AlignRight,
+			ValueAlign: AlignRight,
 		},
 	)
-	return &viewers.Meta{
-		Groups: []*viewers.MetaGroup{
+	return &Meta{
+		Groups: []*MetaGroup{
 			&main,
 		},
 	}

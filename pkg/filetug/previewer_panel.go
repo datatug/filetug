@@ -4,11 +4,12 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/fsutils"
 	"github.com/filetug/filetug/pkg/sneatv"
 	"github.com/filetug/filetug/pkg/viewers"
-	"github.com/filetug/filetug/pkg/viewers/imageviewer"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -19,6 +20,8 @@ type previewerPanel struct {
 	nav       *Navigator
 	attrsRow  *tview.Flex
 	fsAttrs   *tview.Table
+	sizeCell  *tview.TableCell
+	modCell   *tview.TableCell
 	separator *tview.TextView
 	previewer viewers.Previewer
 	textView  *tview.TextView
@@ -33,11 +36,12 @@ func newPreviewerPanel(nav *Navigator) *previewerPanel {
 		),
 		rows:      flex,
 		attrsRow:  tview.NewFlex().SetDirection(tview.FlexRow),
-		fsAttrs:   tview.NewTable(),
 		separator: tview.NewTextView().SetText(strings.Repeat("─", 20)).SetTextColor(tcell.ColorGray),
 		textView:  tview.NewTextView(),
 		nav:       nav,
 	}
+	p.fsAttrs = p.createAttrsTable()
+	p.fsAttrs.SetSelectable(true, true)
 
 	p.textView.SetWrap(false)
 	p.textView.SetDynamicColors(true)
@@ -73,14 +77,30 @@ func newPreviewerPanel(nav *Navigator) *previewerPanel {
 			nav.setAppFocus(nav.files)
 			return nil
 		case tcell.KeyUp:
-			nav.o.moveFocusUp(p.textView)
-			return nil
+			//nav.o.moveFocusUp(p.fsAttrs)
+			//return nil
+			return event
 		default:
 			return event
 		}
 	})
 
 	return &p
+}
+
+func (p *previewerPanel) createAttrsTable() *tview.Table {
+	t := tview.NewTable()
+	sizeLabelCell := tview.NewTableCell("Size").SetAlign(tview.AlignRight).SetTextColor(sneatv.CurrentTheme.LabelColor)
+	sizeLabelCell.SetSelectable(false)
+	t.SetCell(0, 0, sizeLabelCell)
+	p.sizeCell = tview.NewTableCell("")
+	t.SetCell(0, 1, p.sizeCell)
+	modLabelCell := tview.NewTableCell("Modified").SetAlign(tview.AlignRight).SetTextColor(sneatv.CurrentTheme.LabelColor)
+	modLabelCell.SetSelectable(false)
+	t.SetCell(1, 0, modLabelCell)
+	p.modCell = tview.NewTableCell("").SetAlign(tview.AlignRight)
+	t.SetCell(1, 1, p.modCell)
+	return t
 }
 
 func (p *previewerPanel) setPreviewer(previewer viewers.Previewer) {
@@ -94,14 +114,13 @@ func (p *previewerPanel) setPreviewer(previewer viewers.Previewer) {
 	}
 	p.previewer = previewer
 	if previewer != nil {
-		if meta := previewer.Meta(); meta != nil {
-			p.attrsRow.AddItem(meta, 0, 1, false)
-		}
+		//if meta := previewer.Meta(); meta != nil {
+		//	p.attrsRow.AddItem(meta, 0, 1, false)
+		//}
 		if main := previewer.Main(); main != nil {
 			p.rows.AddItem(main, 0, 1, false)
 		}
 	}
-
 }
 
 func (p *previewerPanel) SetErr(err error) {
@@ -119,26 +138,46 @@ func (p *previewerPanel) SetText(text string) {
 }
 
 func (p *previewerPanel) PreviewEntry(entry files.EntryWithDirPath) {
+	if info, err := entry.Info(); err == nil {
+		size := info.Size()
+		p.sizeCell.SetText(fsutils.GetSizeShortText(size))
+		p.modCell.SetText(info.ModTime().Format(time.RFC3339))
+	}
+
 	name := entry.Name()
 	fullName := entry.FullName()
 	if name == "" {
 		_, name = path.Split(fullName)
 	}
 	p.SetTitle(name)
+	var previewer viewers.Previewer
 	switch name {
 	case ".DS_Store":
-		p.previewer = viewers.NewDsstorePreviewer()
+		if _, ok := p.previewer.(*viewers.DsstorePreviewer); !ok {
+			previewer = viewers.NewDsstorePreviewer()
+		}
 	default:
 		ext := strings.ToLower(filepath.Ext(name))
 		switch ext {
 		case ".json":
-			p.setPreviewer(viewers.NewJsonPreviewer())
+			if _, ok := p.previewer.(*viewers.JsonPreviewer); !ok {
+				previewer = viewers.NewJsonPreviewer()
+				p.setPreviewer(previewer)
+			}
 		case ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".riff", ".tiff", ".vp8", ".webp":
-			p.setPreviewer(imageviewer.NewImagePreviewer())
-			return
+			if _, ok := p.previewer.(*viewers.ImagePreviewer); !ok {
+				previewer = viewers.NewImagePreviewer()
+			}
 		default:
-			p.setPreviewer(viewers.NewTextPreviewer())
+			if _, ok := p.previewer.(*viewers.TextPreviewer); !ok {
+				previewer = viewers.NewTextPreviewer()
+			}
 		}
 	}
-	p.previewer.Preview(entry, nil, p.nav.queueUpdateDraw)
+	if previewer != nil {
+		p.setPreviewer(previewer)
+	}
+	if p.previewer != nil {
+		p.previewer.Preview(entry, nil, p.nav.queueUpdateDraw)
+	}
 }
