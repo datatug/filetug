@@ -220,6 +220,42 @@ func TestGetDirStatus_ContextCanceledInLoop(t *testing.T) {
 	}
 }
 
+func TestGetDirStatus_ContextCanceledAfterHead(t *testing.T) {
+	dir, repo, _ := initRepoWithCommit(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stubRepoHead(t, func(r *git.Repository) (*plumbing.Reference, error) {
+		ref, err := r.Head()
+		cancel()
+		return ref, err
+	})
+
+	status := GetDirStatus(ctx, repo, dir)
+	if status == nil {
+		t.Fatal("expected non-nil status")
+	}
+}
+
+func TestGetDirStatus_ContextCanceledBeforeSemaphore(t *testing.T) {
+	dir, repo, _ := initRepoWithCommit(t)
+
+	// Fill the semaphore to force the select to take ctx.Done.
+	gitStatusSemaphore <- struct{}{}
+	gitStatusSemaphore <- struct{}{}
+	t.Cleanup(func() {
+		<-gitStatusSemaphore
+		<-gitStatusSemaphore
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	status := GetDirStatus(ctx, repo, dir)
+	if status != nil {
+		t.Fatalf("expected nil status when context is canceled before semaphore, got %v", status)
+	}
+}
+
 func TestGetFileStatus_WorktreeErrorSecondCall(t *testing.T) {
 	_, repo, filePath := initRepoWithCommit(t)
 
@@ -235,6 +271,26 @@ func TestGetFileStatus_WorktreeErrorSecondCall(t *testing.T) {
 	status := GetFileStatus(context.Background(), repo, filePath)
 	if status == nil {
 		t.Fatal("expected non-nil status")
+	}
+}
+
+func TestGetFileStatus_ContextCanceledBeforeSemaphore(t *testing.T) {
+	_, repo, filePath := initRepoWithCommit(t)
+
+	// Fill the semaphore to force the select to take ctx.Done.
+	gitStatusSemaphore <- struct{}{}
+	gitStatusSemaphore <- struct{}{}
+	t.Cleanup(func() {
+		<-gitStatusSemaphore
+		<-gitStatusSemaphore
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	status := GetFileStatus(ctx, repo, filePath)
+	if status != nil {
+		t.Fatalf("expected nil status when context is canceled before semaphore, got %v", status)
 	}
 }
 
