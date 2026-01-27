@@ -46,7 +46,7 @@ We are targeting 100% test coverage (_with a minimum threshold of 99%_).
 
 ## Installation
 
-![Cross Platform](https://img.shields.io/badge/Cross%20Platform-mac%20%7C%20linux%20%7C%20windows-blue)
+![Cross Platform](https://img.shields.io/badge/Corss%20platform-Mac%20%7C%20Linux%20%7C%20Windows-black)
 
 ### Mac OS
 
