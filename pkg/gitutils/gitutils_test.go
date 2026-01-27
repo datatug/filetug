@@ -362,3 +362,24 @@ func TestGetRepositoryStatus(t *testing.T) {
 		})
 	})
 }
+
+func TestGetDirStatus_BareRepo(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-bare-repo-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	repo, err := git.PlainInit(tempDir, true)
+	if err != nil {
+		t.Fatalf("Failed to init bare repo: %v", err)
+	}
+
+	ctx := context.Background()
+	status := GetDirStatus(ctx, repo, tempDir)
+	if status != nil {
+		t.Fatalf("Expected nil status for bare repo, got %v", status)
+	}
+}

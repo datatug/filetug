@@ -3,6 +3,7 @@ package gitutils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -339,4 +340,141 @@ func TestStageDir(t *testing.T) {
 			t.Error("subdir/nested/file2.txt should be staged")
 		}
 	})
+}
+
+func TestStageDir_ReadDirError(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-stagedir-readerr-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	_, err = git.PlainInit(tempDir, false)
+	if err != nil {
+		t.Fatalf("Failed to init git repo: %v", err)
+	}
+
+	filePath := filepath.Join(tempDir, "file.txt")
+	err = os.WriteFile(filePath, []byte("content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	err = StageDir(filePath, false)
+	if err == nil {
+		t.Fatalf("Expected error when staging a file path as directory")
+	}
+}
+
+func TestGetWorktreeAndRelPath_OpenRepoError(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-open-repo-error-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	gitDir := filepath.Join(tempDir, ".git")
+	err = os.MkdirAll(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create fake .git dir: %v", err)
+	}
+
+	filePath := filepath.Join(tempDir, "file.txt")
+	err = os.WriteFile(filePath, []byte("content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	_, _, _, err = getWorktreeAndRelPath(filePath)
+	if err == nil {
+		t.Fatal("Expected error for fake git repo")
+	}
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "failed to open git repo") {
+		t.Fatalf("Expected open repo error, got %v", err)
+	}
+}
+
+func TestCanBeStaged_FakeRepoError(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-canbestaged-fake-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	gitDir := filepath.Join(tempDir, ".git")
+	err = os.MkdirAll(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create fake .git dir: %v", err)
+	}
+
+	filePath := filepath.Join(tempDir, "file.txt")
+	err = os.WriteFile(filePath, []byte("content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	can, err := CanBeStaged(filePath)
+	if err == nil {
+		t.Fatalf("Expected error for fake git repo, got can=%v", can)
+	}
+}
+
+func TestCanBeStaged_StatusError(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-canbestaged-statuserr-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	_, err = git.PlainInit(tempDir, false)
+	if err != nil {
+		t.Fatalf("Failed to init git repo: %v", err)
+	}
+
+	filePath := filepath.Join(tempDir, "file.txt")
+	err = os.WriteFile(filePath, []byte("content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	indexPath := filepath.Join(tempDir, ".git", "index")
+	err = os.MkdirAll(indexPath, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create index dir: %v", err)
+	}
+
+	_, err = CanBeStaged(filePath)
+	if err == nil {
+		t.Fatalf("Expected error when status cannot read index")
+	}
+}
+
+func TestStageDir_RecursiveMissingPathError(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-stagedir-recursive-missing-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	_, err = git.PlainInit(tempDir, false)
+	if err != nil {
+		t.Fatalf("Failed to init git repo: %v", err)
+	}
+
+	missingPath := filepath.Join(tempDir, "missing-dir")
+	err = StageDir(missingPath, true)
+	if err == nil {
+		t.Fatalf("Expected error for missing path with recursive StageDir")
+	}
 }
