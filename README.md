@@ -41,9 +41,18 @@ We are targeting to achieve 100% test coverage (_with a minimum threshold of 90%
 
 ## Installation
 
+### Mac OS
 ```shell
 brew tap filetug/filetug
-brew install filetug 
+brew install filetug
+ft
+```
+
+### From source:
+```shell
+go install github.com/filetug/filetug@main
+ln -s "$(go env GOPATH)/bin/filetug" "$(go env GOPATH)/bin/ft"
+ft
 ```
 
 ## Usage
