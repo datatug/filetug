@@ -313,74 +313,92 @@ func (nav *Navigator) goDir(dir string) {
 }
 
 func (nav *Navigator) updateGitStatus(ctx context.Context, repo *git.Repository, fullPath string, node *tview.TreeNode, prefix string) {
+	cleanPrefix := stripGitStatusPrefix(prefix)
+	if node == nil {
+		return
+	}
+	status := nav.getGitStatus(ctx, repo, fullPath, true)
+	if status == nil {
+		return
+	}
+	statusText := nav.gitStatusText(status, fullPath, true)
+	if nav.app != nil {
+		nav.queueUpdateDraw(func() {
+			node.SetText(cleanPrefix + statusText)
+		})
+	} else {
+		node.SetText(cleanPrefix + statusText)
+	}
+}
+
+const gitStatusSeparator = "[gray]┆[-]"
+
+func stripGitStatusPrefix(text string) string {
+	separatorIndex := strings.Index(text, gitStatusSeparator)
+	if separatorIndex == -1 {
+		return text
+	}
+	return text[:separatorIndex]
+}
+
+func (nav *Navigator) getGitStatus(ctx context.Context, repo *git.Repository, fullPath string, isDir bool) *gitutils.RepoStatus {
 	nav.gitStatusCacheMu.RLock()
 	cachedStatus, ok := nav.gitStatusCache[fullPath]
 	nav.gitStatusCacheMu.RUnlock()
-
-	if ok && node != nil {
-		repoRoot := gitutils.GetRepositoryRoot(fullPath)
-		isRepoRoot := repoRoot != "" && (fullPath == repoRoot || fullPath == repoRoot+"/")
-
-		hasChanges := cachedStatus.FilesChanged > 0 || cachedStatus.Insertions > 0 || cachedStatus.Deletions > 0
-		statusText := ""
-		if hasChanges || isRepoRoot {
-			statusText = cachedStatus.String()
-		}
-
-		if nav.app != nil {
-			nav.queueUpdateDraw(func() {
-				node.SetText(prefix + statusText)
-			})
-		} else {
-			node.SetText(prefix + statusText)
-		}
-		return
+	if ok {
+		return cachedStatus
 	}
 
 	if repo == nil {
 		repoRoot := gitutils.GetRepositoryRoot(fullPath)
 		if repoRoot == "" {
-			return
+			return nil
 		}
 
 		var err error
 		repo, err = git.PlainOpen(repoRoot)
 		if err != nil {
-			return
+			return nil
 		}
 	}
 
-	status := gitutils.GetDirStatus(ctx, repo, fullPath)
+	var status *gitutils.RepoStatus
+	if isDir {
+		status = gitutils.GetDirStatus(ctx, repo, fullPath)
+	} else {
+		status = gitutils.GetFileStatus(ctx, repo, fullPath)
+	}
 	if status == nil {
-		return
+		return nil
 	}
 
 	select {
 	case <-ctx.Done():
-		return
+		return nil
 	default:
-	}
-
-	repoRoot := gitutils.GetRepositoryRoot(fullPath)
-	isRepoRoot := repoRoot != "" && (fullPath == repoRoot || fullPath == repoRoot+"/")
-
-	hasChanges := status.FilesChanged > 0 || status.Insertions > 0 || status.Deletions > 0
-	statusText := ""
-	if hasChanges || isRepoRoot {
-		statusText = status.String()
 	}
 
 	nav.gitStatusCacheMu.Lock()
 	nav.gitStatusCache[fullPath] = status
 	nav.gitStatusCacheMu.Unlock()
+	return status
+}
 
-	if nav.app != nil {
-		nav.queueUpdateDraw(func() {
-			node.SetText(prefix + statusText)
-		})
-	} else {
-		node.SetText(prefix + statusText)
+func (nav *Navigator) gitStatusText(status *gitutils.RepoStatus, fullPath string, isDir bool) string {
+	if status == nil {
+		return ""
 	}
+
+	hasChanges := status.FilesChanged > 0 || status.Insertions > 0 || status.Deletions > 0
+	isRepoRoot := false
+	if isDir {
+		repoRoot := gitutils.GetRepositoryRoot(fullPath)
+		isRepoRoot = repoRoot != "" && (fullPath == repoRoot || fullPath == repoRoot+"/")
+	}
+	if hasChanges || isRepoRoot {
+		return status.String()
+	}
+	return ""
 }
 
 var saveCurrentDir = ftstate.SaveCurrentDir
@@ -415,12 +433,12 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dir str
 				nav.showNodeError(node, err)
 				return
 			}
-			nav.onDataLoaded(node, dirContext, isTreeRootChanged)
+			nav.onDataLoaded(ctx, node, dirContext, isTreeRootChanged)
 		})
 	}()
 }
 
-func (nav *Navigator) onDataLoaded(node *tview.TreeNode, dirContext *DirContext, isTreeRootChanged bool) {
+func (nav *Navigator) onDataLoaded(ctx context.Context, node *tview.TreeNode, dirContext *DirContext, isTreeRootChanged bool) {
 	nav.dirSummary.SetDir(dirContext)
 
 	//nav.filesPanel.Clear()
@@ -429,10 +447,10 @@ func (nav *Navigator) onDataLoaded(node *tview.TreeNode, dirContext *DirContext,
 	dirRecords := NewFileRows(dirContext)
 	nav.files.SetRows(dirRecords, node != nav.dirsTree.rootNode)
 
-	ctx := context.Background() // TODO: use a cancelable context
 	if isTreeRootChanged {
 		nav.dirsTree.setDirContext(ctx, node, dirContext)
 	}
+	nav.files.updateGitStatuses(ctx, dirContext)
 }
 
 func (nav *Navigator) showNodeError(node *tview.TreeNode, err error) {

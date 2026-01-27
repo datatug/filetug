@@ -5,6 +5,7 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/filetug/filetug/pkg/files"
@@ -30,6 +31,7 @@ func NewFileRows(dir *DirContext) *FileRows {
 		VisibleEntries: entries,
 		Infos:          make([]os.FileInfo, len(entries)),
 		VisualInfos:    make([]os.FileInfo, len(entries)),
+		gitStatusText:  make(map[string]string),
 	}
 }
 
@@ -44,6 +46,8 @@ type FileRows struct {
 	VisualInfos    []os.FileInfo
 	Err            error
 	filter         ftui.Filter
+	gitStatusMu    sync.RWMutex
+	gitStatusText  map[string]string
 }
 
 func (r *FileRows) HideParent() bool {
@@ -60,6 +64,35 @@ func (r *FileRows) HideParent() bool {
 func (r *FileRows) SetFilter(filter ftui.Filter) {
 	r.filter = filter
 	r.applyFilter()
+}
+
+func (r *FileRows) SetGitStatusText(fullPath string, statusText string) bool {
+	if statusText == "" {
+		r.gitStatusMu.Lock()
+		_, ok := r.gitStatusText[fullPath]
+		if ok {
+			delete(r.gitStatusText, fullPath)
+		}
+		r.gitStatusMu.Unlock()
+		return ok
+	}
+
+	r.gitStatusMu.Lock()
+	current, ok := r.gitStatusText[fullPath]
+	if ok && current == statusText {
+		r.gitStatusMu.Unlock()
+		return false
+	}
+	r.gitStatusText[fullPath] = statusText
+	r.gitStatusMu.Unlock()
+	return true
+}
+
+func (r *FileRows) getGitStatusText(fullPath string) string {
+	r.gitStatusMu.RLock()
+	statusText := r.gitStatusText[fullPath]
+	r.gitStatusMu.RUnlock()
+	return statusText
 }
 
 func (r *FileRows) applyFilter() {
@@ -126,11 +159,18 @@ func (r *FileRows) GetCell(row, col int) *tview.TableCell {
 			if !isDir {
 				isDir = r.isSymlinkToDir(dirEntry)
 			}
+			fullPath := dirEntry.FullName()
+			statusText := r.getGitStatusText(fullPath)
+			displayName := name
 			if isDir {
-				cell = tview.NewTableCell(dirEmoji + name)
+				displayName = dirEmoji + displayName
 			} else {
-				cell = tview.NewTableCell("📄" + name)
+				displayName = "📄" + displayName
 			}
+			if statusText != "" {
+				displayName = displayName + " " + statusText
+			}
+			cell = tview.NewTableCell(displayName)
 		} else {
 			fi := r.VisualInfos[i]
 			if fi == nil || reflect.ValueOf(fi).IsNil() {

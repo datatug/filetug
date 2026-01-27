@@ -21,9 +21,12 @@ func NewJsonPreviewer() *JsonPreviewer {
 }
 
 func (p JsonPreviewer) Preview(entry files.EntryWithDirPath, data []byte, queueUpdateDraw func(func())) {
-	data, err := p.readFile(entry, 0)
-	if err != nil {
-		return
+	if data == nil {
+		var err error
+		data, err = p.readFile(entry, 0)
+		if err != nil {
+			return
+		}
 	}
 	str, _ := prettyJSON(string(data))
 	data = []byte(str)

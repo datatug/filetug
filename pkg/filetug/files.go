@@ -1,6 +1,7 @@
 package filetug
 
 import (
+	"context"
 	"os"
 	"path"
 	"path/filepath"
@@ -10,8 +11,10 @@ import (
 	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/filetug/ftstate"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
+	"github.com/filetug/filetug/pkg/gitutils"
 	"github.com/filetug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
+	"github.com/go-git/go-git/v5"
 	"github.com/rivo/tview"
 )
 
@@ -107,6 +110,53 @@ func (f *filesPanel) SetRows(rows *FileRows, showDirs bool) {
 		}
 	}()
 
+}
+
+func (f *filesPanel) updateGitStatuses(ctx context.Context, dirContext *DirContext) {
+	if f.nav == nil || f.rows == nil || dirContext == nil {
+		return
+	}
+	if f.nav.store.RootURL().Scheme != "file" {
+		return
+	}
+	repoRoot := gitutils.GetRepositoryRoot(dirContext.Path)
+	if repoRoot == "" {
+		return
+	}
+	repo, err := git.PlainOpen(repoRoot)
+	if err != nil {
+		return
+	}
+
+	rows := f.rows
+	table := f.table
+	queueUpdateDraw := f.nav.queueUpdateDraw
+	for _, entry := range rows.AllEntries {
+		entry := entry
+		fullPath := entry.FullName()
+		isDir := entry.IsDir()
+		if !isDir {
+			isDir = rows.isSymlinkToDir(entry)
+		}
+
+		go func() {
+			status := f.nav.getGitStatus(ctx, repo, fullPath, isDir)
+			if status == nil {
+				return
+			}
+			statusText := f.nav.gitStatusText(status, fullPath, isDir)
+			updated := rows.SetGitStatusText(fullPath, statusText)
+			if !updated || queueUpdateDraw == nil {
+				return
+			}
+			queueUpdateDraw(func() {
+				if f.rows != rows {
+					return
+				}
+				table.SetContent(rows)
+			})
+		}()
+	}
 }
 
 func (f *filesPanel) SetFilter(filter ftui.Filter) {

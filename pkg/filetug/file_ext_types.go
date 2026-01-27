@@ -39,4 +39,5 @@ const otherExtensionsGroupID = "Other"
 
 var fileExtPlurals = map[string]string{
 	"Data": "Data",
+	"Code": "Code",
 }

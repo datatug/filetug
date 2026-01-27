@@ -42,7 +42,7 @@ func (p *TextPreviewer) Preview(entry files.EntryWithDirPath, data []byte, queue
 		if lexer := lexers.Match(name); lexer == nil {
 			queueUpdateDraw(func() {
 				p.SetDynamicColors(false)
-				p.TextView.SetText(string(data))
+				p.SetText(string(data))
 			})
 		} else {
 			colorized, err := chroma2tcell.Colorize(string(data), "dracula", lexer)
@@ -51,10 +51,10 @@ func (p *TextPreviewer) Preview(entry files.EntryWithDirPath, data []byte, queue
 					p.showError("Failed to format file: " + err.Error())
 					return
 				}
-				p.TextView.Clear()
-				p.TextView.SetDynamicColors(true)
-				p.TextView.SetText(colorized)
-				p.TextView.SetWrap(true)
+				p.Clear()
+				p.SetDynamicColors(true)
+				p.SetText(colorized)
+				p.SetWrap(true)
 			})
 		}
 	}()
@@ -80,6 +80,6 @@ func (p *TextPreviewer) readFile(entry files.EntryWithDirPath, max int) (data []
 
 func (p *TextPreviewer) showError(text string) {
 	p.SetDynamicColors(false)
-	p.TextView.SetText(text)
-	p.TextView.SetTextColor(tcell.ColorRed)
+	p.SetText(text)
+	p.SetTextColor(tcell.ColorRed)
 }

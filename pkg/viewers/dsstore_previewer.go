@@ -24,15 +24,17 @@ func NewDsstorePreviewer() *DsstorePreviewer {
 }
 
 func (p DsstorePreviewer) Preview(entry files.EntryWithDirPath, data []byte, queueUpdateDraw func(func())) {
-
-	fullName := entry.FullName()
-	data, err := fsutils.ReadFileData(fullName, 0)
-	if err != nil {
-		return
+	if data == nil {
+		fullName := entry.FullName()
+		var err error
+		data, err = fsutils.ReadFileData(fullName, 0)
+		if err != nil {
+			return
+		}
 	}
 	bufferRead := bytes.NewBuffer(data)
 	var s dsstore.Store
-	err = s.Read(bufferRead)
+	err := s.Read(bufferRead)
 	if err != nil {
 		p.showError(fmt.Sprintf("Failed to read %s: %s", entry.Name(), err.Error()))
 		return

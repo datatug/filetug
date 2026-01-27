@@ -101,11 +101,12 @@ func TestFileRows_GetCell(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
 	fr := NewFileRows(&DirContext{Store: store, Path: "/home"})
 	fr.VisibleEntries = []files.EntryWithDirPath{
-		{DirEntry: mockDirEntry{name: "file.go", isDir: false}},
+		{DirEntry: mockDirEntry{name: "file.go", isDir: false}, Dir: "/home"},
 	}
-	fr.VisualInfos = []os.FileInfo{
-		files.NewFileInfo(files.NewDirEntry("file.go", false), files.Size(1024), files.ModTime(time.Now())),
-	}
+	entry := files.NewDirEntry("file.go", false)
+	modTime := files.ModTime(time.Now())
+	info := files.NewFileInfo(entry, files.Size(1024), modTime)
+	fr.VisualInfos = []os.FileInfo{info}
 
 	// Row 0 is ".."
 	cell := fr.GetCell(0, 0)
@@ -126,6 +127,38 @@ func TestFileRows_GetCell(t *testing.T) {
 	cell = fr.GetCell(1, 2)
 	assert.NotNil(t, cell)
 	assert.NotEmpty(t, cell.Text)
+}
+
+func TestFileRows_SetGitStatusText(t *testing.T) {
+	store := mockStore{root: url.URL{Path: "/"}}
+	fr := NewFileRows(&DirContext{Store: store, Path: "/home"})
+	fr.VisibleEntries = []files.EntryWithDirPath{
+		{DirEntry: mockDirEntry{name: "file.go", isDir: false}, Dir: "/home"},
+	}
+	fr.VisualInfos = []os.FileInfo{
+		files.NewFileInfo(files.NewDirEntry("file.go", false), files.Size(1024), files.ModTime(time.Now())),
+	}
+
+	fullPath := filepath.Join("/home", "file.go")
+	statusText := "[gray]┆[-]main"
+	updated := fr.SetGitStatusText(fullPath, statusText)
+	assert.True(t, updated)
+
+	updated = fr.SetGitStatusText(fullPath, statusText)
+	assert.False(t, updated)
+
+	cell := fr.GetCell(1, 0)
+	assert.NotNil(t, cell)
+	assert.Contains(t, cell.Text, "file.go")
+	assert.Contains(t, cell.Text, "┆")
+
+	updated = fr.SetGitStatusText(fullPath, "")
+	assert.True(t, updated)
+
+	cell = fr.GetCell(1, 0)
+	assert.NotNil(t, cell)
+	assert.Contains(t, cell.Text, "file.go")
+	assert.NotContains(t, cell.Text, "┆")
 }
 
 func TestFileRows_Extra(t *testing.T) {

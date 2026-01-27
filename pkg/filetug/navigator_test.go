@@ -143,8 +143,9 @@ func TestNavigator_goDir(t *testing.T) {
 			children: []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}},
 		}
 
-		nav.onDataLoaded(node, dirContext, true)
-		nav.onDataLoaded(node, dirContext, false)
+		ctx := context.Background()
+		nav.onDataLoaded(ctx, node, dirContext, true)
+		nav.onDataLoaded(ctx, node, dirContext, false)
 
 		err := errors.New("test error")
 		nav.showNodeError(node, err)
@@ -160,7 +161,8 @@ func TestNavigator_onDataLoaded_isTreeRootChanged(t *testing.T) {
 		Path:     "/test",
 		children: []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}},
 	}
-	nav.onDataLoaded(node, dirContext, true)
+	ctx := context.Background()
+	nav.onDataLoaded(ctx, node, dirContext, true)
 }
 
 func TestNavigator_setBreadcrumbs_Complex(t *testing.T) {
@@ -331,6 +333,27 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 		nav.gitStatusCache[path] = status
 		nav.updateGitStatus(ctx, nil, path, node, "prefix: ")
 		assert.Equal(t, "prefix: "+status.String(), node.GetText())
+	})
+
+	t.Run("PrefixAlreadyHasStatus", func(t *testing.T) {
+		nav.app = nil
+		status := &gitutils.RepoStatus{Branch: "main"}
+		path := "/repo"
+		oldOsStat := gitutils.OsStat
+		gitutils.OsStat = func(name string) (os.FileInfo, error) {
+			if name == "/repo/.git" {
+				return mockFileInfo{isDir: true}, nil
+			}
+			return oldOsStat(name)
+		}
+		defer func() { gitutils.OsStat = oldOsStat }()
+
+		nav.gitStatusCache[path] = status
+		prefixWithStatus := "prefix: " + status.String()
+		nav.updateGitStatus(ctx, nil, path, node, prefixWithStatus)
+		expected := "prefix: " + status.String()
+		actual := node.GetText()
+		assert.Equal(t, expected, actual)
 	})
 }
 

@@ -1,6 +1,13 @@
 package gitutils
 
-import "testing"
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/go-git/go-git/v5"
+)
 
 func TestFileGitStatus_String(t *testing.T) {
 	tests := []struct {
@@ -19,5 +26,43 @@ func TestFileGitStatus_String(t *testing.T) {
 				t.Errorf("FileGitStatus.String() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestGetFileStatus_UntrackedFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gitutils-file-status-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	_, err = git.PlainInit(tempDir, false)
+	if err != nil {
+		t.Fatalf("Failed to init git repo: %v", err)
+	}
+
+	filePath := filepath.Join(tempDir, "file.txt")
+	err = os.WriteFile(filePath, []byte("line1\nline2\n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	repo, err := git.PlainOpen(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to open git repo: %v", err)
+	}
+
+	ctx := context.Background()
+	status := GetFileStatus(ctx, repo, filePath)
+	if status == nil {
+		t.Fatal("Expected non-nil status")
+	}
+	if status.FilesChanged != 1 {
+		t.Fatalf("Expected FilesChanged=1, got %d", status.FilesChanged)
+	}
+	if status.Branch == "" {
+		t.Fatal("Expected non-empty branch")
 	}
 }

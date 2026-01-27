@@ -21,6 +21,16 @@ type mockDirEntryForPreviewer struct {
 }
 
 func (m mockDirEntryForPreviewer) Name() string { return m.name }
+func (m mockDirEntryForPreviewer) IsDir() bool  { return false }
+func (m mockDirEntryForPreviewer) Type() os.FileMode {
+	return 0
+}
+func (m mockDirEntryForPreviewer) Info() (os.FileInfo, error) {
+	entry := files.NewDirEntry(m.name, false)
+	modTime := files.ModTime(time.Now())
+	info := files.NewFileInfo(entry, files.Size(0), modTime)
+	return info, nil
+}
 
 func waitForText(t *testing.T, getText func() string, needle string) {
 	t.Helper()
