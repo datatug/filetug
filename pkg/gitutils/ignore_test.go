@@ -81,6 +81,106 @@ func TestParseIgnorePatterns(t *testing.T) {
 	assert.True(t, matcher.Match(dsParts, false))
 }
 
+func TestLoadGlobalIgnoreMatcher_EmptyPatterns(t *testing.T) {
+	origExecCommand := execCommand
+	origReadFile := osReadFile
+
+	defer func() {
+		execCommand = origExecCommand
+		osReadFile = origReadFile
+	}()
+
+	execCommand = fakeExecCommand("/tmp/global_ignore\n", 0)
+	osReadFile = func(_ string) ([]byte, error) {
+		return nil, fmt.Errorf("read error")
+	}
+
+	matcher := LoadGlobalIgnoreMatcher("/repo")
+	assert.Nil(t, matcher)
+}
+
+func TestLoadIgnorePatternsFromFile_Error(t *testing.T) {
+	origReadFile := osReadFile
+
+	defer func() {
+		osReadFile = origReadFile
+	}()
+
+	osReadFile = func(_ string) ([]byte, error) {
+		return nil, fmt.Errorf("read error")
+	}
+
+	patterns, err := loadIgnorePatternsFromFile("/tmp/ignore")
+	assert.Error(t, err)
+	assert.Nil(t, patterns)
+}
+
+func TestIsIgnoredPath_NilMatcher(t *testing.T) {
+	ignored := IsIgnoredPath("file.txt", nil)
+	assert.False(t, ignored)
+}
+
+func TestIsIgnoredPath_NoMatch(t *testing.T) {
+	patterns := []gitignore.Pattern{
+		gitignore.ParsePattern("*.log", nil),
+	}
+	matcher := gitignore.NewMatcher(patterns)
+	ignored := IsIgnoredPath("file.txt", matcher)
+	assert.False(t, ignored)
+}
+
+func TestGetGlobalExcludesFile_EmptyOutput(t *testing.T) {
+	origExecCommand := execCommand
+
+	defer func() {
+		execCommand = origExecCommand
+	}()
+
+	execCommand = fakeExecCommand("\n", 0)
+
+	path, ok := getGlobalExcludesFile("/repo")
+	assert.False(t, ok)
+	assert.Equal(t, "", path)
+}
+
+func TestGetGlobalExcludesFile_HomeError(t *testing.T) {
+	origExecCommand := execCommand
+	origHomeDir := osUserHomeDir
+
+	defer func() {
+		execCommand = origExecCommand
+		osUserHomeDir = origHomeDir
+	}()
+
+	execCommand = fakeExecCommand("~\n", 0)
+	osUserHomeDir = func() (string, error) {
+		return "", fmt.Errorf("home err")
+	}
+
+	path, ok := getGlobalExcludesFile("/repo")
+	assert.True(t, ok)
+	assert.Equal(t, "~", path)
+}
+
+func TestGetGlobalExcludesFile_ExpandTildeOnly(t *testing.T) {
+	origExecCommand := execCommand
+	origHomeDir := osUserHomeDir
+
+	defer func() {
+		execCommand = origExecCommand
+		osUserHomeDir = origHomeDir
+	}()
+
+	execCommand = fakeExecCommand("~\n", 0)
+	osUserHomeDir = func() (string, error) {
+		return "/home/tester", nil
+	}
+
+	path, ok := getGlobalExcludesFile("/repo")
+	assert.True(t, ok)
+	assert.Equal(t, "/home/tester", path)
+}
+
 func TestGetDirStatus_IgnoresDefaultDSStore(t *testing.T) {
 	origExecCommand := execCommand
 

@@ -261,6 +261,59 @@ func TestLoadGitDirStatus_Seams(t *testing.T) {
 	assert.NotEmpty(t, result.entries)
 }
 
+func TestLoadGitDirStatus_IgnoresMatcherEntries(t *testing.T) {
+	origPlainOpen := gitPlainOpen
+	origRepoWorktree := repoWorktree
+	origStatus := worktreeStatus
+	origRel := filepathRel
+	origRoot := getRepositoryRoot
+	origFromSlash := filepathFromSlashFn
+	origLoadGlobalIgnore := loadGlobalIgnore
+	origIsIgnoredPath := isIgnoredPath
+
+	defer func() {
+		gitPlainOpen = origPlainOpen
+		repoWorktree = origRepoWorktree
+		worktreeStatus = origStatus
+		filepathRel = origRel
+		getRepositoryRoot = origRoot
+		filepathFromSlashFn = origFromSlash
+		loadGlobalIgnore = origLoadGlobalIgnore
+		isIgnoredPath = origIsIgnoredPath
+	}()
+
+	getRepositoryRoot = func(_ string) string {
+		return "/repo"
+	}
+	gitPlainOpen = func(_ string) (*git.Repository, error) {
+		return &git.Repository{}, nil
+	}
+	repoWorktree = func(_ *git.Repository) (*git.Worktree, error) {
+		return &git.Worktree{}, nil
+	}
+	worktreeStatus = func(_ *git.Worktree) (git.Status, error) {
+		return git.Status{
+			"dir/ignored.txt": {Worktree: git.Modified},
+		}, nil
+	}
+	filepathRel = func(_, _ string) (string, error) {
+		return "dir", nil
+	}
+	filepathFromSlashFn = func(s string) string {
+		return s
+	}
+	loadGlobalIgnore = func(_ string) gitignore.Matcher {
+		return nil
+	}
+	isIgnoredPath = func(_ string, _ gitignore.Matcher) bool {
+		return true
+	}
+
+	result, err := loadGitDirStatus("/repo/dir")
+	assert.NoError(t, err)
+	assert.Len(t, result.entries, 0)
+}
+
 func TestBadgeForStatus(t *testing.T) {
 	added := badgeForStatus(&git.FileStatus{Staging: git.Added})
 	assert.Equal(t, "A", added.text)
