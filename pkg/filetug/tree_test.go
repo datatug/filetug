@@ -53,6 +53,8 @@ func TestTree(t *testing.T) {
 		}()
 		tree.nav.queueUpdateDraw = func(f func()) {
 			drawUpdatesCount++
+			f()
+			tree.rootNode.ClearChildren()
 		}
 
 		go func() {

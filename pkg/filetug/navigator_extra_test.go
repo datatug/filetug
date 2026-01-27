@@ -116,6 +116,24 @@ func TestNavigator_SetBreadcrumbs_EmptyRelative(t *testing.T) {
 	// Should return early after pushing root breadcrumb
 }
 
+func TestNavigator_DirSummary_FocusLeft(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+
+	focused := false
+	nav.setAppFocus = func(p tview.Primitive) {
+		if p == nav.files {
+			focused = true
+		}
+	}
+
+	event := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
+	res := nav.dirSummary.InputCapture(event)
+
+	assert.True(t, focused)
+	assert.Equal(t, (*tcell.EventKey)(nil), res)
+}
+
 func TestNavigator_UpdateGitStatus_RealCall(t *testing.T) {
 	// This is hard to test without real git, but we can at least try to call it
 	// and see it doesn't crash.

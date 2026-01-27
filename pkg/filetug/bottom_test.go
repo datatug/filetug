@@ -111,6 +111,8 @@ func TestBottom_Highlighted_Ctrl(t *testing.T) {
 	b := newBottom(nav)
 	b.isCtrl = true
 
+	archiveAction()
+
 	actionCalled := false
 	oldArchiveAction := archiveAction
 	defer func() { archiveAction = oldArchiveAction }()

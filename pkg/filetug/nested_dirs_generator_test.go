@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -81,4 +83,24 @@ func TestGeneratedNestedDirs_DepthZero(t *testing.T) {
 	store.mu.Unlock()
 
 	assert.Equal(t, []string{"/root"}, paths)
+}
+
+func TestNestedDirsGeneratorPanel_GenerateButton(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+
+	panel := newNestedDirsGeneratorPanel(nav, nil)
+	p, ok := panel.(*nestedDirsGeneratorPanel)
+	if !ok {
+		t.Fatalf("expected *nestedDirsGeneratorPanel, got %T", panel)
+	}
+
+	buttonIndex := p.form.GetButtonIndex("Generate")
+	if buttonIndex < 0 {
+		t.Fatal("Generate button not found")
+	}
+
+	button := p.form.GetButton(buttonIndex)
+	handler := button.InputHandler()
+	handler(tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone), func(_ tview.Primitive) {})
 }
