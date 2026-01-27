@@ -185,6 +185,18 @@ func (m mockDecoder) Decode(interface{}) error {
 	return m.err
 }
 
+type closeDecoder struct {
+	reader io.Reader
+}
+
+func (c closeDecoder) Decode(interface{}) error {
+	file, ok := c.reader.(*os.File)
+	if ok {
+		_ = file.Close()
+	}
+	return nil
+}
+
 func TestReadFile_DecoderError(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test*.json")
 	assert.NoError(t, err)
@@ -196,6 +208,26 @@ func TestReadFile_DecoderError(t *testing.T) {
 		return mockDecoder{err: io.EOF}
 	})
 	assert.Error(t, err)
+}
+
+func TestReadFile_CloseError(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test*.json")
+	assert.NoError(t, err)
+	filePath := tmpFile.Name()
+	defer func() {
+		_ = os.Remove(filePath)
+	}()
+	_, err = tmpFile.WriteString(`{}`)
+	assert.NoError(t, err)
+	err = tmpFile.Close()
+	assert.NoError(t, err)
+
+	var a map[string]string
+	decoderFactory := func(r io.Reader) Decoder {
+		return closeDecoder{reader: r}
+	}
+	err = ReadFile(filePath, true, &a, decoderFactory)
+	assert.NoError(t, err)
 }
 
 func TestDirExists_Error(t *testing.T) {

@@ -2,11 +2,38 @@ package sneatv
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
 )
+
+type fakeTabsApp struct {
+	updated chan struct{}
+}
+
+func (f *fakeTabsApp) QueueUpdateDraw(fn func()) *tview.Application {
+	fn()
+	if f.updated != nil {
+		f.updated <- struct{}{}
+	}
+	return nil
+}
+
+func (f *fakeTabsApp) SetFocus(p tview.Primitive) *tview.Application {
+	_ = p
+	return nil
+}
+
+func TestNewTab(t *testing.T) {
+	content := tview.NewBox()
+	tab := NewTab("tab-1", "Tab 1", true, content)
+	assert.Equal(t, "tab-1", tab.ID)
+	assert.Equal(t, "Tab 1", tab.Title)
+	assert.True(t, tab.Closable)
+	assert.Same(t, content, tab.Primitive)
+}
 
 func TestNewTabs(t *testing.T) {
 	tabs := NewTabs(nil, UnderlineTabsStyle, WithLabel("Tabs:"))
@@ -112,8 +139,15 @@ func TestTabs_UpdateTextView(t *testing.T) {
 
 	// Test underline style with closable
 	tabs.TabsStyle = UnderlineTabsStyle
+	tabs.tabs[0].Closable = false
+	tabs.tabs[1].Closable = true
 	tabs.updateTextView()
-	assert.Contains(t, tabs.TextView.GetText(false), "✖")
+	assert.Contains(t, tabs.TextView.GetText(false), `["close-1"]`)
+
+	tabs.tabs[0].Closable = true
+	tabs.tabs[1].Closable = false
+	tabs.updateTextView()
+	assert.Contains(t, tabs.TextView.GetText(false), `["close-0"]`)
 }
 
 func TestTabs_Callbacks(t *testing.T) {
@@ -173,6 +207,30 @@ func TestTabs_FocusCallbacks(t *testing.T) {
 		tabs.textViewBlurFunc()
 	}
 	assert.False(t, tabs.isFocused)
+}
+
+func TestTabs_SetIsFocused_WithApp(t *testing.T) {
+	app := &fakeTabsApp{updated: make(chan struct{}, 1)}
+	tabs := NewTabs(app, UnderlineTabsStyle)
+	tabs.AddTabs(&Tab{ID: "1", Title: "T1", Primitive: tview.NewBox()})
+
+	tabs.setIsFocused(true)
+
+	select {
+	case <-app.updated:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("expected QueueUpdateDraw to run")
+	}
+	assert.True(t, tabs.isFocused)
+}
+
+func TestTabs_SetIsFocused_NoApp(t *testing.T) {
+	tabs := NewTabs(nil, UnderlineTabsStyle)
+	tabs.AddTabs(&Tab{ID: "1", Title: "T1", Primitive: tview.NewBox()})
+
+	tabs.setIsFocused(true)
+
+	assert.True(t, tabs.isFocused)
 }
 
 func TestTabs_HighlightedFunc(t *testing.T) {

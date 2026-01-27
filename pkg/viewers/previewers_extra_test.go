@@ -30,14 +30,17 @@ func (l *errorLexer) Tokenise(options *chroma.TokeniseOptions, text string) (chr
 }
 
 func (l *errorLexer) SetRegistry(registry *chroma.LexerRegistry) chroma.Lexer {
+	_ = registry
 	return l
 }
 
 func (l *errorLexer) SetAnalyser(analyser func(text string) float32) chroma.Lexer {
+	_ = analyser
 	return l
 }
 
 func (l *errorLexer) AnalyseText(text string) float32 {
+	_ = text
 	return 1
 }
 
@@ -183,6 +186,88 @@ func TestTextPreviewerPreviewReadFileError(t *testing.T) {
 	queueUpdateDraw := func(func()) {}
 	previewer.Preview(entry, nil, queueUpdateDraw)
 	waitForText(t, previewer, "Failed to read file")
+}
+
+func TestTextPreviewerPreviewQueueUpdateNil(t *testing.T) {
+	previewer := NewTextPreviewer()
+	data := []byte("queue nil")
+	dir := filepath.Dir("note.unknownext")
+	entry := files.EntryWithDirPath{
+		DirEntry: mockDirEntry{name: "note.unknownext"},
+		Dir:      dir,
+	}
+
+	previewer.Preview(entry, data, nil)
+	waitForText(t, previewer, "queue nil")
+}
+
+func TestTextPreviewerPreviewStalePlain(t *testing.T) {
+	previewer := NewTextPreviewer()
+	dir := filepath.Dir("note.unknownext")
+	entry := files.EntryWithDirPath{
+		DirEntry: mockDirEntry{name: "note.unknownext"},
+		Dir:      dir,
+	}
+
+	allowFirst := make(chan struct{})
+	doneFirst := make(chan struct{})
+	doneSecond := make(chan struct{})
+
+	queueUpdateFirst := func(fn func()) {
+		<-allowFirst
+		fn()
+		close(doneFirst)
+	}
+	queueUpdateSecond := func(fn func()) {
+		fn()
+		close(doneSecond)
+	}
+
+	previewer.Preview(entry, []byte("first"), queueUpdateFirst)
+	previewer.Preview(entry, []byte("second"), queueUpdateSecond)
+	waitForUpdate(t, doneSecond)
+
+	close(allowFirst)
+	waitForUpdate(t, doneFirst)
+
+	waitForText(t, previewer, "second")
+}
+
+func TestTextPreviewerPreviewStaleLexer(t *testing.T) {
+	previewer := NewTextPreviewer()
+	lexerDir := filepath.Dir("main.go")
+	plainDir := filepath.Dir("note.unknownext")
+	lexerEntry := files.EntryWithDirPath{
+		DirEntry: mockDirEntry{name: "main.go"},
+		Dir:      lexerDir,
+	}
+	plainEntry := files.EntryWithDirPath{
+		DirEntry: mockDirEntry{name: "note.unknownext"},
+		Dir:      plainDir,
+	}
+
+	allowFirst := make(chan struct{})
+	doneFirst := make(chan struct{})
+	doneSecond := make(chan struct{})
+
+	queueUpdateFirst := func(fn func()) {
+		<-allowFirst
+		fn()
+		close(doneFirst)
+	}
+	queueUpdateSecond := func(fn func()) {
+		fn()
+		close(doneSecond)
+	}
+
+	previewer.Preview(lexerEntry, []byte("package main\n"), queueUpdateFirst)
+	previewer.Preview(plainEntry, []byte("second"), queueUpdateSecond)
+	waitForUpdate(t, doneSecond)
+
+	close(allowFirst)
+	waitForUpdate(t, doneFirst)
+
+	waitForText(t, previewer, "second")
 }
 func TestTextPreviewerMetaAndMain(t *testing.T) {
 	previewer := NewTextPreviewer()

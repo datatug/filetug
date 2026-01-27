@@ -57,3 +57,18 @@ func TestButtonWithShortcut_Draw(t *testing.T) {
 	line = ttestutils.ReadLine(s, 1, width)
 	assert.Contains(t, line, "(s) Save")
 }
+
+func TestButtonWithShortcut_Draw_ShortWidthFallbackStyle(t *testing.T) {
+	width := 4
+	height := 1
+	s := ttestutils.NewSimScreen(t, "", width, height)
+	defer s.Fini()
+
+	btn := NewButtonWithShortcut("Save", 's')
+	btn.SetShortcutStyle(tcell.Style{})
+	btn.SetRect(0, 0, width, height)
+	btn.Draw(s)
+
+	line := ttestutils.ReadLine(s, 0, width)
+	assert.Contains(t, line, "(")
+}

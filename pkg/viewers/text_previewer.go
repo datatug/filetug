@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/filetug/filetug/pkg/chroma2tcell"
@@ -17,6 +18,7 @@ var _ Previewer = (*TextPreviewer)(nil)
 
 type TextPreviewer struct {
 	*tview.TextView
+	previewID uint64
 }
 
 func NewTextPreviewer() *TextPreviewer {
@@ -30,7 +32,11 @@ func NewTextPreviewer() *TextPreviewer {
 }
 
 func (p *TextPreviewer) Preview(entry files.EntryWithDirPath, data []byte, queueUpdateDraw func(func())) {
-	go func() {
+	if queueUpdateDraw == nil {
+		queueUpdateDraw = func(f func()) { f() }
+	}
+	previewID := atomic.AddUint64(&p.previewID, 1)
+	go func(previewID uint64) {
 		if data == nil {
 			var err error
 			data, err = p.readFile(entry, 10*1024) // First 10KB
@@ -41,12 +47,18 @@ func (p *TextPreviewer) Preview(entry files.EntryWithDirPath, data []byte, queue
 		name := entry.Name()
 		if lexer := lexers.Match(name); lexer == nil {
 			queueUpdateDraw(func() {
+				if !p.isCurrentPreview(previewID) {
+					return
+				}
 				p.SetDynamicColors(false)
 				p.SetText(string(data))
 			})
 		} else {
 			colorized, err := chroma2tcell.Colorize(string(data), "dracula", lexer)
 			queueUpdateDraw(func() {
+				if !p.isCurrentPreview(previewID) {
+					return
+				}
 				if err != nil {
 					errText := err.Error()
 					p.showError("Failed to format file: " + errText)
@@ -58,7 +70,7 @@ func (p *TextPreviewer) Preview(entry files.EntryWithDirPath, data []byte, queue
 				p.SetWrap(true)
 			})
 		}
-	}()
+	}(previewID)
 }
 
 func (p *TextPreviewer) Meta() tview.Primitive {
@@ -78,6 +90,10 @@ func (p *TextPreviewer) readFile(entry files.EntryWithDirPath, max int) (data []
 		return
 	}
 	return
+}
+
+func (p *TextPreviewer) isCurrentPreview(previewID uint64) bool {
+	return atomic.LoadUint64(&p.previewID) == previewID
 }
 
 func (p *TextPreviewer) showError(text string) {

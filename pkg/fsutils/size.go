@@ -9,8 +9,11 @@ func GetSizeShortText(size int64) string {
 		return strconv.FormatInt(size, 10) + "B"
 	}
 	div, exp := int64(unit), 0
-	for n := size / unit; n >= unit && exp < 3; n /= unit {
-		div *= unit
+	units := []string{"KB", "MB", "GB", "TB"}
+	for n := size / unit; n >= unit; n /= unit {
+		if exp < len(units)-1 {
+			div *= unit
+		}
 		exp++
 	}
 	// Rounding to nearest
@@ -20,7 +23,6 @@ func GetSizeShortText(size int64) string {
 		val /= unit
 		exp++
 	}
-	units := []string{"KB", "MB", "GB", "TB"}
 	if exp >= len(units) {
 		exp = len(units) - 1
 	}
