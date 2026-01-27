@@ -9,7 +9,7 @@ var OsStat = os.Stat
 
 // GetRepositoryRoot check parent directories if this is a subdirectory of a repo
 func GetRepositoryRoot(dirPath string) (repoRootDir string) {
-	dirPath, err := filepath.Abs(dirPath)
+	dirPath, err := filepathAbs(dirPath)
 	if err != nil {
 		return ""
 	}

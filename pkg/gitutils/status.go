@@ -61,7 +61,7 @@ func GetFileStatus(ctx context.Context, repo *git.Repository, filePath string) *
 		return nil
 	}
 
-	wt, err := repo.Worktree()
+	wt, err := repoWorktree(repo)
 	if err != nil {
 		return nil
 	}
@@ -79,7 +79,7 @@ func GetFileStatus(ctx context.Context, repo *git.Repository, filePath string) *
 
 	res := &RepoStatus{}
 
-	head, err := repo.Head()
+	head, err := repoHead(repo)
 	if err != nil {
 		if errors.Is(err, plumbing.ErrReferenceNotFound) || err.Error() == "reference not found" {
 			res.Branch = "master"
@@ -92,12 +92,7 @@ func GetFileStatus(ctx context.Context, repo *git.Repository, filePath string) *
 		if head.Name().IsBranch() {
 			res.Branch = head.Name().Short()
 		} else {
-			hashStr := head.Hash().String()
-			if len(hashStr) >= 7 {
-				res.Branch = hashStr[:7]
-			} else {
-				res.Branch = hashStr
-			}
+			res.Branch = shortHash(head.Hash().String())
 		}
 	}
 
@@ -113,12 +108,12 @@ func GetFileStatus(ctx context.Context, repo *git.Repository, filePath string) *
 	}
 	headCommit, _ := repo.CommitObject(headHash)
 
-	worktree, err := repo.Worktree()
+	worktree, err := repoWorktree(repo)
 	if err != nil {
 		return res
 	}
 
-	status, err := worktree.Status()
+	status, err := worktreeStatus(worktree)
 	if err != nil {
 		return res
 	}
@@ -127,7 +122,7 @@ func GetFileStatus(ctx context.Context, repo *git.Repository, filePath string) *
 		return res
 	}
 
-	relPath, err := filepath.Rel(repoRoot, filePath)
+	relPath, err := filepathRel(repoRoot, filePath)
 	if err != nil {
 		return res
 	}
@@ -146,10 +141,8 @@ func GetFileStatus(ctx context.Context, repo *git.Repository, filePath string) *
 	if headCommit != nil {
 		headTree, err := headCommit.Tree()
 		if err == nil {
-			select {
-			case <-ctx.Done():
+			if isCtxDone(ctx) {
 				return res
-			default:
 			}
 
 			if fileStatus.Worktree == git.Untracked {

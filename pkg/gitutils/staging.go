@@ -9,7 +9,7 @@ import (
 )
 
 func getWorktreeAndRelPath(path string) (*git.Worktree, string, string, error) {
-	absPath, err := filepath.Abs(path)
+	absPath, err := filepathAbs(path)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to get absolute path: %w", err)
 	}
@@ -20,24 +20,24 @@ func getWorktreeAndRelPath(path string) (*git.Worktree, string, string, error) {
 	}
 
 	// On macOS /var is often a symlink to /private/var
-	if realRepoRoot, err := filepath.EvalSymlinks(repoRoot); err == nil {
+	if realRepoRoot, err := filepathEvalSymlinks(repoRoot); err == nil {
 		repoRoot = realRepoRoot
 	}
-	if realAbsPath, err := filepath.EvalSymlinks(absPath); err == nil {
+	if realAbsPath, err := filepathEvalSymlinks(absPath); err == nil {
 		absPath = realAbsPath
 	}
 
-	repo, err := git.PlainOpen(repoRoot)
+	repo, err := gitPlainOpen(repoRoot)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to open git repo: %w", err)
 	}
 
-	worktree, err := repo.Worktree()
+	worktree, err := repoWorktree(repo)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	relPath, err := filepath.Rel(repoRoot, absPath)
+	relPath, err := filepathRel(repoRoot, absPath)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to get relative path: %w", err)
 	}
@@ -59,7 +59,7 @@ func CanBeStaged(path string) (bool, error) {
 		return false, err
 	}
 
-	status, err := worktree.Status()
+	status, err := worktreeStatus(worktree)
 	if err != nil {
 		return false, fmt.Errorf("failed to get git status: %w", err)
 	}
@@ -68,8 +68,8 @@ func CanBeStaged(path string) (bool, error) {
 		return false, nil
 	}
 
-	fileStatus := status.File(relPath)
-	if _, ok := status[relPath]; !ok {
+	fileStatus, ok := status[relPath]
+	if !ok {
 		return false, nil
 	}
 	// Check if there are any changes in worktree or staging
@@ -87,7 +87,7 @@ func StageFile(path string) error {
 		return err
 	}
 
-	_, err = worktree.Add(relPath)
+	_, err = worktreeAdd(worktree, relPath)
 	if err != nil {
 		return fmt.Errorf("failed to stage file: %w", err)
 	}
@@ -120,7 +120,7 @@ func StageDir(path string, recursive bool) error {
 	}
 
 	if recursive {
-		_, err = worktree.Add(relPath)
+		_, err = worktreeAdd(worktree, relPath)
 		if err != nil {
 			return fmt.Errorf("failed to stage directory recursively: %w", err)
 		}
@@ -137,7 +137,7 @@ func StageDir(path string, recursive bool) error {
 		if !entry.IsDir() {
 			joinedPath := filepath.Join(relPath, entry.Name())
 			fileRelPath := filepath.ToSlash(joinedPath)
-			_, err = worktree.Add(fileRelPath)
+			_, err = worktreeAdd(worktree, fileRelPath)
 			if err != nil {
 				return fmt.Errorf("failed to stage file %s: %w", fileRelPath, err)
 			}

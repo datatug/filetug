@@ -30,14 +30,6 @@ func getRepoLock(repoPath string) *sync.Mutex {
 	return lock
 }
 
-func shortHashString(hash plumbing.Hash) string {
-	hashStr := hash.String()
-	if len(hashStr) >= 7 {
-		return hashStr[:7]
-	}
-	return hashStr
-}
-
 // GetDirStatus returns a brief git status for the given directory.
 // It uses a context to allow cancellation and a semaphore to limit concurrency.
 func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoStatus {
@@ -45,7 +37,7 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 		return nil
 	}
 
-	wt, err := repo.Worktree()
+	wt, err := repoWorktree(repo)
 	if err != nil {
 		return nil
 	}
@@ -64,7 +56,7 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 	res := &RepoStatus{}
 
 	var headHash plumbing.Hash
-	head, err := repo.Head()
+	head, err := repoHead(repo)
 	if err != nil {
 		res.Err = err
 		if errors.Is(err, plumbing.ErrReferenceNotFound) || err.Error() == "reference not found" {
@@ -84,8 +76,7 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 		} else if headHash.IsZero() {
 			res.Branch = "unknown"
 		} else {
-			shortHash := shortHashString(headHash)
-			res.Branch = "{HEAD detached at " + shortHash + "}"
+			res.Branch = "{HEAD detached at " + shortHash(headHash.String()) + "}"
 		}
 	}
 
@@ -97,12 +88,12 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 
 	headCommit, _ := repo.CommitObject(headHash)
 
-	worktree, err := repo.Worktree()
+	worktree, err := repoWorktree(repo)
 	if err != nil {
 		return res
 	}
 
-	status, err := worktree.Status()
+	status, err := worktreeStatus(worktree)
 	if err != nil {
 		return res
 	}
@@ -111,7 +102,7 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 		return res
 	}
 
-	relPath, err := filepath.Rel(repoRoot, dir)
+	relPath, err := filepathRel(repoRoot, dir)
 	if err != nil {
 		relPath = ""
 	}
@@ -142,10 +133,8 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 		headTree, err := headCommit.Tree()
 		if err == nil {
 			for fileName, fileStatus := range status {
-				select {
-				case <-ctx.Done():
+				if isCtxDone(ctx) {
 					return res
-				default:
 				}
 
 				if relPath != "" && !strings.HasPrefix(fileName, relPath) {
