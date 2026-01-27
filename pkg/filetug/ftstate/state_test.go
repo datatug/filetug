@@ -63,10 +63,12 @@ func TestSaveCurrentDir(t *testing.T) {
 	origReadJSON := readJSON
 	origWriteJSON := writeJSON
 	origLogErr := logErr
+	origMkdirAll := mkdirAll
 	defer func() {
 		readJSON = origReadJSON
 		writeJSON = origWriteJSON
 		logErr = origLogErr
+		mkdirAll = origMkdirAll
 	}()
 
 	t.Run("success", func(t *testing.T) {
@@ -99,13 +101,23 @@ func TestSaveCurrentDir(t *testing.T) {
 			return nil
 		}
 
-		// Use a path that cannot be created
 		oldDirPath := settingsDirPath
-		settingsDirPath = "/root/noaccess/dir"
+		settingsDirPath = filepath.Join(tmpDir, "missing-dir")
 		defer func() { settingsDirPath = oldDirPath }()
 
+		mkdirAll = func(path string, perm os.FileMode) error {
+			return errors.New("mkdir error")
+		}
+
+		var logCalled bool
+		logErr = func(v ...interface{}) {
+			logCalled = true
+		}
+
 		SaveCurrentDir("fs", "/new/dir")
-		// TODO: Assert error has been logged
+		if !logCalled {
+			t.Error("expected logErr to be called for mkdir error")
+		}
 	})
 
 	t.Run("not_a_directory", func(t *testing.T) {

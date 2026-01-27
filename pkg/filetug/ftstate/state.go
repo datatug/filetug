@@ -71,6 +71,7 @@ func SaveCurrentFileName(name string) {
 
 var readJSON = fsutils.ReadJSONFile
 var writeJSON = fsutils.WriteJSONFile
+var mkdirAll = os.MkdirAll
 
 func saveSettingValue(f func(state *State)) {
 	filePath := getStateFilePath()
@@ -82,7 +83,7 @@ func saveSettingValue(f func(state *State)) {
 
 	if dirInfo, err := os.Stat(settingsDirPath); err != nil {
 		if os.IsNotExist(err) {
-			if err = os.MkdirAll(settingsDirPath, os.ModePerm); err != nil {
+			if err = mkdirAll(settingsDirPath, os.ModePerm); err != nil {
 				logErr("SaveCurrentDir: Error creating settings directory:", err)
 				return
 			}
