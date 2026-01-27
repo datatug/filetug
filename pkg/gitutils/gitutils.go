@@ -30,6 +30,14 @@ func getRepoLock(repoPath string) *sync.Mutex {
 	return lock
 }
 
+func shortHashString(hash plumbing.Hash) string {
+	hashStr := hash.String()
+	if len(hashStr) >= 7 {
+		return hashStr[:7]
+	}
+	return hashStr
+}
+
 // GetDirStatus returns a brief git status for the given directory.
 // It uses a context to allow cancellation and a semaphore to limit concurrency.
 func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoStatus {
@@ -55,26 +63,29 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 
 	res := &RepoStatus{}
 
+	var headHash plumbing.Hash
 	head, err := repo.Head()
 	if err != nil {
+		res.Err = err
 		if errors.Is(err, plumbing.ErrReferenceNotFound) || err.Error() == "reference not found" {
 			res.Branch = "master"
 		} else {
-			// This covers some other error during repo.Head()
 			res.Branch = "unknown"
 		}
-	} else if head == nil || head.Hash().IsZero() {
-		res.Branch = "unknown"
-	} else {
-		if head.Name().IsBranch() {
+	}
+	if head != nil {
+		headHash = head.Hash()
+	}
+	if res.Branch == "" {
+		if head == nil {
+			res.Branch = "unknown"
+		} else if head.Name().IsBranch() {
 			res.Branch = head.Name().Short()
+		} else if headHash.IsZero() {
+			res.Branch = "unknown"
 		} else {
-			hashStr := head.Hash().String()
-			if len(hashStr) >= 7 {
-				res.Branch = hashStr[:7]
-			} else {
-				res.Branch = hashStr
-			}
+			shortHash := shortHashString(headHash)
+			res.Branch = "{HEAD detached at " + shortHash + "}"
 		}
 	}
 
@@ -84,10 +95,6 @@ func GetDirStatus(ctx context.Context, repo *git.Repository, dir string) *RepoSt
 	default:
 	}
 
-	var headHash plumbing.Hash
-	if head != nil {
-		headHash = head.Hash()
-	}
 	headCommit, _ := repo.CommitObject(headHash)
 
 	worktree, err := repo.Worktree()

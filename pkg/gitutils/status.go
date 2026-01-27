@@ -37,6 +37,7 @@ type DirGitChangesStats struct {
 
 type RepoStatus struct {
 	Branch string
+	Err    error
 	DirGitChangesStats
 }
 

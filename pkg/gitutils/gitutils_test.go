@@ -162,8 +162,13 @@ func TestGetRepositoryStatus(t *testing.T) {
 				t.Fatalf("Failed to checkout hash: %v", err)
 			}
 			status := GetDirStatus(context.Background(), repo, tempDir)
-			if len(status.Branch) != 7 {
-				t.Errorf("Expected short hash (7 chars) for detached HEAD, got %s", status.Branch)
+			hashStr := hash.String()
+			if len(hashStr) >= 7 {
+				hashStr = hashStr[:7]
+			}
+			expected := "{HEAD detached at " + hashStr + "}"
+			if status.Branch != expected {
+				t.Errorf("Expected detached HEAD branch %s, got %s", expected, status.Branch)
 			}
 		})
 
@@ -356,8 +361,14 @@ func TestGetRepositoryStatus(t *testing.T) {
 				Hash: head.Hash(),
 			})
 			status := GetDirStatus(context.Background(), repo, tempDir)
-			if len(status.Branch) != 7 {
-				t.Errorf("Expected short hash for detached head, got %v", status.Branch)
+			headHash := head.Hash()
+			hashStr := headHash.String()
+			if len(hashStr) >= 7 {
+				hashStr = hashStr[:7]
+			}
+			expected := "{HEAD detached at " + hashStr + "}"
+			if status.Branch != expected {
+				t.Errorf("Expected detached head branch %s, got %v", expected, status.Branch)
 			}
 		})
 	})
