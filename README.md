@@ -50,7 +50,7 @@ We are targeting 100% test coverage (_with a minimum threshold of 99%_).
 
 ![Cross Platform](https://img.shields.io/badge/platform-mac%20%7C%20linux%20%7C%20windows-blue)
 
-### Mac OS - ![Homebrew](https://img.shields.io/badge/homebrew-filetug-blue)
+### Mac OS
 ```shell
 brew tap filetug/filetug
 brew install filetug
