@@ -44,5 +44,5 @@ func (p DsstorePreviewer) Preview(entry files.EntryWithDirPath, data []byte, que
 		sb.WriteString(fmt.Sprintf("%s: %s\n", r.FileName, r.Type))
 	}
 	data = []byte(sb.String())
-	p.Preview(entry, data, queueUpdateDraw)
+	p.TextPreviewer.Preview(entry, data, queueUpdateDraw)
 }
