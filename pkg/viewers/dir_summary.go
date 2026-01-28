@@ -253,7 +253,12 @@ func (d *DirSummaryPreviewer) SetDirEntries(dirContext *files.DirContext) {
 	hasRepo := gitutils.GetRepositoryRoot(dirPath) != ""
 	d.setTabs(hasRepo)
 	if hasRepo && dirContext != nil {
-		d.GitPreviewer.SetDir(dirContext, d.queueUpdateDraw)
+		if d.GitPreviewer.statusLoader != nil {
+			d.GitPreviewer.SetDir(dirContext, d.queueUpdateDraw)
+		}
+	}
+	if hasRepo {
+		d.activateGitTabIfDirty(dirPath)
 	}
 
 	if d.queueUpdateDraw == nil {
@@ -283,6 +288,35 @@ func (d *DirSummaryPreviewer) SetDirEntries(dirContext *files.DirContext) {
 			d.extGroupsByID = extGroupsByID
 			d.ExtGroups = extGroups
 			d.updateTable()
+		})
+	}()
+}
+
+func (d *DirSummaryPreviewer) activateGitTabIfDirty(dirPath string) {
+	if d.GitPreviewer == nil {
+		return
+	}
+	statusLoader := d.GitPreviewer.statusLoader
+	if statusLoader == nil {
+		return
+	}
+	currentDirPath := dirPath
+	go func() {
+		result, err := statusLoader(dirPath)
+		if err != nil {
+			return
+		}
+		if result.repoRoot == "" || len(result.entries) == 0 {
+			return
+		}
+		d.queueUpdate(func() {
+			if d.dirPath != currentDirPath {
+				return
+			}
+			if d.tabs == nil {
+				return
+			}
+			d.tabs.SwitchTo(1)
 		})
 	}()
 }

@@ -2,11 +2,13 @@ package viewers
 
 import (
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
+	"github.com/filetug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
@@ -31,6 +33,12 @@ func (m mockDirEntryWithInfo) Info() (os.FileInfo, error) { return m.info, m.err
 
 func newDirContext(path string, entries []os.DirEntry) *files.DirContext {
 	return files.NewDirContext(nil, path, entries)
+}
+
+func tabsActiveIndex(t *testing.T, tabs *sneatv.Tabs) int {
+	t.Helper()
+	value := reflect.ValueOf(tabs).Elem().FieldByName("active")
+	return int(value.Int())
 }
 
 func TestNewDirSummary(t *testing.T) {
@@ -272,6 +280,206 @@ func TestDirSummary_SetDir_WithRepo(t *testing.T) {
 	dirContext := newDirContext(tempDir, entries)
 	ds.SetDirEntries(dirContext)
 	assert.NotNil(t, ds.tabs)
+}
+
+func TestDirSummary_SetDir_ActivateGitTabWhenDirty(t *testing.T) {
+	app := tview.NewApplication()
+	updates := make(chan struct{}, 5)
+	ds := NewDirSummary(app, WithDirSummaryQueueUpdateDraw(func(f func()) {
+		f()
+		updates <- struct{}{}
+	}))
+	ds.GitPreviewer.statusLoader = func(_ string) (gitDirStatusResult, error) {
+		return gitDirStatusResult{
+			repoRoot: "/repo",
+			entries: []gitDirStatusEntry{
+				{displayName: "a.txt"},
+			},
+		}, nil
+	}
+
+	tempDir := t.TempDir()
+	gitDir := tempDir + "/.git"
+	mkdirErr := os.Mkdir(gitDir, 0755)
+	assert.NoError(t, mkdirErr)
+
+	entries := []os.DirEntry{
+		mockDirEntry{name: "a.txt", isDir: false},
+	}
+	dirContext := newDirContext(tempDir, entries)
+	ds.SetDirEntries(dirContext)
+
+	deadline := time.After(time.Second)
+	for {
+		if tabsActiveIndex(t, ds.tabs) == 1 {
+			return
+		}
+		select {
+		case <-updates:
+		case <-deadline:
+			t.Fatal("expected git tab to be active")
+		}
+	}
+}
+
+func TestDirSummary_SetDir_DirtyGitTabNotActivated(t *testing.T) {
+	app := tview.NewApplication()
+	ds := NewDirSummary(app, WithDirSummaryQueueUpdateDraw(func(f func()) {
+		f()
+	}))
+	ds.GitPreviewer.statusLoader = func(_ string) (gitDirStatusResult, error) {
+		return gitDirStatusResult{repoRoot: "/repo"}, nil
+	}
+
+	tempDir := t.TempDir()
+	gitDir := tempDir + "/.git"
+	mkdirErr := os.Mkdir(gitDir, 0755)
+	assert.NoError(t, mkdirErr)
+
+	entries := []os.DirEntry{
+		mockDirEntry{name: "a.txt", isDir: false},
+	}
+	dirContext := newDirContext(tempDir, entries)
+	ds.SetDirEntries(dirContext)
+
+	activeIndex := tabsActiveIndex(t, ds.tabs)
+	assert.Equal(t, 0, activeIndex)
+}
+
+func TestDirSummary_SetDir_StatusLoaderNil(t *testing.T) {
+	app := tview.NewApplication()
+	ds := NewDirSummary(app)
+	ds.GitPreviewer.statusLoader = nil
+
+	tempDir := t.TempDir()
+	gitDir := tempDir + "/.git"
+	mkdirErr := os.Mkdir(gitDir, 0755)
+	assert.NoError(t, mkdirErr)
+
+	entries := []os.DirEntry{
+		mockDirEntry{name: "a.txt", isDir: false},
+	}
+	dirContext := newDirContext(tempDir, entries)
+	ds.SetDirEntries(dirContext)
+}
+
+func TestDirSummary_ActivateGitTabIfDirty_GitPreviewerNil(t *testing.T) {
+	app := tview.NewApplication()
+	ds := NewDirSummary(app)
+	ds.GitPreviewer = nil
+
+	ds.activateGitTabIfDirty("/tmp")
+}
+
+func TestDirSummary_ActivateGitTabIfDirty_StatusLoaderError(t *testing.T) {
+	app := tview.NewApplication()
+	loaderCalled := make(chan struct{}, 1)
+	ds := NewDirSummary(app)
+	ds.GitPreviewer.statusLoader = func(_ string) (gitDirStatusResult, error) {
+		loaderCalled <- struct{}{}
+		return gitDirStatusResult{}, assert.AnError
+	}
+
+	ds.activateGitTabIfDirty("/tmp")
+
+	select {
+	case <-loaderCalled:
+	case <-time.After(time.Second):
+		t.Fatal("expected status loader to be called")
+	}
+}
+
+func TestDirSummary_ActivateGitTabIfDirty_NoRepoRoot(t *testing.T) {
+	app := tview.NewApplication()
+	loaderCalled := make(chan struct{}, 1)
+	ds := NewDirSummary(app)
+	ds.GitPreviewer.statusLoader = func(_ string) (gitDirStatusResult, error) {
+		loaderCalled <- struct{}{}
+		return gitDirStatusResult{}, nil
+	}
+
+	ds.activateGitTabIfDirty("/tmp")
+
+	select {
+	case <-loaderCalled:
+	case <-time.After(time.Second):
+		t.Fatal("expected status loader to be called")
+	}
+}
+
+func TestDirSummary_ActivateGitTabIfDirty_EmptyEntries(t *testing.T) {
+	app := tview.NewApplication()
+	loaderCalled := make(chan struct{}, 1)
+	ds := NewDirSummary(app)
+	ds.GitPreviewer.statusLoader = func(_ string) (gitDirStatusResult, error) {
+		loaderCalled <- struct{}{}
+		return gitDirStatusResult{repoRoot: "/repo"}, nil
+	}
+
+	ds.activateGitTabIfDirty("/tmp")
+
+	select {
+	case <-loaderCalled:
+	case <-time.After(time.Second):
+		t.Fatal("expected status loader to be called")
+	}
+}
+
+func TestDirSummary_ActivateGitTabIfDirty_TabsNil(t *testing.T) {
+	app := tview.NewApplication()
+	updateCalled := make(chan struct{}, 1)
+	ds := NewDirSummary(app, WithDirSummaryQueueUpdateDraw(func(f func()) {
+		f()
+		updateCalled <- struct{}{}
+	}))
+	ds.GitPreviewer.statusLoader = func(_ string) (gitDirStatusResult, error) {
+		return gitDirStatusResult{
+			repoRoot: "/repo",
+			entries: []gitDirStatusEntry{
+				{displayName: "a.txt"},
+			},
+		}, nil
+	}
+	ds.tabs = nil
+	ds.dirPath = "/tmp"
+
+	ds.activateGitTabIfDirty("/tmp")
+
+	select {
+	case <-updateCalled:
+	case <-time.After(time.Second):
+		t.Fatal("expected queue update to be called")
+	}
+}
+
+func TestDirSummary_ActivateGitTabIfDirty_DirPathChanged(t *testing.T) {
+	app := tview.NewApplication()
+	updateCalled := make(chan struct{}, 1)
+	releaseLoader := make(chan struct{})
+	ds := NewDirSummary(app, WithDirSummaryQueueUpdateDraw(func(f func()) {
+		f()
+		updateCalled <- struct{}{}
+	}))
+	ds.GitPreviewer.statusLoader = func(_ string) (gitDirStatusResult, error) {
+		<-releaseLoader
+		return gitDirStatusResult{
+			repoRoot: "/repo",
+			entries: []gitDirStatusEntry{
+				{displayName: "a.txt"},
+			},
+		}, nil
+	}
+	ds.dirPath = "/tmp"
+
+	ds.activateGitTabIfDirty("/tmp")
+	ds.dirPath = "/other"
+	close(releaseLoader)
+
+	select {
+	case <-updateCalled:
+	case <-time.After(time.Second):
+		t.Fatal("expected queue update to be called")
+	}
 }
 
 func TestDirSummary_UpdateTable_NoQueue(t *testing.T) {
