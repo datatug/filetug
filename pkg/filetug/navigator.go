@@ -61,7 +61,7 @@ type Navigator struct {
 
 	files *filesPanel
 
-	dirSummary *viewers.DirSummary
+	dirSummary *viewers.DirSummaryPreviewer
 
 	previewer *previewerPanel
 

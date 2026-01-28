@@ -44,7 +44,7 @@ func (m *mockStoreWithHooks) RootTitle() string {
 	return "Mock"
 }
 
-func newTestDirSummary(nav *Navigator) *viewers.DirSummary {
+func newTestDirSummary(nav *Navigator) *viewers.DirSummaryPreviewer {
 	filterSetter := viewers.WithDirSummaryFilterSetter(func(filter ftui.Filter) {
 		if nav.files == nil {
 			return

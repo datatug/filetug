@@ -17,33 +17,33 @@ import (
 	"github.com/rivo/tview"
 )
 
-type DirSummaryOption func(*DirSummary)
+type DirSummaryOption func(*DirSummaryPreviewer)
 
 func WithDirSummaryFilterSetter(setter func(ftui.Filter)) DirSummaryOption {
-	return func(d *DirSummary) {
+	return func(d *DirSummaryPreviewer) {
 		d.setFilter = setter
 	}
 }
 
 func WithDirSummaryFocusLeft(setter func()) DirSummaryOption {
-	return func(d *DirSummary) {
+	return func(d *DirSummaryPreviewer) {
 		d.focusLeft = setter
 	}
 }
 
 func WithDirSummaryQueueUpdateDraw(setter func(func())) DirSummaryOption {
-	return func(d *DirSummary) {
+	return func(d *DirSummaryPreviewer) {
 		d.queueUpdateDraw = setter
 	}
 }
 
 func WithDirSummaryColorByExt(setter func(string) tcell.Color) DirSummaryOption {
-	return func(d *DirSummary) {
+	return func(d *DirSummaryPreviewer) {
 		d.colorByExt = setter
 	}
 }
 
-type DirSummary struct {
+type DirSummaryPreviewer struct {
 	*sneatv.Boxed
 	flex *tview.Flex
 	tabs *sneatv.Tabs
@@ -67,7 +67,7 @@ type DirSummary struct {
 	colorByExt      func(string) tcell.Color
 }
 
-func NewDirSummary(app *tview.Application, options ...DirSummaryOption) *DirSummary {
+func NewDirSummary(app *tview.Application, options ...DirSummaryOption) *DirSummaryPreviewer {
 	flex := tview.NewFlex()
 	flex.SetDirection(tview.FlexRow)
 	flex.SetTitle("Dir Summary")
@@ -75,7 +75,7 @@ func NewDirSummary(app *tview.Application, options ...DirSummaryOption) *DirSumm
 	extTable := tview.NewTable()
 	extTable.SetSelectable(true, false)
 
-	d := &DirSummary{
+	d := &DirSummaryPreviewer{
 		app:      app,
 		flex:     flex,
 		ExtTable: extTable,
@@ -103,7 +103,7 @@ func NewDirSummary(app *tview.Application, options ...DirSummaryOption) *DirSumm
 	return d
 }
 
-func (d *DirSummary) Preview(entry files.EntryWithDirPath, _ []byte, queueUpdateDraw func(func())) {
+func (d *DirSummaryPreviewer) Preview(entry files.EntryWithDirPath, _ []byte, queueUpdateDraw func(func())) {
 	d.queueUpdateDraw = queueUpdateDraw
 	dirPath := entry.Dir
 	if entry.IsDir() {
@@ -117,23 +117,23 @@ func (d *DirSummary) Preview(entry files.EntryWithDirPath, _ []byte, queueUpdate
 	d.SetDir(dirPath, entries)
 }
 
-func (d *DirSummary) Main() tview.Primitive {
+func (d *DirSummaryPreviewer) Main() tview.Primitive {
 	return d
 }
 
-func (d *DirSummary) Meta() tview.Primitive {
+func (d *DirSummaryPreviewer) Meta() tview.Primitive {
 	return nil
 }
 
-func (d *DirSummary) Focus(delegate func(p tview.Primitive)) {
+func (d *DirSummaryPreviewer) Focus(delegate func(p tview.Primitive)) {
 	d.ExtTable.Focus(delegate)
 }
 
-func (d *DirSummary) UpdateTable() {
+func (d *DirSummaryPreviewer) UpdateTable() {
 	d.updateTable()
 }
 
-func (d *DirSummary) InputCapture(event *tcell.EventKey) *tcell.EventKey {
+func (d *DirSummaryPreviewer) InputCapture(event *tcell.EventKey) *tcell.EventKey {
 	return d.inputCapture(event)
 }
 
@@ -155,7 +155,7 @@ type ExtStat struct {
 	entries []os.DirEntry
 }
 
-func (d *DirSummary) SetDir(dirPath string, entries []os.DirEntry) {
+func (d *DirSummaryPreviewer) SetDir(dirPath string, entries []os.DirEntry) {
 	d.dirPath = dirPath
 
 	d.extByID = make(map[string]*ExtStat)
@@ -261,7 +261,7 @@ func (d *DirSummary) SetDir(dirPath string, entries []os.DirEntry) {
 	}()
 }
 
-func (d *DirSummary) setTabs(hasGit bool) {
+func (d *DirSummaryPreviewer) setTabs(hasGit bool) {
 	if d.tabs != nil {
 		d.flex.RemoveItem(d.tabs)
 	}
@@ -276,7 +276,7 @@ func (d *DirSummary) setTabs(hasGit bool) {
 	d.flex.AddItem(tabs, 0, 1, false)
 }
 
-func (d *DirSummary) queueUpdate(f func()) {
+func (d *DirSummaryPreviewer) queueUpdate(f func()) {
 	if d.queueUpdateDraw != nil {
 		d.queueUpdateDraw(f)
 		return
@@ -284,7 +284,7 @@ func (d *DirSummary) queueUpdate(f func()) {
 	f()
 }
 
-func (d *DirSummary) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+func (d *DirSummaryPreviewer) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyLeft:
 		if d.focusLeft != nil {
@@ -330,7 +330,7 @@ func (d *DirSummary) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	}
 }
 
-func (d *DirSummary) selectionChanged(row int, _ int) {
+func (d *DirSummaryPreviewer) selectionChanged(row int, _ int) {
 	for i := 0; i < d.ExtTable.GetRowCount(); i++ {
 		cell := d.ExtTable.GetCell(i, 0)
 		cell.SetText(" ")
@@ -361,7 +361,7 @@ func (d *DirSummary) selectionChanged(row int, _ int) {
 	d.setFilter(filter)
 }
 
-func (d *DirSummary) updateTable() {
+func (d *DirSummaryPreviewer) updateTable() {
 	d.ExtTable.Clear()
 	const cellTextColor = tcell.ColorLightGray
 
@@ -465,7 +465,7 @@ func GetSizeCell(size int64, defaultColor tcell.Color) *tview.TableCell {
 	return sizeCell
 }
 
-func (d *DirSummary) GetSizes() error {
+func (d *DirSummaryPreviewer) GetSizes() error {
 	for _, g := range d.ExtGroups {
 		g.TotalSize = 0
 		for _, ext := range g.ExtStats {
