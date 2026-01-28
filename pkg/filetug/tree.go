@@ -213,6 +213,9 @@ func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		t.SetSearch("")
 		return nil
 	case tcell.KeyRune:
+		if event = t.nav.globalNavInputCapture(event); event == nil {
+			return nil
+		}
 		s := string(event.Rune())
 		if t.searchPattern == "" && s == " " {
 			return event

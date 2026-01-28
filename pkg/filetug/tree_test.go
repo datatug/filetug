@@ -3,6 +3,7 @@ package filetug
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"sync"
 	"testing"
@@ -191,6 +192,44 @@ func TestTree(t *testing.T) {
 		// Test Rune
 		eventRune := tcell.NewEventKey(tcell.KeyRune, 'a', tcell.ModNone)
 		tree.inputCapture(eventRune)
+	})
+
+	t.Run("inputCapture_KeyLeft_UnknownRef", func(t *testing.T) {
+		badNode := tview.NewTreeNode("bad")
+		badNode.SetReference("bad")
+		tree.tv.SetCurrentNode(badNode)
+		eventLeft := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
+		res := tree.inputCapture(eventLeft)
+		assert.Equal(t, eventLeft, res)
+	})
+
+	t.Run("inputCapture_KeyEnter_UnknownRef", func(t *testing.T) {
+		badNode := tview.NewTreeNode("bad")
+		badNode.SetReference("bad")
+		tree.tv.SetCurrentNode(badNode)
+		eventEnter := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+		res := tree.inputCapture(eventEnter)
+		assert.Equal(t, eventEnter, res)
+	})
+
+	t.Run("inputCapture_KeyRune_GlobalHandled", func(t *testing.T) {
+		tree.nav.store = &mockNavigatorStore{
+			rootURL: url.URL{Scheme: "mock", Path: "/"},
+		}
+		tree.nav.queueUpdateDraw = func(f func()) {
+			f()
+		}
+		eventRune := tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModNone)
+		res := tree.inputCapture(eventRune)
+		assert.Nil(t, res)
+	})
+
+	t.Run("inputCapture_KeyRune_SpaceIgnored", func(t *testing.T) {
+		tree.searchPattern = ""
+		eventRune := tcell.NewEventKey(tcell.KeyRune, ' ', tcell.ModNone)
+		res := tree.inputCapture(eventRune)
+		assert.Equal(t, eventRune, res)
+		assert.Equal(t, "", tree.searchPattern)
 	})
 
 	t.Run("SetSearch", func(t *testing.T) {

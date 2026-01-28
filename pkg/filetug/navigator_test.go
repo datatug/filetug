@@ -492,3 +492,30 @@ func TestNavigator_showDir_EarlyReturnAndExpandHome(t *testing.T) {
 	nav.showDir(ctx, nil, homeContext, false)
 	time.Sleep(50 * time.Millisecond)
 }
+
+func TestNavigator_globalNavInputCapture(t *testing.T) {
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+	nav.store = &mockNavigatorStore{
+		rootURL: url.URL{Scheme: "mock", Path: "/"},
+	}
+	nav.queueUpdateDraw = func(f func()) {
+		f()
+	}
+
+	eventSlash := tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModNone)
+	res := nav.globalNavInputCapture(eventSlash)
+	assert.Equal(t, (*tcell.EventKey)(nil), res)
+
+	eventBacktick := tcell.NewEventKey(tcell.KeyRune, '`', tcell.ModNone)
+	res = nav.globalNavInputCapture(eventBacktick)
+	assert.Equal(t, (*tcell.EventKey)(nil), res)
+
+	eventOther := tcell.NewEventKey(tcell.KeyRune, 'a', tcell.ModNone)
+	res = nav.globalNavInputCapture(eventOther)
+	assert.Equal(t, eventOther, res)
+
+	eventNonRune := tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+	res = nav.globalNavInputCapture(eventNonRune)
+	assert.Equal(t, eventNonRune, res)
+}

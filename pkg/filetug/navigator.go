@@ -287,12 +287,10 @@ func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 				nav.resize(decrease)
 				return nil
 			case '/', 'r', 'R':
-				dirContext := files.NewDirContext(nav.store, "/", nil)
-				nav.goDir(dirContext)
+				nav.goRoot()
 				return nil
-			case '~', 'h', 'H':
-				dirContext := files.NewDirContext(nav.store, "~", nil)
-				nav.goDir(dirContext)
+			case '~', '`', 'h', 'H':
+				nav.goHome()
 				return nil
 			case 'x', 'X':
 				nav.stopApp()
@@ -307,6 +305,33 @@ func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	}
 }
 
+func (nav *Navigator) goRoot() {
+	nav.goDirByPath("/")
+}
+
+func (nav *Navigator) goHome() {
+	nav.goDirByPath("~")
+}
+
+func (nav *Navigator) goDirByPath(dirPath string) {
+	dirContext := files.NewDirContext(nav.store, dirPath, nil)
+	nav.goDir(dirContext)
+}
+
+// globalNavInputCapture should be invoked only from specific boxes like Tree and filesPanel.
+func (nav *Navigator) globalNavInputCapture(event *tcell.EventKey) *tcell.EventKey {
+	if event.Key() == tcell.KeyRune {
+		switch event.Rune() {
+		case '/':
+			nav.goRoot()
+			return nil
+		case '`':
+			nav.goHome()
+			return nil
+		}
+	}
+	return event
+}
 func (nav *Navigator) resize(mode resizeMode) {
 	switch nav.activeCol {
 	case 0:
@@ -332,8 +357,8 @@ func (nav *Navigator) goDir(dirContext *files.DirContext) {
 	if dirContext == nil {
 		return
 	}
-	ctx := context.Background()
 	nav.dirsTree.setCurrentDir(dirContext)
+	ctx := context.Background()
 	nav.showDir(ctx, nav.dirsTree.rootNode, dirContext, true)
 	root := nav.store.RootURL()
 	rootValue := root.String()

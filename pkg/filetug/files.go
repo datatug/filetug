@@ -212,6 +212,8 @@ func (f *filesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 			}
 		}
 		return event
+	case tcell.KeyRune:
+		return f.nav.globalNavInputCapture(event)
 	case tcell.KeyEnter:
 		row, _ := table.GetSelection()
 		nameCell := table.GetCell(row, 0)
