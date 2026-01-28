@@ -23,9 +23,13 @@ type BoxedContent interface {
 	//GetRect() (x int, y int, width int, height int)
 }
 
+type BoxFooter interface {
+	tview.Primitive
+}
+
 type Boxed struct {
 	BoxedContent
-	o boxOptions
+	options boxOptions
 }
 
 type boxOptions struct {
@@ -35,6 +39,8 @@ type boxOptions struct {
 	rightBorder  bool
 	rightPadding int
 	rightOffset  int
+
+	footer BoxFooter
 
 	tabs []*PanelTab
 }
@@ -75,6 +81,12 @@ func WithTabs(tabs ...*PanelTab) BoxOption {
 	}
 }
 
+func WithFooter(footer BoxFooter) BoxOption {
+	return func(opts *boxOptions) {
+		opts.footer = footer
+	}
+}
+
 type PanelTab struct {
 	ID      string
 	Title   string
@@ -88,9 +100,9 @@ func NewBoxed(inner BoxedContent, o ...BoxOption) *Boxed {
 		BoxedContent: inner,
 	}
 	for _, option := range o {
-		option(&b.o)
+		option(&b.options)
 	}
-	inner.SetBorderPadding(1, 1, b.o.leftPadding, b.o.rightPadding)
+	inner.SetBorderPadding(1, 1, b.options.leftPadding, b.options.rightPadding)
 	return &b
 }
 
@@ -113,28 +125,29 @@ func (b Boxed) drawBorders(screen tcell.Screen) {
 		topLineChar = '─'
 	}
 
-	horizontalStart := x + b.o.leftOffset
+	horizontalStart := x + b.options.leftOffset
 	horizontalLen := width
-	horizontalLen += b.o.rightOffset - b.o.leftOffset
+	horizontalLen += b.options.rightOffset - b.options.leftOffset
 	if hasFocus {
-		if b.o.leftBorder {
+		if b.options.leftBorder {
 			horizontalStart += 1
 			horizontalLen -= 1
 		}
-		if b.o.rightBorder {
+		if b.options.rightBorder {
 			horizontalLen -= 1
 		}
 	}
 
-	horizontalBorder := func(y int, title string) {
-		if len(title) == 0 {
+	type borderRendererFunc func(tcell.Screen, int, int, int)
+
+	horizontalBorder := func(y int, contentWidth int, renderer any) {
+		if contentWidth == 0 || renderer == nil {
 			for i := 0; i < horizontalLen; i++ {
 				screen.SetContent(horizontalStart+i, y, topLineChar, nil, lineStyle)
 			}
 			return
 		}
-		titleWidth := tview.TaggedStringWidth(title)
-		leftLen := (horizontalLen - titleWidth) / 2
+		leftLen := (horizontalLen - contentWidth) / 2
 		for i := 0; i < leftLen-1; i++ {
 			screen.SetContent(horizontalStart+i, y, topLineChar, nil, lineStyle)
 		}
@@ -144,26 +157,33 @@ func (b Boxed) drawBorders(screen tcell.Screen) {
 			screen.SetContent(horizontalStart+leftLen-1, y, '┤', nil, lineStyle)
 		}
 
-		tview.Print(screen, title, horizontalStart+leftLen, y, titleWidth, tview.AlignLeft, tcell.ColorGhostWhite)
+		contentStart := horizontalStart + leftLen
+		switch content := renderer.(type) {
+		case borderRendererFunc:
+			content(screen, contentStart, y, contentWidth)
+		case tview.Primitive:
+			content.SetRect(contentStart, y, contentWidth, 1)
+			content.Draw(screen)
+		}
 
-		rightStart := horizontalStart + leftLen + titleWidth
+		rightStart := horizontalStart + leftLen + contentWidth
 		if hasFocus {
 			screen.SetContent(rightStart, y, '╞', nil, lineStyle)
 		} else {
 			screen.SetContent(rightStart, y, '├', nil, lineStyle)
 		}
-		rightLen := horizontalLen - leftLen - titleWidth
+		rightLen := horizontalLen - leftLen - contentWidth
 		for i := 1; i < rightLen; i++ {
 			screen.SetContent(rightStart+i, y, topLineChar, nil, lineStyle)
 		}
 	}
 
 	var title string
-	if len(b.o.tabs) == 0 {
+	if len(b.options.tabs) == 0 {
 		title = b.GetTitle()
 	} else {
 		var sb strings.Builder
-		for i, tab := range b.o.tabs {
+		for i, tab := range b.options.tabs {
 			if i > 0 {
 				sb.WriteString("[gray]|[-]")
 			}
@@ -183,7 +203,10 @@ func (b Boxed) drawBorders(screen tcell.Screen) {
 		title = sb.String()
 	}
 
-	horizontalBorder(y, title) // top line
+	titleWidth := tview.TaggedStringWidth(title)
+	horizontalBorder(y, titleWidth, borderRendererFunc(func(screen tcell.Screen, x int, y int, width int) {
+		tview.Print(screen, title, x, y, width, tview.AlignLeft, tcell.ColorGhostWhite)
+	})) // top line
 
 	verticalBorder := func(x int, top, bottom rune) {
 		screen.SetContent(x, y, top, nil, lineStyle)
@@ -201,20 +224,45 @@ func (b Boxed) drawBorders(screen tcell.Screen) {
 		//}
 	}
 
-	if b.o.leftBorder {
+	if b.options.leftBorder {
 		if hasFocus {
-			verticalBorder(x+b.o.leftOffset, '╒', '╘')
+			verticalBorder(x+b.options.leftOffset, '╒', '╘')
 		} else {
-			verticalBorder(x+b.o.leftOffset, '┬', '┴')
+			verticalBorder(x+b.options.leftOffset, '┬', '┴')
 		}
 	}
-	if b.o.rightBorder {
+	if b.options.rightBorder {
 		if hasFocus {
-			verticalBorder(x+width-1+b.o.rightOffset, '╕', '╛')
+			verticalBorder(x+width-1+b.options.rightOffset, '╕', '╛')
 		} else {
-			verticalBorder(x+width-1+b.o.rightOffset, '┬', '┴')
+			verticalBorder(x+width-1+b.options.rightOffset, '┬', '┴')
 		}
 	}
 
-	horizontalBorder(y+height-1, "") // bottom line
+	if b.options.footer != nil {
+		footerWidth := borderPrimitiveWidth(b.options.footer)
+		horizontalBorder(y+height-1, footerWidth, b.options.footer) // bottom line with footer
+	} else {
+		horizontalBorder(y+height-1, 0, nil) // bottom line
+	}
+}
+
+func borderPrimitiveWidth(footer tview.Primitive) int {
+	if footer == nil {
+		return 0
+	}
+	switch footerTyped := footer.(type) {
+	case *tview.TextView:
+		text := footerTyped.GetText(false)
+		if newline := strings.IndexByte(text, '\n'); newline >= 0 {
+			text = text[:newline]
+		}
+		return tview.TaggedStringWidth(text)
+	default:
+		_, _, width, _ := footer.GetRect()
+		if width > 0 {
+			return width
+		}
+		return 0
+	}
 }

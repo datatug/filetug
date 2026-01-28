@@ -1,10 +1,12 @@
 package sneatv
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/filetug/filetug/pkg/sneatv/ttestutils"
 	"github.com/rivo/tview"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewBoxed(t *testing.T) {
@@ -49,4 +51,68 @@ func TestBoxed_Draw(t *testing.T) {
 	boxedWithTabs.Focus(func(p tview.Primitive) {})
 	boxedWithTabs.Draw(screen)
 	screen.Show()
+}
+
+func TestBoxed_DrawFooter(t *testing.T) {
+	screen := ttestutils.NewSimScreen(t, "UTF-8", 20, 5)
+
+	inner := tview.NewBox().SetTitle("Inner Title")
+	boxed := NewBoxed(inner)
+	boxed.SetRect(0, 0, 20, 5)
+	boxed.Blur()
+
+	boxed.Draw(screen)
+	screen.Show()
+	line := ttestutils.ReadLine(screen, 4, 20)
+	require.Equal(t, strings.Repeat("─", 20), line)
+
+	footer := tview.NewTextView().SetText("FOOT")
+	boxedWithFooter := NewBoxed(inner, WithFooter(footer))
+	boxedWithFooter.SetRect(0, 0, 20, 5)
+	boxedWithFooter.Blur()
+
+	boxedWithFooter.Draw(screen)
+	screen.Show()
+	line = ttestutils.ReadLine(screen, 4, 20)
+	require.Equal(t, "───────┤FOOT├───────", line)
+}
+
+func TestBoxed_DrawFooterRerender(t *testing.T) {
+	screen := ttestutils.NewSimScreen(t, "UTF-8", 20, 5)
+
+	footer := tview.NewTextView().SetText("FOOT")
+	boxed := NewBoxed(tview.NewBox(), WithFooter(footer))
+	boxed.SetRect(0, 0, 20, 5)
+	boxed.Blur()
+
+	boxed.Draw(screen)
+	screen.Show()
+	line := ttestutils.ReadLine(screen, 4, 20)
+	require.Equal(t, "───────┤FOOT├───────", line)
+
+	footer.SetText("NEW")
+	boxed.Draw(screen)
+	screen.Show()
+	line = ttestutils.ReadLine(screen, 4, 20)
+	require.Equal(t, "───────┤NEW├────────", line)
+}
+
+func TestWithFooter(t *testing.T) {
+	footer := tview.NewTextView().SetText("Footer")
+	boxed := NewBoxed(tview.NewBox(), WithFooter(footer))
+	require.Equal(t, footer, boxed.options.footer)
+}
+
+func TestBorderPrimitiveWidth(t *testing.T) {
+	require.Equal(t, 0, borderPrimitiveWidth(nil))
+
+	box := tview.NewBox()
+	box.SetRect(0, 0, 0, 0)
+	require.Equal(t, 0, borderPrimitiveWidth(box))
+
+	box.SetRect(0, 0, 6, 1)
+	require.Equal(t, 6, borderPrimitiveWidth(box))
+
+	textFooter := tview.NewTextView().SetText("Hello\nWorld")
+	require.Equal(t, 5, borderPrimitiveWidth(textFooter))
 }
