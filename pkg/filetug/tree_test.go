@@ -165,6 +165,31 @@ func TestTree(t *testing.T) {
 		tree.SetSearch("test")
 	})
 
+	t.Run("highlightTreeNodes_skipsRoot", func(t *testing.T) {
+		root := tview.NewTreeNode("..").SetReference("/Users/demo")
+		child := tview.NewTreeNode("alpha").SetReference("/Users/demo/alpha")
+		root.AddChild(child)
+
+		searchCtx := &searchContext{pattern: "al"}
+		highlightTreeNodes(root, searchCtx, true)
+
+		assert.Equal(t, "..", root.GetText())
+		assert.Equal(t, "[black:lightgreen]al[-:-]pha", child.GetText())
+		assert.Equal(t, child, searchCtx.firstPrefixed)
+		assert.Len(t, searchCtx.found, 1)
+	})
+
+	t.Run("highlightTreeNodes_rootMatchIgnored", func(t *testing.T) {
+		root := tview.NewTreeNode("..").SetReference("/alpha")
+		searchCtx := &searchContext{pattern: "al"}
+		highlightTreeNodes(root, searchCtx, true)
+
+		assert.Equal(t, "..", root.GetText())
+		assert.Nil(t, searchCtx.firstPrefixed)
+		assert.Nil(t, searchCtx.firstContains)
+		assert.Len(t, searchCtx.found, 0)
+	})
+
 	t.Run("setCurrentDir", func(t *testing.T) {
 		tree.setCurrentDir("/")
 	})
