@@ -236,7 +236,9 @@ func (t *Tabs) AddTabs(tabs ...*Tab) {
 
 	if is1stTab {
 		t.SwitchTo(0)
+		return
 	}
+	t.updateTextView()
 }
 
 // SwitchTo switches to a tab by index.

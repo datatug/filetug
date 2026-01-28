@@ -57,6 +57,21 @@ func TestTabs_AddAndSwitch(t *testing.T) {
 	assert.Equal(t, 1, tabs.active)
 }
 
+func TestTabs_AddTabsUpdatesTextView(t *testing.T) {
+	tabs := NewTabs(nil, UnderlineTabsStyle)
+	tab1 := &Tab{ID: "1", Title: "Tab 1", Primitive: tview.NewBox()}
+	tab2 := &Tab{ID: "2", Title: "Tab 2", Primitive: tview.NewBox()}
+
+	tabs.AddTabs(tab1)
+	text := tabs.TextView.GetText(false)
+	assert.Contains(t, text, "Tab 1")
+	assert.NotContains(t, text, "Tab 2")
+
+	tabs.AddTabs(tab2)
+	text = tabs.TextView.GetText(false)
+	assert.Contains(t, text, "Tab 2")
+}
+
 func TestTabs_Navigation(t *testing.T) {
 	tabs := NewTabs(nil, UnderlineTabsStyle,
 		WithLabel("Tabs:"),
