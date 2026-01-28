@@ -21,7 +21,7 @@ func NewJsonPreviewer() *JsonPreviewer {
 	}
 }
 
-func (p JsonPreviewer) Preview(entry files.EntryWithDirPath, data []byte, dataErr error, queueUpdateDraw func(func())) {
+func (p JsonPreviewer) Preview(entry files.EntryWithDirPath, data []byte, _ error, queueUpdateDraw func(func())) {
 	if data == nil {
 		var err error
 		data, err = p.readFile(entry, 0)
@@ -32,14 +32,14 @@ func (p JsonPreviewer) Preview(entry files.EntryWithDirPath, data []byte, dataEr
 	formatted, err := prettyJSON(data)
 	if err != nil {
 		errText := err.Error()
-		prefix := "Invalid JSON: " + errText + "\n"
+		prefix := "invalid JSON: " + errText + "\n"
 		data = append([]byte(prefix), data...)
-		dataErr = fmt.Errorf("Invalid JSON: %w", err)
+		err = fmt.Errorf("invalid JSON: %w", err)
 	} else {
 		data = formatted
-		dataErr = nil
+		err = nil
 	}
-	p.TextPreviewer.Preview(entry, data, dataErr, queueUpdateDraw)
+	p.TextPreviewer.Preview(entry, data, err, queueUpdateDraw)
 }
 
 const jsonIndent = "  "

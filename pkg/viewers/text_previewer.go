@@ -56,9 +56,7 @@ func (p *TextPreviewer) Preview(entry files.EntryWithDirPath, data []byte, dataE
 		if dataErr != nil {
 			dataErrPrefix = dataErr.Error() + "\n"
 			prefixBytes := []byte(dataErrPrefix)
-			if bytes.HasPrefix(data, prefixBytes) {
-				data = data[len(prefixBytes):]
-			}
+			data = bytes.TrimPrefix(data, prefixBytes)
 		}
 		name := entry.Name()
 		if lexer := lexers.Match(name); lexer == nil {

@@ -385,8 +385,8 @@ func TestJsonPreviewerPreviewInvalidJSON(t *testing.T) {
 	waitForUpdate(t, done)
 
 	text := previewer.GetText(false)
-	assert.Contains(t, text, "[red]Invalid JSON:")
-	assert.Equal(t, 1, strings.Count(text, "Invalid JSON:"))
+	assert.Contains(t, text, "[red]invalid JSON:")
+	assert.Equal(t, 1, strings.Count(text, "invalid JSON:"))
 }
 
 func TestDsstorePreviewerPreviewSuccess(t *testing.T) {
