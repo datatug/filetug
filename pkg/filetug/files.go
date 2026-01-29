@@ -33,10 +33,11 @@ type filesPanel struct {
 
 func (f *filesPanel) GetCurrentEntry() files.EntryWithDirPath {
 	row, _ := f.table.GetSelection()
-	if row >= len(f.rows.VisibleEntries) {
+	i := row - 1
+	if i < 0 || i >= len(f.rows.VisibleEntries) {
 		return nil
 	}
-	entry := f.rows.VisibleEntries[row-1]
+	entry := f.rows.VisibleEntries[i]
 	if entry.DirPath() == "" {
 		if f.rows.Dir == nil {
 			_, _ = fmt.Fprintf(os.Stderr, "files panel missing dir path for entry %q\n", entry.Name())

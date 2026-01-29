@@ -2,6 +2,7 @@ package filetug
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,8 +48,8 @@ func TestNavigator_Delete_And_Operations(t *testing.T) {
 		nav.files.SetRows(rows, false)
 		nav.files.Focus(func(p tview.Primitive) {})
 
-		// Ensure we selected something
-		nav.files.table.Select(0, 0)
+		// Ensure we selected the first entry (row 1 when the parent row is shown).
+		nav.files.table.Select(1, 0)
 
 		// Call delete
 		nav.delete()
@@ -72,6 +73,21 @@ func TestNavigator_Delete_And_Operations(t *testing.T) {
 		nav.activeCol = 0
 		assert.True(t, nav.dirsTree == nav.getCurrentBrowser())
 	})
+
+	t.Run("delete_with_error", func(t *testing.T) {
+		nav.store = &mockStoreWithHooks{deleteErr: errors.New("delete error")}
+		nav.activeCol = 1
+		nav.files.rows = &FileRows{
+			VisibleEntries: []files.EntryWithDirPath{
+				files.NewEntryWithDirPath(mockDirEntry{name: "bad.txt"}, "/bad/path"),
+			},
+		}
+		nav.files.table.Select(1, 0)
+
+		nav.delete()
+
+		time.Sleep(20 * time.Millisecond)
+	})
 }
 
 func TestFilesPanel_GetCurrentEntry_EdgeCases(t *testing.T) {
@@ -93,12 +109,43 @@ func TestFilesPanel_GetCurrentEntry_EdgeCases(t *testing.T) {
 			Dir: &files.DirContext{Path: "/some/path"},
 		}
 		fp.rows = rows
-		fp.table.Select(0, 0)
+		// Select the first entry row (row 1 when the parent row is shown).
+		fp.table.Select(1, 0)
 
 		entry := fp.GetCurrentEntry()
 		assert.True(t, entry != nil)
 		assert.Equal(t, "/some/path", entry.DirPath())
 		assert.Equal(t, "test.txt", entry.Name())
+	})
+
+	t.Run("entry_with_no_dir_path_and_no_dir_context", func(t *testing.T) {
+		mEntry := mockDirEntry{name: "missing.txt"}
+		rows := &FileRows{
+			VisibleEntries: []files.EntryWithDirPath{
+				files.NewEntryWithDirPath(mEntry, ""),
+			},
+		}
+		fp.rows = rows
+		fp.table.Select(1, 0)
+
+		entry := fp.GetCurrentEntry()
+		assert.True(t, entry == nil)
+	})
+
+	t.Run("entry_with_dir_path", func(t *testing.T) {
+		mEntry := mockDirEntry{name: "already.txt"}
+		rows := &FileRows{
+			VisibleEntries: []files.EntryWithDirPath{
+				files.NewEntryWithDirPath(mEntry, "/already/there"),
+			},
+		}
+		fp.rows = rows
+		fp.table.Select(1, 0)
+
+		entry := fp.GetCurrentEntry()
+		assert.True(t, entry != nil)
+		assert.Equal(t, "/already/there", entry.DirPath())
+		assert.Equal(t, "already.txt", entry.Name())
 	})
 }
 
