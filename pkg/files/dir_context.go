@@ -34,7 +34,12 @@ func (d *DirContext) Entries() []EntryWithDirPath {
 }
 
 func (d *DirContext) Children() []os.DirEntry {
-	return d.children
+	if d.children == nil {
+		return nil
+	}
+	children := make([]os.DirEntry, len(d.children))
+	copy(children, d.children)
+	return children
 }
 
 func (d *DirContext) DirPath() string {

@@ -82,3 +82,22 @@ func TestDirContextMethods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, info)
 }
+
+func TestDirContextChildrenReturnsCopy(t *testing.T) {
+	dirEntries := []os.DirEntry{NewDirEntry("a.txt", false)}
+	dir := NewDirContext(nil, "", dirEntries)
+
+	children := dir.Children()
+	if assert.Len(t, children, 1) {
+		assert.Equal(t, "a.txt", children[0].Name())
+	}
+
+	children[0] = NewDirEntry("b.txt", false)
+	children = append(children, NewDirEntry("c.txt", false))
+	assert.Len(t, children, 2)
+
+	updatedChildren := dir.Children()
+	if assert.Len(t, updatedChildren, 1) {
+		assert.Equal(t, "a.txt", updatedChildren[0].Name())
+	}
+}
