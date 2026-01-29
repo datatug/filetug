@@ -199,7 +199,50 @@ func (m *mockReadDirStore) Delete(ctx context.Context, path string) error {
 	return nil
 }
 
+type blockingReadDirStore struct {
+	root      url.URL
+	entries   map[string][]os.DirEntry
+	firstPath string
+	block     chan struct{}
+	seen      chan string
+}
+
+func (b *blockingReadDirStore) RootTitle() string { return "Mock" }
+func (b *blockingReadDirStore) RootURL() url.URL  { return b.root }
+func (b *blockingReadDirStore) ReadDir(ctx context.Context, path string) ([]os.DirEntry, error) {
+	_, _ = ctx, path
+	if b.seen != nil {
+		b.seen <- path
+	}
+	if path == b.firstPath && b.block != nil {
+		<-b.block
+	}
+	entries, ok := b.entries[path]
+	if !ok {
+		return nil, nil
+	}
+	return entries, nil
+}
+func (b *blockingReadDirStore) CreateDir(ctx context.Context, path string) error {
+	_, _ = ctx, path
+	return nil
+}
+func (b *blockingReadDirStore) CreateFile(ctx context.Context, path string) error {
+	_, _ = ctx, path
+	return nil
+}
+func (b *blockingReadDirStore) Delete(ctx context.Context, path string) error {
+	_, _ = ctx, path
+	return nil
+}
+
 func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
+	oldGetState := getState
+	getState = func() (*ftstate.State, error) { return nil, nil }
+	defer func() {
+		getState = oldGetState
+	}()
+
 	oldSaveCurrentDir := saveCurrentDir
 	saveCurrentDir = func(string, string) {}
 	defer func() {
@@ -241,6 +284,48 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 	children := nav.dirsTree.rootNode.GetChildren()
 	if len(children) == 0 {
 		t.Fatal("expected tree children after goDir")
+	}
+}
+
+func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
+	oldGetState := getState
+	getState = func() (*ftstate.State, error) { return nil, nil }
+	defer func() {
+		getState = oldGetState
+	}()
+
+	app := tview.NewApplication()
+	nav := NewNavigator(app)
+
+	firstEntries := []os.DirEntry{mockDirEntry{name: "firstChild", isDir: true}}
+	secondEntries := []os.DirEntry{mockDirEntry{name: "secondChild", isDir: true}}
+	store := &blockingReadDirStore{
+		root:      url.URL{Scheme: "mock", Path: "/"},
+		entries:   map[string][]os.DirEntry{"/first": firstEntries, "/second": secondEntries},
+		firstPath: "/first",
+		block:     make(chan struct{}),
+		seen:      make(chan string, 2),
+	}
+	nav.store = store
+	nav.queueUpdateDraw = func(f func()) {
+		f()
+	}
+
+	ctx := context.Background()
+	nodeFirst := tview.NewTreeNode("first")
+	nodeSecond := tview.NewTreeNode("second")
+
+	nav.showDir(ctx, nodeFirst, files.NewDirContext(nav.store, "/first", nil), true)
+	firstSeen := <-store.seen
+	nav.showDir(ctx, nodeSecond, files.NewDirContext(nav.store, "/second", nil), true)
+	secondSeen := <-store.seen
+	close(store.block)
+
+	if firstSeen != "/first" {
+		t.Fatalf("expected first ReadDir to use /first, got %q", firstSeen)
+	}
+	if secondSeen != "/second" {
+		t.Fatalf("expected second ReadDir to use /second, got %q", secondSeen)
 	}
 }
 

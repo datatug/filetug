@@ -487,8 +487,9 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dirCont
 	nav.setBreadcrumbs()
 	nav.right.SetContent(nav.dirSummary)
 
+	dirPath := expandedDir
 	go func() {
-		dirContext, err := nav.getDirData(ctx)
+		dirContext, err := nav.getDirData(ctx, dirPath)
 		nav.queueUpdateDraw(func() {
 			if err != nil {
 				nav.showNodeError(node, err)
@@ -574,10 +575,10 @@ func (nav *Navigator) setBreadcrumbs() {
 	}
 }
 
-func (nav *Navigator) getDirData(ctx context.Context) (dirContext *files.DirContext, err error) {
-	dirContext = files.NewDirContext(nav.store, nav.current.dir, nil)
+func (nav *Navigator) getDirData(ctx context.Context, dirPath string) (dirContext *files.DirContext, err error) {
+	dirContext = files.NewDirContext(nav.store, dirPath, nil)
 	var children []os.DirEntry
-	children, err = nav.store.ReadDir(ctx, nav.current.dir)
+	children, err = nav.store.ReadDir(ctx, dirPath)
 	if err != nil {
 		return nil, err
 	}
