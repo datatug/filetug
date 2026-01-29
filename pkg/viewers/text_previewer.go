@@ -41,7 +41,7 @@ func (p *TextPreviewer) Preview(entry files.EntryWithDirPath, data []byte, dataE
 		if data == nil {
 			var err error
 			data, err = p.readFile(entry, 10*1024) // First 10KB
-			if err != nil {
+			if err != nil && !errors.Is(err, io.EOF) {
 				errText := fmt.Sprintf("Failed to read file %s: %s", entry.FullName(), err.Error())
 				queueUpdateDraw(func() {
 					if !p.isCurrentPreview(previewID) {

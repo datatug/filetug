@@ -10,11 +10,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type favorite struct {
+	Store       string `yaml:"store"`
+	Path        string `yaml:"path"`
+	Shortcut    rune   `yaml:"shortcut,omitempty"`
+	Description string `yaml:"description,omitempty"`
+}
+
 type Favorite struct {
-	Store       url.URL `json:"store,omitempty" yaml:"store,omitempty"`
-	Path        string  `json:"path" yaml:"path"`
-	Shortcut    rune    `json:"shortcut,omitempty" yaml:"shortcut,omitempty"`
-	Description string  `json:"description,omitempty" yaml:"description,omitempty"`
+	Store       url.URL
+	Path        string
+	Shortcut    rune
+	Description string
 }
 
 func (f Favorite) Key() string {
@@ -28,6 +35,8 @@ const favoritesFileName = "datatug-favorites.yaml"
 var favoritesFilePath string
 
 var GetDatatugUserDir = ftsettings.GetDatatugUserDir
+var yamlMarshal = yaml.Marshal
+var yamlUnmarshal = yaml.Unmarshal
 
 func init() {
 	datatugUserDir, err := GetDatatugUserDir()
@@ -52,9 +61,18 @@ func GetFavorites() (favorites []Favorite, err error) {
 	if len(data) == 0 {
 		return []Favorite{}, nil
 	}
-	err = yaml.Unmarshal(data, &favorites)
+	var persisted []favorite
+	err = yamlUnmarshal(data, &persisted)
 	if err != nil {
 		return nil, err
+	}
+	favorites = make([]Favorite, 0, len(persisted))
+	for _, item := range persisted {
+		mapped, mapErr := mapFavorite(item)
+		if mapErr != nil {
+			return nil, mapErr
+		}
+		favorites = append(favorites, mapped)
 	}
 	return favorites, nil
 }
@@ -91,7 +109,12 @@ func DeleteFavorite(f Favorite) (err error) {
 }
 
 func writeFavorites(favorites []Favorite) error {
-	data, err := yaml.Marshal(favorites)
+	persisted := make([]favorite, 0, len(favorites))
+	for _, item := range favorites {
+		mapped := mapFavoriteToPersisted(item)
+		persisted = append(persisted, mapped)
+	}
+	data, err := yamlMarshal(persisted)
 	if err != nil {
 		return err
 	}
@@ -101,4 +124,31 @@ func writeFavorites(favorites []Favorite) error {
 		return err
 	}
 	return os.WriteFile(favoritesFilePath, data, 0o644)
+}
+
+func mapFavorite(item favorite) (Favorite, error) {
+	var store url.URL
+	if item.Store != "" {
+		parsed, err := url.Parse(item.Store)
+		if err != nil {
+			return Favorite{}, err
+		}
+		store = *parsed
+	}
+	return Favorite{
+		Store:       store,
+		Path:        item.Path,
+		Shortcut:    item.Shortcut,
+		Description: item.Description,
+	}, nil
+}
+
+func mapFavoriteToPersisted(item Favorite) favorite {
+	store := item.Store.String()
+	return favorite{
+		Store:       store,
+		Path:        item.Path,
+		Shortcut:    item.Shortcut,
+		Description: item.Description,
+	}
 }

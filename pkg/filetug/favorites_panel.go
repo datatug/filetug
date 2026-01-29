@@ -2,7 +2,9 @@ package filetug
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/filetug/filetug/pkg/files"
@@ -18,29 +20,41 @@ import (
 
 type favoritesPanel struct {
 	*sneatv.Boxed
-	flex  *tview.Flex
-	nav   *Navigator
-	list  *tview.List
-	items []ftfav.Favorite
-	prev  current
+	flex           *tview.Flex
+	nav            *Navigator
+	list           *tview.List
+	items          []ftfav.Favorite
+	prev           current
+	addContainer   *tview.Flex
+	addDescription *tview.InputField
+	addFormVisible bool
+	addButton      *tview.Button
 }
+
+var (
+	addFavorite    = ftfav.AddFavorite
+	deleteFavorite = ftfav.DeleteFavorite
+	getFavorites   = ftfav.GetFavorites
+)
 
 func (f *favoritesPanel) ShowFavorites() {
 	f.prev = f.nav.current
 	f.nav.left.SetContent(f)
+	f.updateAddCurrentForm()
 	f.nav.setAppFocus(f.list)
 }
 
 func builtInFavorites() []ftfav.Favorite {
-	testFtpServerUrl, _ := url.Parse("ftp://demo:password@test.rebex.net")
+	//testFtpServerUrl, _ := url.Parse("ftp://demo:password@test.rebex.net")
+	//testHttpsServerUrl, _ := url.Parse("https://www.kernel.org/pub/")
 	return []ftfav.Favorite{
 		{Store: url.URL{Scheme: "file"}, Path: "/", Shortcut: '/', Description: "root"},
 		{Store: url.URL{Scheme: "file"}, Path: "~", Shortcut: 'h', Description: "User's home directory"},
-		{Store: url.URL{Scheme: "file"}, Path: "~/Documents", Description: "Documents"},
-		{Store: url.URL{Scheme: "file"}, Path: "~/projects", Description: "Projects"},
 		{Store: url.URL{Scheme: "file"}, Path: "~/.filetug", Description: "FileTug settings dir"},
-		{Store: url.URL{Scheme: "https", Host: "www.kernel.org", Path: "/pub/"}, Path: "/pub/", Description: "The Linux Kernel Archives"},
-		{Store: *testFtpServerUrl, Description: "The Linux Kernel Archives"},
+		//{Store: url.URL{Scheme: "file"}, Path: "~/Documents", Description: "Documents"},
+		//{Store: url.URL{Scheme: "file"}, Path: "~/projects", Description: "Projects"},
+		//{Store: *testHttpsServerUrl, Path: "/pub/", Description: "The Linux Kernel Archives"},
+		//Store: *testFtpServerUrl, Description: "The Linux Kernel Archives"},
 	}
 }
 func newFavoritesPanel(nav *Navigator) *favoritesPanel {
@@ -49,25 +63,68 @@ func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 	list := tview.NewList()
 	list.SetSecondaryTextColor(tcell.ColorGray)
 	footer := tview.NewTextView().SetText("<esc> to go back").SetTextColor(tcell.ColorGray)
+	addDescription := tview.NewInputField()
+	addDescription.SetLabel("Description")
+	addButton := tview.NewButton("Add current dir to favorites")
+	addContainer := tview.NewFlex().SetDirection(tview.FlexRow)
+	addContainer.AddItem(addDescription, 1, 0, false)
+	addContainer.AddItem(addButton, 1, 0, false)
 	f := &favoritesPanel{
-		flex:  flex,
-		list:  list,
-		nav:   nav,
-		items: builtInFavorites(),
+		flex:           flex,
+		list:           list,
+		nav:            nav,
+		items:          builtInFavorites(),
+		addContainer:   addContainer,
+		addDescription: addDescription,
+		addButton:      addButton,
 		Boxed: sneatv.NewBoxed(
 			flex,
 			sneatv.WithLeftBorder(1, -1),
 			sneatv.WithFooter(footer),
 		),
 	}
+	addButton.SetSelectedFunc(f.addCurrentFavorite)
+	addDescription.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEscape:
+			if f.nav != nil {
+				f.nav.setAppFocus(f.list)
+			}
+			return nil
+		case tcell.KeyTab, tcell.KeyDown:
+			if f.nav != nil {
+				f.nav.setAppFocus(f.addButton)
+			}
+			return nil
+		default:
+			return event
+		}
+	})
+	addButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEscape:
+			if f.nav != nil {
+				f.nav.setAppFocus(f.list)
+			}
+			return nil
+		case tcell.KeyTab, tcell.KeyUp:
+			if f.nav != nil {
+				f.nav.setAppFocus(f.addDescription)
+			}
+			return nil
+		default:
+			return event
+		}
+	})
 	f.flex.AddItem(f.list, 0, 1, true)
 
 	//f.flex.AddItem(hint, 1, 0, false)
 	f.setItems()
+	f.updateAddCurrentForm()
 	f.list.SetInputCapture(f.inputCapture)
 	f.list.SetChangedFunc(f.changed)
 	go func() {
-		userFavorites, err := ftfav.GetFavorites()
+		userFavorites, err := getFavorites()
 		if err != nil {
 			return
 		}
@@ -77,6 +134,7 @@ func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 		update := func() {
 			f.items = items
 			f.setItems()
+			f.updateAddCurrentForm()
 		}
 		if f.nav != nil && f.nav.queueUpdateDraw != nil {
 			f.nav.queueUpdateDraw(update)
@@ -150,6 +208,15 @@ func (f *favoritesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		currentFav := f.items[f.list.GetCurrentItem()]
 		f.activateFavorite(currentFav, false)
 		return nil
+	case tcell.KeyTab:
+		if f.addFormVisible {
+			f.nav.setAppFocus(f.addDescription)
+			return nil
+		}
+		return event
+	case tcell.KeyBackspace, tcell.KeyBackspace2, tcell.KeyDelete:
+		f.deleteCurrentFavorite()
+		return nil
 	case tcell.KeyEscape:
 		dirContext := files.NewDirContext(f.nav.store, f.prev.dir, nil)
 		f.nav.goDir(dirContext)
@@ -164,6 +231,106 @@ func (f *favoritesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	default:
 		return event
 	}
+}
+
+func (f *favoritesPanel) updateAddCurrentForm() {
+	showAddForm := f.shouldShowAddCurrentForm()
+	if showAddForm == f.addFormVisible {
+		return
+	}
+	if showAddForm {
+		f.addDescription.SetText("")
+		f.flex.AddItem(f.addContainer, 3, 0, false)
+		f.addFormVisible = true
+		return
+	}
+	f.flex.RemoveItem(f.addContainer)
+	f.addFormVisible = false
+	if f.nav != nil {
+		f.nav.setAppFocus(f.list)
+	}
+}
+
+func (f *favoritesPanel) shouldShowAddCurrentForm() bool {
+	currentFavorite, ok := f.currentFavorite()
+	if !ok {
+		return false
+	}
+	if f.hasFavorite(currentFavorite) {
+		return false
+	}
+	return true
+}
+
+func (f *favoritesPanel) currentFavorite() (ftfav.Favorite, bool) {
+	if f.nav == nil {
+		return ftfav.Favorite{}, false
+	}
+	if f.nav.store == nil {
+		return ftfav.Favorite{}, false
+	}
+	if f.nav.current.dir == "" {
+		return ftfav.Favorite{}, false
+	}
+	storeURL := f.nav.store.RootURL()
+	currentFavorite := ftfav.Favorite{
+		Store: storeURL,
+		Path:  f.nav.current.dir,
+	}
+	return currentFavorite, true
+}
+
+func (f *favoritesPanel) hasFavorite(currentFavorite ftfav.Favorite) bool {
+	currentKey := currentFavorite.Key()
+	for _, item := range f.items {
+		itemKey := item.Key()
+		if itemKey == currentKey {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *favoritesPanel) addCurrentFavorite() {
+	currentFavorite, ok := f.currentFavorite()
+	if !ok {
+		return
+	}
+	description := f.addDescription.GetText()
+	description = strings.TrimSpace(description)
+	currentFavorite.Description = description
+	err := addFavorite(currentFavorite)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "add favorite failed: %v\n", err)
+		return
+	}
+	f.items = append(f.items, currentFavorite)
+	f.setItems()
+	f.updateAddCurrentForm()
+}
+
+func (f *favoritesPanel) deleteCurrentFavorite() {
+	index := f.list.GetCurrentItem()
+	if index < 0 || index >= len(f.items) {
+		return
+	}
+	item := f.items[index]
+	itemKey := item.Key()
+	err := deleteFavorite(item)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "delete favorite failed: %v\n", err)
+	}
+	updated := make([]ftfav.Favorite, 0, len(f.items))
+	for _, entry := range f.items {
+		entryKey := entry.Key()
+		if entryKey == itemKey {
+			continue
+		}
+		updated = append(updated, entry)
+	}
+	f.items = updated
+	f.setItems()
+	f.updateAddCurrentForm()
 }
 
 func (f *favoritesPanel) activateFavorite(item ftfav.Favorite, previewMode bool) {
