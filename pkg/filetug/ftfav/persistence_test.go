@@ -108,6 +108,29 @@ func Test_GetFavorites_FileExists_NoDefaults(t *testing.T) {
 	assert.Equal(t, before, after)
 }
 
+func Test_GetFavorites_ReplacesHomeDir(t *testing.T) {
+	tempDir := t.TempDir()
+	tempPath := filepath.Join(tempDir, "favorites.yaml")
+	oldPath := favoritesFilePath
+	favoritesFilePath = tempPath
+	defer func() {
+		favoritesFilePath = oldPath
+	}()
+
+	homeDir, err := os.UserHomeDir()
+	assert.NoError(t, err)
+
+	data := []byte("- store: \"file://\"\n  path: \"" + filepath.Join(homeDir, "notes") + "\"\n- store: \"file://\"\n  path: \"" + homeDir + "\"\n")
+	err = os.WriteFile(tempPath, data, 0o644)
+	assert.NoError(t, err)
+
+	favorites, err := GetFavorites()
+	assert.NoError(t, err)
+	assert.Len(t, favorites, 2)
+	assert.Equal(t, filepath.Join("~", "notes"), favorites[0].Path)
+	assert.Equal(t, "~", favorites[1].Path)
+}
+
 func Test_GetFavorites_DefaultWriteError(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "missing.yaml")

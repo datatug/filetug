@@ -61,10 +61,34 @@ func GetFavorites() (favorites []Favorite, err error) {
 		return nil, err
 	}
 	favorites = make([]Favorite, 0, len(persisted))
+	var (
+		homeDir        string
+		homeErr        error
+		homeDirChecked bool
+	)
 	for _, item := range persisted {
 		mapped, mapErr := mapFavorite(item)
 		if mapErr != nil {
 			return nil, mapErr
+		}
+		if mapped.Store.Scheme == "file" && mapped.Store.Path == "" && mapped.Path != "" {
+			if !homeDirChecked {
+				homeDir, homeErr = os.UserHomeDir()
+				homeDirChecked = true
+			}
+			if homeErr == nil && homeDir != "" {
+				cleanHome := filepath.Clean(homeDir)
+				cleanPath := filepath.Clean(mapped.Path)
+				if cleanPath == cleanHome {
+					mapped.Path = "~"
+				} else {
+					homePrefix := cleanHome + string(filepath.Separator)
+					if strings.HasPrefix(cleanPath, homePrefix) {
+						relative := strings.TrimPrefix(cleanPath, homePrefix)
+						mapped.Path = filepath.Join("~", relative)
+					}
+				}
+			}
 		}
 		favorites = append(favorites, mapped)
 	}
