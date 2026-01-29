@@ -2,6 +2,7 @@ package ftfav
 
 import (
 	"net/url"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -26,6 +27,9 @@ func TestFavorites_FileOperations(t *testing.T) {
 	defer func() {
 		favoritesFilePath = oldPath
 	}()
+
+	err := os.WriteFile(tempPath, []byte(""), 0o644)
+	assert.NoError(t, err)
 
 	favorites, err := GetFavorites()
 	assert.NoError(t, err)

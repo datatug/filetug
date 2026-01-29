@@ -54,7 +54,14 @@ func TestFavorites_GetFavorites_FileNotExists(t *testing.T) {
 
 	favorites, err := GetFavorites()
 	assert.NoError(t, err)
-	assert.Len(t, favorites, 0)
+	assert.Len(t, favorites, 3)
+
+	_, statErr := os.Stat(tempPath)
+	assert.NoError(t, statErr)
+	assert.Equal(t, "~/.filetug", favorites[0].Path)
+	assert.Equal(t, "file", favorites[0].Store.Scheme)
+	assert.Equal(t, "ftp", favorites[1].Store.Scheme)
+	assert.Equal(t, "https", favorites[2].Store.Scheme)
 }
 
 func TestFavorites_GetFavorites_EmptyFile(t *testing.T) {
@@ -72,6 +79,55 @@ func TestFavorites_GetFavorites_EmptyFile(t *testing.T) {
 	favorites, err := GetFavorites()
 	assert.NoError(t, err)
 	assert.Len(t, favorites, 0)
+}
+
+func TestFavorites_GetFavorites_FileExists_NoDefaults(t *testing.T) {
+	tempDir := t.TempDir()
+	tempPath := filepath.Join(tempDir, "favorites.yaml")
+	oldPath := favoritesFilePath
+	favoritesFilePath = tempPath
+	defer func() {
+		favoritesFilePath = oldPath
+	}()
+
+	expected := []Favorite{{Path: "/custom"}}
+	err := writeFavorites(expected)
+	assert.NoError(t, err)
+
+	before, err := os.ReadFile(tempPath)
+	assert.NoError(t, err)
+
+	favorites, err := GetFavorites()
+	assert.NoError(t, err)
+	assert.Len(t, favorites, 1)
+	assert.Equal(t, "/custom", favorites[0].Path)
+
+	after, err := os.ReadFile(tempPath)
+	assert.NoError(t, err)
+	assert.Equal(t, before, after)
+}
+
+func TestFavorites_GetFavorites_DefaultWriteError(t *testing.T) {
+	tempDir := t.TempDir()
+	tempPath := filepath.Join(tempDir, "missing.yaml")
+	oldPath := favoritesFilePath
+	oldMarshal := yamlMarshal
+	favoritesFilePath = tempPath
+	defer func() {
+		favoritesFilePath = oldPath
+		yamlMarshal = oldMarshal
+	}()
+
+	yamlMarshal = func(in any) ([]byte, error) {
+		_ = in
+		return nil, assert.AnError
+	}
+
+	favorites, err := GetFavorites()
+	assert.Nil(t, favorites)
+	assert.Error(t, err)
+	_, statErr := os.Stat(tempPath)
+	assert.Error(t, statErr)
 }
 
 func TestFavorites_AddDelete_EmptyPath(t *testing.T) {
@@ -146,10 +202,13 @@ func TestFavorites_DeleteFavorite_KeepsOtherItems(t *testing.T) {
 		favoritesFilePath = oldPath
 	}()
 
+	err := os.WriteFile(tempPath, []byte(""), 0o644)
+	assert.NoError(t, err)
+
 	first := Favorite{Path: "/first"}
 	second := Favorite{Path: "/second"}
 
-	err := AddFavorite(first)
+	err = AddFavorite(first)
 	assert.NoError(t, err)
 	err = AddFavorite(second)
 	assert.NoError(t, err)

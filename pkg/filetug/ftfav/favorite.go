@@ -37,6 +37,7 @@ var favoritesFilePath string
 var GetDatatugUserDir = ftsettings.GetDatatugUserDir
 var yamlMarshal = yaml.Marshal
 var yamlUnmarshal = yaml.Unmarshal
+var parseURL = url.Parse
 
 func init() {
 	datatugUserDir, err := GetDatatugUserDir()
@@ -54,7 +55,12 @@ func GetFavorites() (favorites []Favorite, err error) {
 	data, err := os.ReadFile(favoritesFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []Favorite{}, nil
+			defaults := defaultFavorites()
+			writeErr := writeFavorites(defaults)
+			if writeErr != nil {
+				return nil, writeErr
+			}
+			return defaults, nil
 		}
 		return nil, err
 	}
@@ -151,4 +157,23 @@ func mapFavoriteToPersisted(item Favorite) favorite {
 		Shortcut:    item.Shortcut,
 		Description: item.Description,
 	}
+}
+
+func defaultFavorites() []Favorite {
+	ftpURL, _ := parseURL("ftp://demo:password@test.rebex.net")
+	httpsURL, _ := parseURL("https://www.kernel.org/pub/")
+	defaults := []Favorite{
+		{
+			Store:       url.URL{Scheme: "file"},
+			Path:        "~/.filetug",
+			Description: "FileTug settings dir",
+		},
+		{
+			Store: *ftpURL,
+		},
+		{
+			Store: *httpsURL,
+		},
+	}
+	return defaults
 }
