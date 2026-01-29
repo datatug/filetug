@@ -130,6 +130,16 @@ func (b *bottom) getCtrlMenuItems() []ftui.MenuItem {
 	}
 }
 
+func (b *bottom) getCtrlFKMenuItems() []ftui.MenuItem {
+	return []ftui.MenuItem{
+		{Title: "F3 Name", HotKeys: []string{"F3"}, Action: func() {}},
+		{Title: "F4 Extension", HotKeys: []string{"F4"}, Action: func() {}},
+		{Title: "F5 Date", HotKeys: []string{"F5"}, Action: func() {}},
+		{Title: "F6 Size", HotKeys: []string{"F6"}, Action: func() {}},
+		{Title: "F7 Unsorted", HotKeys: []string{"F7"}, Action: func() {}},
+	}
+}
+
 func (b *bottom) getFKMenuItems() []ftui.MenuItem {
 	return []ftui.MenuItem{
 		{Title: "F1 Help", HotKeys: []string{"F1"}, Action: func() {}},
