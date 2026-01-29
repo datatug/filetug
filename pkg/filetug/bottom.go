@@ -13,9 +13,10 @@ import (
 
 type bottom struct {
 	*tview.TextView
-	nav       *Navigator
-	menuItems []ftui.MenuItem
-	isCtrl    bool
+	nav          *Navigator
+	altMenuItems []ftui.MenuItem
+	fkMenuItems  []ftui.MenuItem
+	isCtrl       bool
 }
 
 func newBottom(nav *Navigator) *bottom {
@@ -29,29 +30,56 @@ func newBottom(nav *Navigator) *bottom {
 
 	b.SetHighlightedFunc(b.highlighted)
 
-	b.menuItems = b.getAltMenuItems()
+	b.altMenuItems = b.getAltMenuItems()
+	b.fkMenuItems = b.getFKMenuItems()
+
 	b.render()
 
 	return b
 }
 
 func (b *bottom) render() {
+
+	var sb strings.Builder
+
+	{
+		menuItemsText := b.renderMenuItems(b.fkMenuItems)
+		sb.WriteString(menuItemsText)
+	}
+	sb.WriteString(" | ")
+	{
+		sb.WriteString("[DarkGray]Alt[-]+: ")
+		menuItemsText := b.renderMenuItems(b.altMenuItems)
+		sb.WriteString(menuItemsText)
+	}
+
+	text := sb.String()
+	b.SetText(text)
+}
+
+func (b *bottom) renderMenuItems(menuItems []ftui.MenuItem) string {
 	const separator = "┊"
 	var sb strings.Builder
-	sb.WriteString("[white]Alt[-]+: ")
-	for _, mi := range b.menuItems {
+	for _, mi := range menuItems {
 		title := mi.Title
 		for _, key := range mi.HotKeys {
 			hotkeyText := fmt.Sprintf("[%s]%s[-]", sneatv.CurrentTheme.HotkeyColor, key)
 			title = strings.Replace(title, key, hotkeyText, 1)
 		}
-		title = fmt.Sprintf(`["%s"]%s[""]`, mi.HotKeys[0], title)
+		area := mi.HotKeys[0]
+		switch area {
+		case "/":
+			area = "root"
+		case "~":
+			area = "home"
+		}
+		title = fmt.Sprintf(`["%s"]%s[""]`, area, title)
 		sb.WriteString(title)
 		sb.WriteString(separator)
 	}
 	fullText := sb.String()
 	trimmedText := fullText[:sb.Len()-len(separator)]
-	b.SetText(trimmedText)
+	return trimmedText
 }
 
 func (b *bottom) highlighted(added, _, _ []string) {
@@ -59,7 +87,7 @@ func (b *bottom) highlighted(added, _, _ []string) {
 		return
 	}
 
-	menuItems := b.menuItems
+	menuItems := b.altMenuItems
 	if b.isCtrl {
 		menuItems = b.getCtrlMenuItems()
 	}
@@ -102,23 +130,34 @@ func (b *bottom) getCtrlMenuItems() []ftui.MenuItem {
 	}
 }
 
-func (b *bottom) getAltMenuItems() []ftui.MenuItem {
+func (b *bottom) getFKMenuItems() []ftui.MenuItem {
 	return []ftui.MenuItem{
 		{Title: "F1Help", HotKeys: []string{"F1"}, Action: func() {}},
+		{Title: "F2Menu", HotKeys: []string{"F2"}, Action: func() {}},
+		{Title: "F3View", HotKeys: []string{"F3"}, Action: func() {}},
+		{Title: "F4Edit", HotKeys: []string{"F4"}, Action: func() {}},
+		{Title: "F5Copy", HotKeys: []string{"F5"}, Action: func() {}},
+		{Title: "F6Rename", HotKeys: []string{"F6", "R"}, Action: func() {}},
+		{Title: "F8Delete", HotKeys: []string{"F8", "D"}, Action: func() {}},
+	}
+}
+
+func (b *bottom) getAltMenuItems() []ftui.MenuItem {
+	return []ftui.MenuItem{
 		{Title: "Exit", HotKeys: []string{"x"}, Action: func() { b.nav.stopApp(); osExit(0) }},
 		{Title: "Go", HotKeys: []string{"o"}, Action: func() {}},
-		//{Title: "/root", HotKeys: []string{"/"}, Action: func() {}},
-		{Title: "~Home", HotKeys: []string{"H", "~"}, Action: func() {}},
+		{Title: "/root", HotKeys: []string{"/"}, Action: func() {}},
+		{Title: "~Home", HotKeys: []string{"~"}, Action: func() {}},
 		{Title: "Favorites", HotKeys: []string{"F"}, Action: func() {}},
 		{Title: "Bookmarks", HotKeys: []string{"B"}, Action: func() {}},
 		{Title: "Lists", HotKeys: []string{"L"}, Action: func() {}},
-		//{Title: "Previewer", HotKeys: []string{"P"}, Action: func() {}},
 		{Title: "Masks", HotKeys: []string{"M"}, Action: func() {}},
 		{Title: "Git", HotKeys: []string{"G"}, Action: func() {}},
-		{Title: "Copy", HotKeys: []string{"F5", "C"}, Action: func() {}},
-		{Title: "Rename", HotKeys: []string{"F6", "R"}, Action: func() {}},
-		{Title: "Delete", HotKeys: []string{"F8", "D"}, Action: func() {}},
-		{Title: "View", HotKeys: []string{"V"}, Action: func() {}},
-		{Title: "Edit", HotKeys: []string{"E"}, Action: func() {}},
+		//{Title: "Previewer", HotKeys: []string{"P"}, Action: func() {}},
+		//{Title: "Copy", HotKeys: []string{"F5", "C"}, Action: func() {}},
+		//{Title: "Rename", HotKeys: []string{"F6", "R"}, Action: func() {}},
+		//{Title: "Delete", HotKeys: []string{"F8", "D"}, Action: func() {}},
+		//{Title: "View", HotKeys: []string{"V"}, Action: func() {}},
+		//{Title: "Edit", HotKeys: []string{"E"}, Action: func() {}},
 	}
 }
