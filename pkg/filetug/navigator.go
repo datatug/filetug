@@ -55,7 +55,7 @@ type Navigator struct {
 	right *Container
 
 	dirsTree  *Tree
-	favorites *favorites
+	favorites *favoritesPanel
 	masks     *masks.Panel
 	newPanel  *NewPanel
 
@@ -143,7 +143,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 	}
 	nav.bottom = newBottom(nav)
 	nav.right = NewContainer(2, nav)
-	nav.favorites = newFavorites(nav)
+	nav.favorites = newFavoritesPanel(nav)
 	nav.dirsTree = NewTree(nav)
 	nav.newPanel = NewNewPanel(nav)
 	nav.AddItem(nav.breadcrumbs, 1, 0, false)

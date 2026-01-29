@@ -1,6 +1,7 @@
 package filetug
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/filetug/filetug/pkg/filetug/ftfav"
@@ -12,7 +13,7 @@ import (
 func TestFavorites(t *testing.T) {
 	app := tview.NewApplication()
 	nav := NewNavigator(app)
-	f := newFavorites(nav)
+	f := newFavoritesPanel(nav)
 
 	if f == nil {
 		t.Fatal("f is nil")
@@ -29,21 +30,41 @@ func TestFavorites(t *testing.T) {
 	})
 
 	t.Run("activateFavorite_preview", func(t *testing.T) {
-		fav := ftfav.Favorite{Store: "file:", Path: ".", Description: "test"}
+		storeURL, err := url.Parse("file:")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fav := ftfav.Favorite{Store: *storeURL, Path: ".", Description: "test"}
 		f.activateFavorite(fav, true)
 	})
 
 	t.Run("activateFavorite_go", func(t *testing.T) {
-		fav := ftfav.Favorite{Store: "file:", Path: ".", Description: "test"}
+		storeURL, err := url.Parse("file:")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fav := ftfav.Favorite{Store: *storeURL, Path: ".", Description: "test"}
 		f.activateFavorite(fav, false)
 	})
 
 	t.Run("setStore", func(t *testing.T) {
 		// Test different store schemes
+		fileURL, err := url.Parse("file:")
+		if err != nil {
+			t.Fatal(err)
+		}
+		httpURL, err := url.Parse("https://example.com")
+		if err != nil {
+			t.Fatal(err)
+		}
+		ftpURL, err := url.Parse("ftp://example.com")
+		if err != nil {
+			t.Fatal(err)
+		}
 		testCases := []ftfav.Favorite{
-			{Store: "file:", Path: "/tmp"},
-			{Store: "https://example.com", Path: "/"},
-			{Store: "ftp://example.com", Path: "/"},
+			{Store: *fileURL, Path: "/tmp"},
+			{Store: *httpURL, Path: "/"},
+			{Store: *ftpURL, Path: "/"},
 		}
 
 		for _, tc := range testCases {
@@ -78,19 +99,27 @@ func TestFavorites(t *testing.T) {
 	})
 
 	t.Run("setItems_coverage", func(t *testing.T) {
-		f.items = append(f.items, ftfav.Favorite{Store: "https://www.example.com", Path: "/abc", Description: "Example"})
-		f.items = append(f.items, ftfav.Favorite{Store: "file:", Path: "/some/path", Description: "Dir"})
+		httpURL, err := url.Parse("https://www.example.com")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileURL, err := url.Parse("file:")
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.items = append(f.items, ftfav.Favorite{Store: *httpURL, Path: "/abc", Description: "Example"})
+		f.items = append(f.items, ftfav.Favorite{Store: *fileURL, Path: "/some/path", Description: "Dir"})
 		f.setItems()
 	})
 }
 
 func TestNewFavorites_NilNav(t *testing.T) {
-	// Although newFavorites expects a navigator, let's see what happens if it is nil
-	// Some methods might panic if nav is nil, but newFavorites itself might not.
+	// Although newFavoritesPanel expects a navigator, let's see what happens if it is nil
+	// Some methods might panic if nav is nil, but newFavoritesPanel itself might not.
 	defer func() {
 		_ = recover()
 	}()
-	f := newFavorites(nil)
+	f := newFavoritesPanel(nil)
 	if f == nil {
 		t.Fatal("f is nil")
 	}
@@ -99,8 +128,8 @@ func TestNewFavorites_NilNav(t *testing.T) {
 func TestFavorites_SetStore_InvalidURL(t *testing.T) {
 	app := tview.NewApplication()
 	nav := NewNavigator(app)
-	f := newFavorites(nav)
+	f := newFavoritesPanel(nav)
 
-	dirPath := f.setStore(ftfav.Favorite{Store: ":invalid:", Path: ""})
+	dirPath := f.setStore(ftfav.Favorite{Store: url.URL{Scheme: ":invalid:"}, Path: ""})
 	assert.Equal(t, "", dirPath)
 }

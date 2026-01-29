@@ -16,7 +16,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-type favorites struct {
+type favoritesPanel struct {
 	*sneatv.Boxed
 	flex  *tview.Flex
 	nav   *Navigator
@@ -25,7 +25,7 @@ type favorites struct {
 	prev  current
 }
 
-func (f *favorites) ShowFavorites() {
+func (f *favoritesPanel) ShowFavorites() {
 	f.prev = f.nav.current
 	f.nav.left.SetContent(f)
 	f.nav.setAppFocus(f.list)
@@ -43,13 +43,13 @@ func builtInFavorites() []ftfav.Favorite {
 		{Store: *testFtpServerUrl, Description: "The Linux Kernel Archives"},
 	}
 }
-func newFavorites(nav *Navigator) *favorites {
+func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 	flex := tview.NewFlex().SetDirection(tview.FlexRow)
 	flex.SetTitle(" Favorites ")
 	list := tview.NewList()
 	list.SetSecondaryTextColor(tcell.ColorGray)
 	footer := tview.NewTextView().SetText("<esc> to go back").SetTextColor(tcell.ColorGray)
-	f := &favorites{
+	f := &favoritesPanel{
 		flex:  flex,
 		list:  list,
 		nav:   nav,
@@ -66,10 +66,28 @@ func newFavorites(nav *Navigator) *favorites {
 	f.setItems()
 	f.list.SetInputCapture(f.inputCapture)
 	f.list.SetChangedFunc(f.changed)
+	go func() {
+		userFavorites, err := ftfav.GetFavorites()
+		if err != nil {
+			return
+		}
+		items := make([]ftfav.Favorite, 0, len(f.items)+len(userFavorites))
+		items = append(items, f.items...)
+		items = append(items, userFavorites...)
+		update := func() {
+			f.items = items
+			f.setItems()
+		}
+		if f.nav != nil && f.nav.queueUpdateDraw != nil {
+			f.nav.queueUpdateDraw(update)
+		} else {
+			update()
+		}
+	}()
 	return f
 }
 
-func (f *favorites) setItems() {
+func (f *favoritesPanel) setItems() {
 	f.list.Clear()
 	i := 0
 	for _, item := range f.items {
@@ -117,16 +135,16 @@ func (f *favorites) setItems() {
 	}
 }
 
-func (f *favorites) selected(item ftfav.Favorite) {
+func (f *favoritesPanel) selected(item ftfav.Favorite) {
 	f.activateFavorite(item, false)
 }
 
-func (f *favorites) changed(index int, _ string, _ string, _ rune) {
+func (f *favoritesPanel) changed(index int, _ string, _ string, _ rune) {
 	item := f.items[index]
 	f.activateFavorite(item, true)
 }
 
-func (f *favorites) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+func (f *favoritesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyEnter:
 		currentFav := f.items[f.list.GetCurrentItem()]
@@ -148,7 +166,10 @@ func (f *favorites) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	}
 }
 
-func (f *favorites) activateFavorite(item ftfav.Favorite, previewMode bool) {
+func (f *favoritesPanel) activateFavorite(item ftfav.Favorite, previewMode bool) {
+	if f.nav == nil || f.nav.store == nil {
+		return
+	}
 	dirPath := f.setStore(item)
 	if previewMode {
 		ctx := context.Background()
@@ -162,7 +183,7 @@ func (f *favorites) activateFavorite(item ftfav.Favorite, previewMode bool) {
 	}
 }
 
-func (f *favorites) setStore(item ftfav.Favorite) (dirPath string) {
+func (f *favoritesPanel) setStore(item ftfav.Favorite) (dirPath string) {
 	dirPath = item.Path
 	root := item.Store
 	if storeRootUrl := f.nav.store.RootURL(); storeRootUrl.String() != root.String() {

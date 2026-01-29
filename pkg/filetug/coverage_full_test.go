@@ -283,13 +283,18 @@ func TestDirSummary_InputCapture_MoreCoverage(t *testing.T) {
 func TestFavorites_SetItems_ExtraBranches(t *testing.T) {
 	app := tview.NewApplication()
 	nav := NewNavigator(app)
-	f := newFavorites(nav)
+	f := newFavoritesPanel(nav)
+	fileURL := url.URL{Scheme: "file"}
+	httpURL, err := url.Parse("https://www.example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	f.items = []ftfav.Favorite{
-		{Store: "", Path: "/", Description: "root"},
-		{Store: "file:", Path: "~", Description: "home"},
-		{Store: "file:", Path: "/tmp", Description: "tmp"},
-		{Store: "https://www.example.com", Path: "/docs", Description: "docs"},
+		{Store: url.URL{}, Path: "/", Description: "root"},
+		{Store: fileURL, Path: "~", Description: "home"},
+		{Store: fileURL, Path: "/tmp", Description: "tmp"},
+		{Store: *httpURL, Path: "/docs", Description: "docs"},
 	}
 	f.setItems()
 

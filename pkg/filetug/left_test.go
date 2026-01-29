@@ -4,6 +4,6 @@ import "testing"
 
 func Test_createLeft(t *testing.T) {
 	nav := &Navigator{}
-	nav.favorites = newFavorites(nav)
+	nav.favorites = newFavoritesPanel(nav)
 	createLeft(nav)
 }
