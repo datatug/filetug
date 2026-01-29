@@ -139,7 +139,7 @@ func (p *GitDirStatusPreviewer) refresh() {
 		})
 		return
 	}
-	dirPath := p.dirContext.Path
+	dirPath := p.dirContext.Path()
 	result, err := p.statusLoader(dirPath)
 	if err != nil {
 		p.queueUpdate(func() {

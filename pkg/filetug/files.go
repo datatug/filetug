@@ -43,7 +43,7 @@ func (f *filesPanel) GetCurrentEntry() files.EntryWithDirPath {
 			_, _ = fmt.Fprintf(os.Stderr, "files panel missing dir path for entry %q\n", entry.Name())
 			return nil
 		}
-		entry = files.NewEntryWithDirPath(entry, f.rows.Dir.Path)
+		entry = files.NewEntryWithDirPath(entry, f.rows.Dir.Path())
 	}
 
 	return entry
@@ -118,7 +118,7 @@ func (f *filesPanel) updateGitStatuses(ctx context.Context, dirContext *files.Di
 	if f.nav.store.RootURL().Scheme != "file" {
 		return
 	}
-	repoRoot := gitutils.GetRepositoryRoot(dirContext.Path)
+	repoRoot := gitutils.GetRepositoryRoot(dirContext.Path())
 	if repoRoot == "" {
 		return
 	}

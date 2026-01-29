@@ -12,6 +12,7 @@ import (
 	"github.com/filetug/filetug/pkg/files/httpfile"
 	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/filetug/filetug/pkg/filetug/ftfav"
+	"github.com/filetug/filetug/pkg/filetug/ftstate"
 	"github.com/filetug/filetug/pkg/fsutils"
 	"github.com/filetug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
@@ -24,7 +25,7 @@ type favoritesPanel struct {
 	nav            *Navigator
 	list           *tview.List
 	items          []ftfav.Favorite
-	prev           current
+	prev           ftstate.Current
 	addContainer   *tview.Flex
 	addFormVisible bool
 	addButton      *tview.Button
@@ -55,7 +56,7 @@ func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 	list := tview.NewList()
 	list.SetSecondaryTextColor(tcell.ColorGray)
 	footer := tview.NewTextView().SetText("<esc> to go back").SetTextColor(tcell.ColorGray)
-	addButton := tview.NewButton("Add current dir to favorites")
+	addButton := tview.NewButton("Add Current dir to favorites")
 	addContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	addContainer.AddItem(addButton, 1, 0, false)
 	f := &favoritesPanel{
@@ -185,8 +186,10 @@ func (f *favoritesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		f.deleteCurrentFavorite()
 		return nil
 	case tcell.KeyEscape:
-		dirContext := files.NewDirContext(f.nav.store, f.prev.dir, nil)
-		f.nav.goDir(dirContext)
+		prevDir := f.prev.Dir()
+		if prevDir != nil {
+			f.nav.goDir(prevDir)
+		}
 		f.nav.left.SetContent(f.nav.dirsTree)
 		f.nav.setAppFocus(f.nav.dirsTree)
 		return nil
@@ -235,13 +238,14 @@ func (f *favoritesPanel) currentFavorite() (ftfav.Favorite, bool) {
 	if f.nav.store == nil {
 		return ftfav.Favorite{}, false
 	}
-	if f.nav.current.dir == "" {
+	currentDirPath := f.nav.currentDirPath()
+	if currentDirPath == "" {
 		return ftfav.Favorite{}, false
 	}
 	storeURL := f.nav.store.RootURL()
 	currentFavorite := ftfav.Favorite{
 		Store: storeURL,
-		Path:  f.nav.current.dir,
+		Path:  currentDirPath,
 	}
 	return currentFavorite, true
 }

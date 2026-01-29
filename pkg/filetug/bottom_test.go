@@ -6,7 +6,6 @@ import (
 
 	"github.com/filetug/filetug/pkg/filetug/ftui"
 	"github.com/filetug/filetug/pkg/sneatv"
-	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,8 +16,7 @@ func Test_bottom_getCtrlMenuItems(t *testing.T) {
 }
 
 func TestNewBottom(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	b := newBottom(nav)
 	assert.NotNil(t, b)
 	assert.NotNil(t, b.TextView)
@@ -26,8 +24,7 @@ func TestNewBottom(t *testing.T) {
 }
 
 func TestBottom_Render(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	b := newBottom(nav)
 	b.render()
 	text := b.GetText(false)
@@ -37,8 +34,7 @@ func TestBottom_Render(t *testing.T) {
 }
 
 func TestBottom_Highlighted(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	b := newBottom(nav)
 
 	actionCalled := false
@@ -65,8 +61,7 @@ func TestBottom_Highlighted(t *testing.T) {
 }
 
 func TestBottom_GetAltMenuItems(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	b := newBottom(nav)
 	items := b.getAltMenuItems()
 	assert.NotEmpty(t, items)
@@ -91,8 +86,7 @@ func TestBottom_GetAltMenuItems(t *testing.T) {
 }
 
 func TestBottom_GetAltMenuItems_Actions(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	b := newBottom(nav)
 	items := b.getAltMenuItems()
 
@@ -108,8 +102,7 @@ func TestBottom_GetAltMenuItems_Actions(t *testing.T) {
 }
 
 func TestBottom_GetAltMenuItems_ExitAction(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	b := newBottom(nav)
 
 	stopCalled := false
@@ -156,8 +149,7 @@ func TestBottom_RenderMenuItems_ReplacesHotkeysAndRegions(t *testing.T) {
 }
 
 func TestBottom_Highlighted_Ctrl(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	b := newBottom(nav)
 	b.isCtrl = true
 

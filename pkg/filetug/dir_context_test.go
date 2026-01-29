@@ -14,10 +14,7 @@ import (
 
 func TestDirContextEntryMethods(t *testing.T) {
 	tempDir := filepath.ToSlash(t.TempDir())
-	ctx := &files.DirContext{
-		Store: osfile.NewStore("/"),
-		Path:  tempDir,
-	}
+	ctx := files.NewDirContext(osfile.NewStore("/"), tempDir, nil)
 
 	assert.Equal(t, path.Dir(tempDir), ctx.DirPath())
 	assert.Equal(t, tempDir, ctx.FullName())
@@ -29,13 +26,13 @@ func TestDirContextEntryMethods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
 
-	root := &files.DirContext{Path: "/"}
+	root := files.NewDirContext(nil, "/", nil)
 	assert.Equal(t, "/", root.Name())
 
-	trailing := &files.DirContext{Path: tempDir + "/"}
+	trailing := files.NewDirContext(nil, tempDir+"/", nil)
 	assert.Equal(t, path.Base(tempDir), trailing.Name())
 
-	empty := &files.DirContext{}
+	empty := files.NewDirContext(nil, "", nil)
 	assert.Equal(t, "", empty.DirPath())
 	assert.Equal(t, "", empty.Name())
 	info, err = empty.Info()
@@ -43,7 +40,7 @@ func TestDirContextEntryMethods(t *testing.T) {
 	assert.Nil(t, info)
 
 	nonFileStore := mockStore{root: url.URL{Scheme: "ftp"}}
-	nonFileCtx := &files.DirContext{Store: nonFileStore, Path: tempDir}
+	nonFileCtx := files.NewDirContext(nonFileStore, tempDir, nil)
 	info, err = nonFileCtx.Info()
 	assert.NoError(t, err)
 	assert.Nil(t, info)

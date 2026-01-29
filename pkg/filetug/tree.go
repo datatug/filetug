@@ -108,7 +108,7 @@ func (t *Tree) changed(node *tview.TreeNode) {
 		var ctx context.Context
 		ctx, t.nav.cancel = context.WithCancel(context.Background())
 		t.nav.showDir(ctx, node, dirContext, false)
-		ftstate.SaveSelectedTreeDir(dirContext.Path)
+		ftstate.SaveSelectedTreeDir(dirContext.Path())
 	}
 }
 
@@ -134,7 +134,7 @@ func getNodePath(node *tview.TreeNode) string {
 	if !ok || dirContext == nil {
 		return ""
 	}
-	return dirContext.Path
+	return dirContext.Path()
 }
 
 func (t *Tree) focus() {
@@ -174,7 +174,7 @@ func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		refValue := currentNode.GetReference()
 		switch ref := refValue.(type) {
 		case *files.DirContext:
-			parentDir, _ := path.Split(ref.Path)
+			parentDir, _ := path.Split(ref.Path())
 			parentContext := files.NewDirContext(t.nav.store, parentDir, nil)
 			t.nav.goDir(parentContext)
 			return nil
@@ -184,7 +184,7 @@ func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		currentNode := t.tv.GetCurrentNode()
 		switch ref := currentNode.GetReference().(type) {
 		case *files.DirContext:
-			dirPath := ref.Path
+			dirPath := ref.Path()
 			if dirPath != "/" {
 				dirPath = strings.TrimSuffix(dirPath, "/")
 			}
@@ -262,7 +262,7 @@ func highlightTreeNodes(n *tview.TreeNode, searchCtx *searchContext, isRoot bool
 	if !isRoot {
 		r := n.GetReference()
 		if dirContext, ok := r.(*files.DirContext); ok {
-			_, name := path.Split(dirContext.Path)
+			_, name := path.Split(dirContext.Path())
 			lowerName := strings.ToLower(name)
 			if strings.Contains(lowerName, searchCtx.pattern) {
 				i := strings.Index(lowerName, searchCtx.pattern)
@@ -302,15 +302,15 @@ func (t *Tree) setCurrentDir(dirContext *files.DirContext) {
 	}
 
 	var panelTitle, text string
-	if dirContext.Path == root.Path {
-		if dirContext.Path == "/" {
+	if dirContext.Path() == root.Path {
+		if dirContext.Path() == "/" {
 			text = "/"
 		} else {
 			text = strings.TrimSuffix(root.Path, "/")
 		}
 	} else {
 		text = ".."
-		trimmedDir := strings.TrimSuffix(dirContext.Path, "/")
+		trimmedDir := strings.TrimSuffix(dirContext.Path(), "/")
 		_, panelTitle = path.Split(trimmedDir)
 		if root.Scheme == "file" && trimmedDir == userHomeDir {
 			panelTitle = "~"
@@ -358,7 +358,7 @@ func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirConte
 
 	var repo *git.Repository
 	if t.nav.store.RootURL().Scheme == "file" {
-		repoRoot := gitutils.GetRepositoryRoot(dirContext.Path)
+		repoRoot := gitutils.GetRepositoryRoot(dirContext.Path())
 		if repoRoot != "" {
 			repo, _ = git.PlainOpen(repoRoot)
 		}
@@ -371,7 +371,7 @@ func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirConte
 			continue
 		}
 		if child.IsDir() {
-			childPath := path.Join(dirContext.Path, name)
+			childPath := path.Join(dirContext.Path(), name)
 			emoji := dirEmoji
 			switch strings.ToLower(name) {
 			case "library":
@@ -405,7 +405,7 @@ func (t *Tree) setDirContext(ctx context.Context, node *tview.TreeNode, dirConte
 			}
 			prefix := emoji + name
 			n := tview.NewTreeNode(prefix)
-			childContext := files.NewDirContext(dirContext.Store, childPath, nil)
+			childContext := files.NewDirContext(dirContext.Store(), childPath, nil)
 			n.SetReference(childContext)
 			node.AddChild(n)
 

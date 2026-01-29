@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/go-git/go-git/v5"
 	"github.com/rivo/tview"
@@ -35,8 +34,7 @@ func TestTree_SetDirContext_GitOptimization(t *testing.T) {
 	_ = os.Mkdir(subDir1, 0755)
 	_ = os.Mkdir(subDir2, 0755)
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = osfile.NewStore(tempDir)
 
 	// Mock queueUpdateDraw to avoid hanging
@@ -52,7 +50,7 @@ func TestTree_SetDirContext_GitOptimization(t *testing.T) {
 		t.Fatalf("Failed to read dir: %v", err)
 	}
 
-	dirContext := files.NewDirContext(nav.store, tempDir, dirEntries)
+	dirContext := nav.NewDirContext(tempDir, dirEntries)
 
 	ctx := context.Background()
 	tree.setDirContext(ctx, node, dirContext)
@@ -87,8 +85,7 @@ func TestNavigator_ShowDir_GitStatusText(t *testing.T) {
 	subDirPath := filepath.Join(tempDir, subDirName)
 	_ = os.Mkdir(subDirPath, 0755)
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = osfile.NewStore(tempDir)
 
 	// Mock queueUpdateDraw to execute immediately
@@ -98,13 +95,13 @@ func TestNavigator_ShowDir_GitStatusText(t *testing.T) {
 
 	// Create a tree node for the subdirectory as it would be in the tree
 	// In the tree, it would have a prefix like "📁subdir1"
-	nodeContext := files.NewDirContext(nav.store, subDirPath, nil)
+	nodeContext := nav.NewDirContext(subDirPath, nil)
 	node := tview.NewTreeNode("📁" + subDirName).SetReference(nodeContext)
 
 	ctx := context.Background()
 
 	// When showDir is called (e.g., when a node is selected)
-	dirContext := files.NewDirContext(nav.store, subDirPath, nil)
+	dirContext := nav.NewDirContext(subDirPath, nil)
 	nav.showDir(ctx, node, dirContext, false)
 
 	// Wait for goroutines
@@ -147,8 +144,7 @@ func TestNavigator_UpdateGitStatus_NoChanges(t *testing.T) {
 	dirtyFile := filepath.Join(dirtySubDirPath, "file.txt")
 	_ = os.WriteFile(dirtyFile, []byte("content"), 0644)
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = osfile.NewStore(tempDir)
 	nav.queueUpdateDraw = func(f func()) { f() }
 

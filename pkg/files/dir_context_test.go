@@ -65,9 +65,13 @@ func TestDirContextMethods(t *testing.T) {
 	info, err := dir.Info()
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
+	assert.Equal(t, tempDir, dir.Path())
+	assert.Equal(t, "file", dir.Store().RootURL().Scheme)
 
 	root := NewDirContext(nil, "/", nil)
 	assert.Equal(t, "/", root.Name())
+	assert.Nil(t, root.Store())
+	assert.Equal(t, "/", root.Path())
 
 	empty := NewDirContext(nil, "", nil)
 	assert.Equal(t, "", empty.DirPath())
@@ -75,6 +79,7 @@ func TestDirContextMethods(t *testing.T) {
 	info, err = empty.Info()
 	assert.NoError(t, err)
 	assert.Nil(t, info)
+	assert.Equal(t, "", empty.Path())
 
 	nonFileStore := mockStore{root: url.URL{Scheme: "ftp"}}
 	nonFileCtx := NewDirContext(nonFileStore, tempDir, nil)

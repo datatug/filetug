@@ -13,11 +13,10 @@ import (
 )
 
 func TestNewPanel_Coverage(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tmpDir := t.TempDir()
 	nav.store = osfile.NewStore(tmpDir)
-	nav.current.dir = tmpDir
+	nav.current.SetDir(nav.NewDirContext(tmpDir, nil))
 
 	p := NewNewPanel(nav)
 
@@ -41,7 +40,7 @@ func TestNewPanel_Coverage(t *testing.T) {
 		p.createFile()
 		// If CreateFile failed, it might have returned early.
 		// Let's use a full path to be absolutely sure where it should be.
-		expectedFile := filepath.Join(nav.current.dir, "newfile.txt")
+		expectedFile := filepath.Join(nav.current.Dir().Path(), "newfile.txt")
 		_, err := os.Stat(expectedFile)
 		assert.NoError(t, err)
 	})
@@ -67,11 +66,32 @@ func TestNewPanel_Coverage(t *testing.T) {
 		res = p.input.GetInputCapture()(event)
 		assert.Equal(t, (*tcell.EventKey)(nil), res)
 	})
+
+	t.Run("createDir_noCurrentDir", func(t *testing.T) {
+		original := nav.current.Dir()
+		nav.current.SetDir(nil)
+		defer nav.current.SetDir(original)
+
+		p.input.SetText("skipdir")
+		p.createDir()
+		_, err := os.Stat(filepath.Join(tmpDir, "skipdir"))
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("createFile_noCurrentDir", func(t *testing.T) {
+		original := nav.current.Dir()
+		nav.current.SetDir(nil)
+		defer nav.current.SetDir(original)
+
+		p.input.SetText("skipfile.txt")
+		p.createFile()
+		_, err := os.Stat(filepath.Join(tmpDir, "skipfile.txt"))
+		assert.True(t, os.IsNotExist(err))
+	})
 }
 
 func TestScripts_And_NestedDirs(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	t.Run("showScriptsPanel", func(t *testing.T) {
 		nav.showScriptsPanel()

@@ -114,7 +114,10 @@ func (p *NewPanel) createDir() {
 	if name == "" {
 		return
 	}
-	currentDir := p.nav.current.dir
+	currentDir := p.nav.currentDirPath()
+	if currentDir == "" {
+		return
+	}
 	fullPath := path.Join(currentDir, name)
 
 	ctx := context.Background()
@@ -134,7 +137,10 @@ func (p *NewPanel) createFile() {
 	if name == "" {
 		return
 	}
-	currentDir := p.nav.current.dir
+	currentDir := p.nav.currentDirPath()
+	if currentDir == "" {
+		return
+	}
 	fullPath := path.Join(currentDir, name)
 
 	ctx := context.Background()

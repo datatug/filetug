@@ -15,8 +15,7 @@ import (
 )
 
 func TestNavigator_Delete_And_Operations(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	// Setup a temporary file to delete
 	tmpDir := t.TempDir()
@@ -43,7 +42,7 @@ func TestNavigator_Delete_And_Operations(t *testing.T) {
 		nav.activeCol = 1
 
 		// Use real DirContext to avoid nil dereference in GetCurrentEntry
-		dirContext := files.NewDirContext(nav.store, tmpDir, entries)
+		dirContext := nav.NewDirContext(tmpDir, entries)
 		rows := NewFileRows(dirContext)
 		nav.files.SetRows(rows, false)
 		nav.files.Focus(func(p tview.Primitive) {})
@@ -91,8 +90,7 @@ func TestNavigator_Delete_And_Operations(t *testing.T) {
 }
 
 func TestFilesPanel_GetCurrentEntry_EdgeCases(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	fp := newFiles(nav)
 
 	t.Run("empty_rows", func(t *testing.T) {
@@ -106,7 +104,7 @@ func TestFilesPanel_GetCurrentEntry_EdgeCases(t *testing.T) {
 			VisibleEntries: []files.EntryWithDirPath{
 				files.NewEntryWithDirPath(mEntry, ""),
 			},
-			Dir: &files.DirContext{Path: "/some/path"},
+			Dir: files.NewDirContext(nil, "/some/path", nil),
 		}
 		fp.rows = rows
 		// Select the first entry row (row 1 when the parent row is shown).

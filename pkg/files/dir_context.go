@@ -10,10 +10,18 @@ import (
 var _ EntryWithDirPath = (*DirContext)(nil)
 
 type DirContext struct {
-	Store    Store
-	Path     string
+	store    Store
+	path     string
 	children []os.DirEntry
 	time     time.Time
+}
+
+func NewDirContext(store Store, fullPath string, children []os.DirEntry) *DirContext {
+	return &DirContext{
+		store:    store,
+		path:     fullPath,
+		children: children,
+	}
 }
 
 func (d *DirContext) Timestamp() time.Time {
@@ -28,7 +36,7 @@ func (d *DirContext) SetChildren(entries []os.DirEntry) {
 func (d *DirContext) Entries() []EntryWithDirPath {
 	entries := make([]EntryWithDirPath, len(d.children))
 	for i, child := range d.children {
-		entries[i] = NewEntryWithDirPath(child, d.Path)
+		entries[i] = NewEntryWithDirPath(child, d.path)
 	}
 	return entries
 }
@@ -43,28 +51,28 @@ func (d *DirContext) Children() []os.DirEntry {
 }
 
 func (d *DirContext) DirPath() string {
-	if d.Path == "" {
+	if d.path == "" {
 		return ""
 	}
-	return path.Dir(d.Path)
+	return path.Dir(d.path)
 }
 
 func (d *DirContext) FullName() string {
-	return d.Path
+	return d.path
 }
 
 func (d *DirContext) String() string {
-	return d.Path
+	return d.path
 }
 
 func (d *DirContext) Name() string {
-	if d.Path == "" {
+	if d.path == "" {
 		return ""
 	}
-	if d.Path == "/" {
+	if d.path == "/" {
 		return "/"
 	}
-	trimmed := strings.TrimSuffix(d.Path, "/")
+	trimmed := strings.TrimSuffix(d.path, "/")
 	return path.Base(trimmed)
 }
 
@@ -77,19 +85,19 @@ func (d *DirContext) Type() os.FileMode {
 }
 
 func (d *DirContext) Info() (os.FileInfo, error) {
-	if d.Path == "" {
+	if d.path == "" {
 		return nil, nil
 	}
-	if d.Store != nil && d.Store.RootURL().Scheme == "file" {
-		return os.Stat(d.Path)
+	if d.store != nil && d.store.RootURL().Scheme == "file" {
+		return os.Stat(d.path)
 	}
 	return nil, nil
 }
 
-func NewDirContext(store Store, path string, children []os.DirEntry) *DirContext {
-	return &DirContext{
-		Store:    store,
-		Path:     path,
-		children: children,
-	}
+func (d *DirContext) Store() Store {
+	return d.store
+}
+
+func (d *DirContext) Path() string {
+	return d.path
 }

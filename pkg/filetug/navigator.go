@@ -40,7 +40,7 @@ type Navigator struct {
 	*tview.Flex
 	main *tview.Flex
 
-	current     current
+	current     ftstate.Current
 	activeCol   int
 	proportions []int
 
@@ -110,6 +110,9 @@ var getDirStatus = gitutils.GetDirStatus
 var getFileStatus = gitutils.GetFileStatus
 
 func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator {
+	if app == nil {
+		app = tview.NewApplication()
+	}
 	defaultStore := osfile.NewStore("/")
 	rootBreadcrumb := crumbs.NewBreadcrumb("FileTug: ", func() error {
 		return nil
@@ -223,6 +226,10 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 }
 
 var defaultProportions = []int{5, 12, 7}
+
+func (nav *Navigator) NewDirContext(path string, children []os.DirEntry) *files.DirContext {
+	return files.NewDirContext(nav.store, path, children)
+}
 
 func (nav *Navigator) createColumns() {
 
@@ -362,7 +369,7 @@ func (nav *Navigator) goDir(dirContext *files.DirContext) {
 	nav.showDir(ctx, nav.dirsTree.rootNode, dirContext, true)
 	root := nav.store.RootURL()
 	rootValue := root.String()
-	saveCurrentDir(rootValue, dirContext.Path)
+	saveCurrentDir(rootValue, dirContext.Path())
 }
 
 func (nav *Navigator) updateGitStatus(ctx context.Context, repo *git.Repository, fullPath string, node *tview.TreeNode, prefix string) {
@@ -456,6 +463,14 @@ func (nav *Navigator) gitStatusText(status *gitutils.RepoStatus, fullPath string
 
 var saveCurrentDir = ftstate.SaveCurrentDir
 
+func (nav *Navigator) currentDirPath() string {
+	currentDir := nav.current.Dir()
+	if currentDir == nil {
+		return ""
+	}
+	return currentDir.Path()
+}
+
 // showDir updates all panels.
 // The `isTreeRootChanged bool` argument is needed do distinguish root dir change from
 // the case we simply select the root node in the tree.
@@ -463,25 +478,32 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dirCont
 	if dirContext == nil {
 		return
 	}
-	expandedDir := fsutils.ExpandHome(dirContext.Path)
-	if expandedDir != dirContext.Path {
-		dirContext = files.NewDirContext(dirContext.Store, expandedDir, dirContext.Children())
+	expandedDir := fsutils.ExpandHome(dirContext.Path())
+	if expandedDir != dirContext.Path() {
+		dirContext = files.NewDirContext(dirContext.Store(), expandedDir, dirContext.Children())
 	}
-	if nav.current.dir == expandedDir && !isTreeRootChanged {
+	currentDirPath := nav.currentDirPath()
+	if currentDirPath == expandedDir && !isTreeRootChanged {
 		return // TODO: Investigate and document why this happens or fix
 	}
-	nav.current.dir = expandedDir
+	currentChildren := dirContext.Children()
+	currentDirContext := files.NewDirContext(dirContext.Store(), expandedDir, currentChildren)
+	nav.current.SetDir(currentDirContext)
 	if node != nil {
 		node.SetReference(dirContext)
 	}
 	if nav.store.RootURL().Scheme == "file" && node != nil {
 		name := node.GetText()
-		repoRoot := gitutils.GetRepositoryRoot(nav.current.dir)
-		var repo *git.Repository
-		if repoRoot != "" {
-			repo, _ = git.PlainOpen(repoRoot)
+		currentDir := nav.current.Dir()
+		if currentDir != nil {
+			repoRoot := gitutils.GetRepositoryRoot(currentDir.Path())
+			var repo *git.Repository
+			if repoRoot != "" {
+				repo, _ = git.PlainOpen(repoRoot)
+			}
+			currentPath := currentDir.Path()
+			go nav.updateGitStatus(ctx, repo, currentPath, node, name)
 		}
-		go nav.updateGitStatus(ctx, repo, nav.current.dir, node, name)
 	}
 
 	nav.setBreadcrumbs()
@@ -523,10 +545,7 @@ func (nav *Navigator) showNodeError(node *tview.TreeNode, err error) {
 		return
 	}
 	nav.dirsTree.setError(node, err)
-	dirRecords := NewFileRows(&files.DirContext{
-		Store: nav.store,
-		Path:  getNodePath(node),
-	})
+	dirRecords := NewFileRows(files.NewDirContext(nav.store, getNodePath(node), nil))
 	nav.files.SetRows(dirRecords, false)
 	text := err.Error()
 	nav.previewer.textView.SetText(text).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
@@ -551,7 +570,11 @@ func (nav *Navigator) setBreadcrumbs() {
 		nav.breadcrumbs.Push(rootBreadcrumb)
 	}
 
-	trimmedDir := strings.TrimPrefix(nav.current.dir, rootPath)
+	currentDirPath := nav.currentDirPath()
+	if currentDirPath == "" {
+		return
+	}
+	trimmedDir := strings.TrimPrefix(currentDirPath, rootPath)
 	relativePath := strings.TrimPrefix(trimmedDir, "/")
 	if relativePath == "" {
 		return
@@ -585,6 +608,7 @@ func (nav *Navigator) getDirData(ctx context.Context, dirPath string) (dirContex
 	// Tree is always sorted by name and files are usually as well
 	// So let's sort once here and pass sorted to both Tree and filesPanel.
 	children = sortDirChildren(children)
+	//time.Sleep(time.Millisecond * 2000)
 	dirContext.SetChildren(children)
 	return
 }

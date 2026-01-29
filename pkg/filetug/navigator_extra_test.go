@@ -16,8 +16,7 @@ import (
 )
 
 func TestNavigator_SetStore(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -27,8 +26,7 @@ func TestNavigator_SetStore(t *testing.T) {
 }
 
 func TestNavigator_SetFocusToContainer(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	// Test index 1 (files)
 	nav.SetFocusToContainer(1)
@@ -40,22 +38,19 @@ func TestNewNavigator_InvalidURL(t *testing.T) {
 	oldGetState := getState
 	defer func() { getState = oldGetState }()
 
-	app := tview.NewApplication()
-
 	t.Run("Invalid_HTTPS_URL", func(t *testing.T) {
 		getState = func() (*ftstate.State, error) {
 			return &ftstate.State{
 				CurrentDir: "https:// invalid-url",
 			}, nil
 		}
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		assert.True(t, nav != nil)
 	})
 }
 
 func TestNavigator_InputCapture_Extra(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	t.Run("AltX", func(t *testing.T) {
 		event := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModAlt)
@@ -77,8 +72,7 @@ func TestNavigator_InputCapture_Extra(t *testing.T) {
 }
 
 func TestNavigator_Resize_Extra(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	t.Run("Resize_ActiveCol0", func(t *testing.T) {
 		nav.activeCol = 0
@@ -102,8 +96,7 @@ func TestNavigator_Resize_Extra(t *testing.T) {
 }
 
 func TestNavigator_SetBreadcrumbs_EmptyRelative(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -111,15 +104,24 @@ func TestNavigator_SetBreadcrumbs_EmptyRelative(t *testing.T) {
 		rootURL: url.URL{Scheme: "file", Path: "/root"},
 	}
 	nav.store = mStore
-	nav.current.dir = "/root"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/root", nil))
 
 	nav.setBreadcrumbs()
 	// Should return early after pushing root breadcrumb
 }
 
+func TestNavigator_SetBreadcrumbs_NoCurrentDir(t *testing.T) {
+	nav := NewNavigator(nil)
+	if nav == nil {
+		t.Fatal("navigator is nil")
+	}
+	nav.store = mockStore{root: url.URL{Path: "/"}}
+	nav.current.SetDir(nil)
+	nav.setBreadcrumbs()
+}
+
 func TestNavigator_DirSummary_FocusLeft(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	focused := false
 	nav.setAppFocus = func(p tview.Primitive) {
@@ -138,8 +140,7 @@ func TestNavigator_DirSummary_FocusLeft(t *testing.T) {
 func TestNavigator_UpdateGitStatus_RealCall(t *testing.T) {
 	// This is hard to test without real git, but we can at least try to call it
 	// and see it doesn't crash.
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.queueUpdateDraw = func(f func()) {
 		f()
 	}
@@ -161,23 +162,21 @@ func TestNavigator_UpdateGitStatus_RealCall(t *testing.T) {
 }
 
 func TestNavigator_ShowNodeError_Extra(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
 	nav.right = NewContainer(2, nav)
 	nav.previewer = newPreviewerPanel(nav)
 
-	nodeContext := files.NewDirContext(nav.store, "/test", nil)
+	nodeContext := files.NewDirContext(nil, "/test", nil)
 	node := tview.NewTreeNode("test").SetReference(nodeContext)
 	nav.showNodeError(node, os.ErrNotExist)
 	assert.Equal(t, "file does not exist", nav.previewer.textView.GetText(true))
 }
 
 func TestNavigator_ShowDir_GitStatusCall(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -195,13 +194,12 @@ func TestNavigator_ShowDir_GitStatusCall(t *testing.T) {
 func TestNewNavigator_EmptyState(t *testing.T) {
 	oldGetState := getState
 	defer func() { getState = oldGetState }()
-	app := tview.NewApplication()
 
 	t.Run("Empty_State", func(t *testing.T) {
 		getState = func() (*ftstate.State, error) {
 			return &ftstate.State{}, nil
 		}
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		assert.True(t, nav != nil)
 		assert.Equal(t, "file:", nav.store.RootURL().Scheme+":")
 	})

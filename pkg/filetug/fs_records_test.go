@@ -53,14 +53,14 @@ func (m mockDirEntry) Info() (os.FileInfo, error) {
 }
 
 func TestNewFileRows(t *testing.T) {
-	dir := &files.DirContext{Path: "/test"}
+	dir := files.NewDirContext(nil, "/test", nil)
 	fr := NewFileRows(dir)
 	assert.NotNil(t, fr)
 	assert.Equal(t, dir, fr.Dir)
 }
 
 func TestFileRows_SetFilter(t *testing.T) {
-	fr := NewFileRows(&files.DirContext{})
+	fr := NewFileRows(files.NewDirContext(nil, "", nil))
 	fr.AllEntries = []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(mockDirEntry{name: "file.txt", isDir: false}, ""),
 		files.NewEntryWithDirPath(mockDirEntry{name: ".hidden", isDir: false}, ""),
@@ -84,7 +84,7 @@ func TestFileRows_SetFilter(t *testing.T) {
 
 func TestFileRows_GetRowCount(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
-	fr := NewFileRows(&files.DirContext{Store: store, Path: "/home"})
+	fr := NewFileRows(files.NewDirContext(store, "/home", nil))
 	fr.VisibleEntries = []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(mockDirEntry{name: "f1", isDir: false}, ""),
 	}
@@ -93,13 +93,27 @@ func TestFileRows_GetRowCount(t *testing.T) {
 	assert.Equal(t, 2, fr.GetRowCount())
 
 	// Hide parent row
-	fr.Dir.Path = "/"
+	fr.Dir = files.NewDirContext(store, "/", nil)
 	assert.Equal(t, 1, fr.GetRowCount())
+}
+
+func TestNewFileRows_NormalizesPath(t *testing.T) {
+	store := mockStore{root: url.URL{Path: "/"}}
+	rows := NewFileRows(files.NewDirContext(store, "/home/", nil))
+	assert.Equal(t, "/home", rows.Dir.Path())
+	assert.Equal(t, store, rows.store)
+}
+
+func TestNewFileRows_NilDir(t *testing.T) {
+	rows := NewFileRows(nil)
+	assert.NotNil(t, rows.Dir)
+	assert.Equal(t, "", rows.Dir.Path())
+	assert.Nil(t, rows.store)
 }
 
 func TestFileRows_GetCell(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
-	fr := NewFileRows(&files.DirContext{Store: store, Path: "/home"})
+	fr := NewFileRows(files.NewDirContext(store, "/home", nil))
 	fr.VisibleEntries = []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(mockDirEntry{name: "file.go", isDir: false}, "/home"),
 	}
@@ -131,7 +145,7 @@ func TestFileRows_GetCell(t *testing.T) {
 
 func TestFileRows_getTopRowNameParentReference(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
-	dir := &files.DirContext{Store: store, Path: "/home/user"}
+	dir := files.NewDirContext(store, "/home/user", nil)
 	fr := NewFileRows(dir)
 
 	cell := fr.getTopRowName()
@@ -152,7 +166,7 @@ func TestFileRows_getTopRowNameParentReference(t *testing.T) {
 
 func TestFileRows_SetGitStatusText(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
-	fr := NewFileRows(&files.DirContext{Store: store, Path: "/home"})
+	fr := NewFileRows(files.NewDirContext(store, "/home", nil))
 	fr.VisibleEntries = []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(mockDirEntry{name: "file.go", isDir: false}, "/home"),
 	}
@@ -184,7 +198,7 @@ func TestFileRows_SetGitStatusText(t *testing.T) {
 
 func TestFileRows_Extra(t *testing.T) {
 	store := mockStore{root: url.URL{Path: "/"}}
-	fr := NewFileRows(&files.DirContext{Store: store, Path: "/"})
+	fr := NewFileRows(files.NewDirContext(store, "/", nil))
 	fr.VisibleEntries = []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(mockDirEntry{name: "dir1", isDir: true}, ""),
 	}
@@ -205,22 +219,22 @@ func TestFileRows_Extra(t *testing.T) {
 	t.Run("GetCell_Empty", func(t *testing.T) {
 		fr.VisibleEntries = nil
 		fr.VisualInfos = nil
-		fr.Dir.Path = "/home"    // Ensure HideParent() is false, so row 0 is parent row
-		cell := fr.GetCell(1, 0) // Row 0 is parent, Row 1 is "No entries"
+		fr.Dir = files.NewDirContext(store, "/home", nil) // Ensure HideParent() is false, so row 0 is parent row
+		cell := fr.GetCell(1, 0)                          // Row 0 is parent, Row 1 is "No entries"
 		assert.NotNil(t, cell)
 		assert.Contains(t, cell.Text, "No entries")
 	})
 
 	t.Run("getTopRow", func(t *testing.T) {
-		fr.Dir.Path = "/home"
+		fr.Dir = files.NewDirContext(store, "/home", nil)
 		cell := fr.getTopRow(0)
 		assert.Equal(t, "..", cell.Text)
 
-		fr.Dir.Path = "/"
+		fr.Dir = files.NewDirContext(store, "/", nil)
 		cell = fr.getTopRow(0)
 		assert.Equal(t, ".", cell.Text)
 
-		fr.Dir.Path = "~"
+		fr.Dir = files.NewDirContext(store, "~", nil)
 		cell = fr.getTopRow(0)
 		assert.Equal(t, "..", cell.Text)
 
@@ -235,7 +249,7 @@ func TestFileRows_Extra(t *testing.T) {
 	})
 
 	t.Run("GetCell_Coverage_Gap", func(t *testing.T) {
-		fr.Dir.Path = "/"
+		fr.Dir = files.NewDirContext(store, "/", nil)
 		fr.hideParent = true // So HideParent() returns true
 
 		// i < 0
@@ -331,7 +345,7 @@ func TestFileRows_isSymlinkToDir(t *testing.T) {
 	}
 
 	fileStore := mockStore{root: url.URL{Scheme: "file"}}
-	rows := NewFileRows(&files.DirContext{Store: fileStore, Path: tmpDir})
+	rows := NewFileRows(files.NewDirContext(fileStore, tmpDir, nil))
 
 	t.Run("dir symlink", func(t *testing.T) {
 		entry := findEntry("link-dir")
@@ -356,7 +370,7 @@ func TestFileRows_isSymlinkToDir(t *testing.T) {
 	t.Run("non-file store", func(t *testing.T) {
 		entry := findEntry("link-dir")
 		remoteStore := mockStore{root: url.URL{Scheme: "ftp"}}
-		remoteRows := NewFileRows(&files.DirContext{Store: remoteStore, Path: tmpDir})
+		remoteRows := NewFileRows(files.NewDirContext(remoteStore, tmpDir, nil))
 		assert.False(t, remoteRows.isSymlinkToDir(entry))
 	})
 }

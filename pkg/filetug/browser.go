@@ -9,8 +9,3 @@ type browser interface {
 	GetCurrentEntry() files.EntryWithDirPath
 	tview.Primitive
 }
-
-type current struct {
-	dir string
-	//entry os.DirEntry
-}

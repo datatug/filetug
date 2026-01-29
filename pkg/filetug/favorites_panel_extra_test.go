@@ -32,7 +32,7 @@ func TestFavoritesPanel_InputCapture_DeleteCurrent_Backspace(t *testing.T) {
 			_ = p
 		},
 	}
-	nav.current.dir = "/tmp"
+	nav.current.ChangeDir("/tmp")
 	panel := newTestFavoritesPanel(nav)
 	panel.items = []ftfav.Favorite{
 		{Store: url.URL{Scheme: "file"}, Path: "/tmp"},
@@ -94,7 +94,7 @@ func TestFavoritesPanel_AddCurrentFavorite_Success(t *testing.T) {
 			focusCalled = true
 		},
 	}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 	panel.addFormVisible = true
 	panel.flex.AddItem(panel.addContainer, 3, 0, false)
@@ -122,7 +122,7 @@ func TestFavoritesPanel_AddCurrentFavorite_Error(t *testing.T) {
 			_ = p
 		},
 	}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 
 	panel.addCurrentFavorite()
@@ -139,7 +139,7 @@ func TestFavoritesPanel_UpdateAddCurrentForm_ShowHide(t *testing.T) {
 			focusCalled = true
 		},
 	}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 
 	panel.updateAddCurrentForm()
@@ -294,8 +294,7 @@ func TestFavoritesPanel_InputCapture_KeyEnter_Escape_Left(t *testing.T) {
 		_, _ = storeRoot, dirPath
 	}
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.queueUpdateDraw = func(update func()) {
 		update()
 	}
@@ -303,7 +302,7 @@ func TestFavoritesPanel_InputCapture_KeyEnter_Escape_Left(t *testing.T) {
 		_ = p
 	}
 	nav.store = mockStore{root: url.URL{Scheme: "file", Path: "/"}}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 
 	panel := nav.favorites
 	panel.ShowFavorites()
@@ -353,7 +352,7 @@ func TestFavoritesPanel_DeleteCurrentFavorite_Error(t *testing.T) {
 			_ = p
 		},
 	}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 	panel.items = []ftfav.Favorite{
 		{Store: url.URL{Scheme: "file"}, Path: "/tmp"},
@@ -371,7 +370,7 @@ func TestFavoritesPanel_DeleteCurrentFavorite_Error(t *testing.T) {
 func newTestFavoritesPanel(nav *Navigator) *favoritesPanel {
 	flex := tview.NewFlex().SetDirection(tview.FlexRow)
 	list := tview.NewList()
-	addButton := tview.NewButton("Add current dir to favorites")
+	addButton := tview.NewButton("Add Current dir to favorites")
 	addContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	addContainer.AddItem(addButton, 1, 0, false)
 

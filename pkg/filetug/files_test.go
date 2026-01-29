@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -70,7 +71,7 @@ func TestFilesPanel_SetRows(t *testing.T) {
 	nav := setupNavigatorForFilesTest(app)
 	fp := newFiles(nav)
 
-	dir := &files.DirContext{Path: "/test"}
+	dir := files.NewDirContext(nil, "/test", nil)
 	rows := NewFileRows(dir)
 
 	fp.SetRows(rows, true)
@@ -83,7 +84,7 @@ func TestFilesPanel_SetFilter(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
 	fp := newFiles(nav)
-	fp.rows = NewFileRows(&files.DirContext{})
+	fp.rows = NewFileRows(files.NewDirContext(nil, "", nil))
 
 	filter := ftui.Filter{ShowHidden: true}
 	fp.SetFilter(filter)
@@ -92,14 +93,14 @@ func TestFilesPanel_SetFilter(t *testing.T) {
 func TestFilesPanel_Selection(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
-	nav.current.dir = "/test"
+	nav.current.SetDir(osfile.NewLocalDir("/test"))
 	fp := newFiles(nav)
 
 	entries := []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(mockDirEntry{name: "file1.txt", isDir: false}, ""),
 		files.NewEntryWithDirPath(mockDirEntry{name: "file2.txt", isDir: false}, ""),
 	}
-	rows := NewFileRows(&files.DirContext{Path: "/test"})
+	rows := NewFileRows(files.NewDirContext(nil, "/test", nil))
 	rows.AllEntries = entries
 	rows.VisibleEntries = entries
 	rows.VisualInfos = make([]os.FileInfo, len(entries))
@@ -150,7 +151,7 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 		files.NewEntryWithDirPath(mockDirEntry{name: "file1.txt", isDir: false}, ""),
 		files.NewEntryWithDirPath(mockDirEntry{name: "dir1", isDir: true}, ""),
 	}
-	rows := NewFileRows(&files.DirContext{Path: "/test"})
+	rows := NewFileRows(files.NewDirContext(nil, "/test", nil))
 	rows.AllEntries = entries
 	rows.VisibleEntries = entries
 	rows.VisualInfos = make([]os.FileInfo, len(entries))
@@ -214,7 +215,7 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 		// but it's a method. We'll use a real Navigator for this test if possible,
 		// or just accept it might be hard to test this branch without a full setup.
 		// For now, let's use NewNavigator to get a properly initialized Tree.
-		fullNav := NewNavigator(app)
+		fullNav := NewNavigator(nil)
 		fp.nav = fullNav
 
 		event := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
@@ -244,10 +245,7 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 	})
 
 	t.Run("KeyEnter_FileEntry", func(t *testing.T) {
-		dir := &files.DirContext{
-			Store: &mockStoreWithHooks{root: url.URL{Scheme: "file", Path: "/"}},
-			Path:  "/tmp",
-		}
+		dir := files.NewDirContext(&mockStoreWithHooks{root: url.URL{Scheme: "file", Path: "/"}}, "/tmp", nil)
 		fp.rows = NewFileRows(dir)
 		entry := files.NewEntryWithDirPath(files.NewDirEntry("file.txt", false), "/tmp")
 		cell := tview.NewTableCell("file.txt")
@@ -285,12 +283,9 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 		if !assert.NotNil(t, linkEntry) {
 			return
 		}
-		fullNav := NewNavigator(app)
+		fullNav := NewNavigator(nil)
 		fp.nav = fullNav
-		fp.rows = NewFileRows(&files.DirContext{
-			Store: &mockStoreWithHooks{root: url.URL{Scheme: "file", Path: "/"}},
-			Path:  tempDir,
-		})
+		fp.rows = NewFileRows(files.NewDirContext(&mockStoreWithHooks{root: url.URL{Scheme: "file", Path: "/"}}, tempDir, nil))
 		entry := files.NewEntryWithDirPath(linkEntry, tempDir)
 		cell := tview.NewTableCell("link")
 		cell.SetReference(entry)
@@ -305,7 +300,7 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 func TestFilesPanel_SelectionChanged(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
-	nav.current.dir = "/test"
+	nav.current.SetDir(osfile.NewLocalDir("/test"))
 	nav.dirSummary = newTestDirSummary(nav)
 
 	fp := newFiles(nav)
@@ -323,7 +318,7 @@ func TestFilesPanel_SelectionChanged(t *testing.T) {
 	entries := []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(files.NewDirEntry("child", true), "/test"),
 	}
-	rows := NewFileRows(&files.DirContext{Store: store, Path: "/test"})
+	rows := NewFileRows(files.NewDirContext(store, "/test", nil))
 	rows.AllEntries = entries
 	rows.VisibleEntries = entries
 	rows.VisualInfos = make([]os.FileInfo, len(entries))
@@ -556,7 +551,7 @@ func TestFilesPanel_showDirSummary_Symlink(t *testing.T) {
 		},
 	}
 	nav.store = store
-	fp.rows = NewFileRows(&files.DirContext{Store: store, Path: tempDir})
+	fp.rows = NewFileRows(files.NewDirContext(store, tempDir, nil))
 
 	entry := files.NewEntryWithDirPath(linkEntry, tempDir)
 	fp.showDirSummary(entry)

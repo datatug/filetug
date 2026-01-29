@@ -20,12 +20,19 @@ import (
 var _ tview.TableContent = (*FileRows)(nil)
 
 func NewFileRows(dir *files.DirContext) *FileRows {
-	if dir.Path != "/" {
-		dir.Path = strings.TrimSuffix(dir.Path, "/")
+	if dir == nil {
+		dir = files.NewDirContext(nil, "", nil)
+	}
+	dirPath := dir.Path()
+	if dirPath != "/" {
+		dirPath = strings.TrimSuffix(dirPath, "/")
+	}
+	if dirPath != dir.Path() {
+		dir = files.NewDirContext(dir.Store(), dirPath, dir.Children())
 	}
 	entries := dir.Entries()
 	return &FileRows{
-		store:          dir.Store,
+		store:          dir.Store(),
 		Dir:            dir,
 		AllEntries:     entries,
 		VisibleEntries: entries,
@@ -51,7 +58,7 @@ type FileRows struct {
 }
 
 func (r *FileRows) HideParent() bool {
-	return r.hideParent || r.Dir.Path == "/"
+	return r.hideParent || r.Dir.Path() == "/"
 }
 
 //func (r *FileRows) SetSelected(row int) {
@@ -265,7 +272,7 @@ func (r *FileRows) getTopRowName() *tview.TableCell {
 		return cell
 	}
 	rootPath := r.store.RootURL().Path
-	if r.Dir.Path == rootPath {
+	if r.Dir.Path() == rootPath {
 		cellText = "."
 	} else {
 		cellText = ".."
@@ -273,10 +280,10 @@ func (r *FileRows) getTopRowName() *tview.TableCell {
 	cell := tview.NewTableCell(cellText)
 	cell.SetExpansion(1)
 	var parentDir string
-	if r.Dir.Path == "~" {
+	if r.Dir.Path() == "~" {
 		parentDir = fsutils.ExpandHome("~")
 	} else {
-		parentDir, _ = path.Split(r.Dir.Path)
+		parentDir, _ = path.Split(r.Dir.Path())
 	}
 	if parentDir != "/" {
 		parentDir = strings.TrimSuffix(parentDir, "/")

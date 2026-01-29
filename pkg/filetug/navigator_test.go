@@ -85,8 +85,7 @@ func TestNavigator(t *testing.T) {
 }
 
 func TestNavigator_GitStatus(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	if nav == nil {
 		t.Fatal("nav is nil")
 	}
@@ -125,12 +124,12 @@ func TestNavigator_goDir(t *testing.T) {
 	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
 
 	t.Run("goDir_Success", func(t *testing.T) {
-		dirContext := files.NewDirContext(nav.store, ".", nil)
+		dirContext := nav.NewDirContext(".", nil)
 		nav.goDir(dirContext)
 	})
 
 	t.Run("goDir_NonExistent", func(t *testing.T) {
-		dirContext := files.NewDirContext(nav.store, "/non-existent-Dir-12345", nil)
+		dirContext := nav.NewDirContext("/non-existent-Dir-12345", nil)
 		nav.goDir(dirContext)
 	})
 
@@ -146,9 +145,9 @@ func TestNavigator_goDir(t *testing.T) {
 	})
 
 	t.Run("onDataLoaded_showNodeError", func(t *testing.T) {
-		nodeContext := files.NewDirContext(nav.store, "/test", nil)
+		nodeContext := nav.NewDirContext("/test", nil)
 		node := tview.NewTreeNode("test").SetReference(nodeContext)
-		dirContext := files.NewDirContext(nav.store, "/test", []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}})
+		dirContext := nav.NewDirContext("/test", []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}})
 
 		ctx := context.Background()
 		nav.onDataLoaded(ctx, node, dirContext, true)
@@ -161,7 +160,7 @@ func TestNavigator_goDir(t *testing.T) {
 
 	t.Run("onDataLoaded_updatesPreviewer", func(t *testing.T) {
 		tempDir := t.TempDir()
-		nodeContext := files.NewDirContext(nav.store, tempDir, nil)
+		nodeContext := nav.NewDirContext(tempDir, nil)
 		node := tview.NewTreeNode("temp").SetReference(nodeContext)
 		dirContext := files.NewDirContext(osfile.NewStore("/"), tempDir,
 			[]os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}})
@@ -249,8 +248,7 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 		saveCurrentDir = oldSaveCurrentDir
 	}()
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	entries := []os.DirEntry{
 		mockDirEntry{name: "child", isDir: true},
 	}
@@ -261,7 +259,7 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 		},
 	}
 	nav.store = store
-	nav.current.dir = "/root"
+	nav.current.SetDir(nav.NewDirContext("/root", nil))
 
 	done := make(chan struct{})
 	var once sync.Once
@@ -272,7 +270,7 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 		})
 	}
 
-	dirContext := files.NewDirContext(nav.store, "/root", nil)
+	dirContext := nav.NewDirContext("/root", nil)
 	nav.goDir(dirContext)
 
 	select {
@@ -294,8 +292,7 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 		getState = oldGetState
 	}()
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	firstEntries := []os.DirEntry{mockDirEntry{name: "firstChild", isDir: true}}
 	secondEntries := []os.DirEntry{mockDirEntry{name: "secondChild", isDir: true}}
@@ -315,9 +312,9 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 	nodeFirst := tview.NewTreeNode("first")
 	nodeSecond := tview.NewTreeNode("second")
 
-	nav.showDir(ctx, nodeFirst, files.NewDirContext(nav.store, "/first", nil), true)
+	nav.showDir(ctx, nodeFirst, nav.NewDirContext("/first", nil), true)
 	firstSeen := <-store.seen
-	nav.showDir(ctx, nodeSecond, files.NewDirContext(nav.store, "/second", nil), true)
+	nav.showDir(ctx, nodeSecond, nav.NewDirContext("/second", nil), true)
 	secondSeen := <-store.seen
 	close(store.block)
 
@@ -330,9 +327,8 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 }
 
 func TestNavigator_onDataLoaded_isTreeRootChanged(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
-	nodeContext := files.NewDirContext(nav.store, "/test", nil)
+	nav := NewNavigator(nil)
+	nodeContext := nav.NewDirContext("/test", nil)
 	node := tview.NewTreeNode("test").SetReference(nodeContext)
 	dirContext := files.NewDirContext(nil, "/test", []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}})
 	ctx := context.Background()
@@ -340,8 +336,7 @@ func TestNavigator_onDataLoaded_isTreeRootChanged(t *testing.T) {
 }
 
 func TestNavigator_setBreadcrumbs_Complex(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	if nav == nil {
 		t.Fatal("nav is nil")
 	}
@@ -351,12 +346,12 @@ func TestNavigator_setBreadcrumbs_Complex(t *testing.T) {
 		rootURL: url.URL{Scheme: "file", Path: "/root/dir"},
 	}
 	nav.store = mStore
-	nav.current.dir = "/root/dir/subdir/subsubdir"
+	nav.current.SetDir(nav.NewDirContext("/root/dir/subdir/subsubdir", nil))
 
 	nav.setBreadcrumbs()
 
 	// Test empty path item
-	nav.current.dir = "/root/dir/subdir//subsubdir"
+	nav.current.SetDir(nav.NewDirContext("/root/dir/subdir//subsubdir", nil))
 	nav.setBreadcrumbs()
 
 	// Test breadcrumb actions by simulating Enter key on breadcrumbs
@@ -367,8 +362,6 @@ func TestNewNavigator_States(t *testing.T) {
 	oldGetState := getState
 	defer func() { getState = oldGetState }()
 
-	app := tview.NewApplication()
-
 	t.Run("HTTP_State", func(t *testing.T) {
 		getState = func() (*ftstate.State, error) {
 			return &ftstate.State{
@@ -376,7 +369,7 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDir: "http://example.com/path",
 			}, nil
 		}
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		assert.True(t, nav != nil)
 	})
 
@@ -387,7 +380,7 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDir: "/path",
 			}, nil
 		}
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		assert.True(t, nav != nil)
 	})
 
@@ -399,9 +392,12 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDirEntry: "test.txt",
 			}, nil
 		}
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		assert.True(t, nav != nil)
-		assert.Equal(t, "/tmp", nav.current.dir)
+		if nav.current.Dir() == nil {
+			t.Fatal("Current dir is nil")
+		}
+		assert.Equal(t, "/tmp", nav.current.Dir().Path())
 	})
 
 	t.Run("HTTPS_State_Prefix", func(t *testing.T) {
@@ -410,7 +406,7 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDir: "https://example.com/path",
 			}, nil
 		}
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		assert.True(t, nav != nil)
 	})
 
@@ -420,7 +416,7 @@ func TestNewNavigator_States(t *testing.T) {
 				Store: "http",
 			}, nil
 		}
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		assert.True(t, nav != nil)
 	})
 }
@@ -455,7 +451,7 @@ func (m *mockNavigatorStore) CreateFile(ctx context.Context, path string) error 
 
 func TestNavigator_updateGitStatus_Success(t *testing.T) {
 	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	node := tview.NewTreeNode("test")
 
 	// Mock git status
@@ -532,8 +528,7 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 }
 
 func TestNavigator_showDir_FileScheme(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -551,14 +546,13 @@ func TestNavigator_showDir_FileScheme(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dirContext := files.NewDirContext(nav.store, "/tmp", nil)
+	dirContext := nav.NewDirContext("/tmp", nil)
 	nav.showDir(ctx, node, dirContext, true)
 	time.Sleep(100 * time.Millisecond) // Give some time for goroutine
 }
 
 func TestNavigator_showDir_EarlyReturnAndExpandHome(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.queueUpdateDraw = func(f func()) {
 		f()
 	}
@@ -569,18 +563,17 @@ func TestNavigator_showDir_EarlyReturnAndExpandHome(t *testing.T) {
 	ctx := context.Background()
 	nav.showDir(ctx, nil, nil, false)
 
-	nav.current.dir = "/tmp"
-	sameContext := files.NewDirContext(nav.store, "/tmp", nil)
+	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
+	sameContext := nav.NewDirContext("/tmp", nil)
 	nav.showDir(ctx, nil, sameContext, false)
 
-	homeContext := files.NewDirContext(nav.store, "~", nil)
+	homeContext := nav.NewDirContext("~", nil)
 	nav.showDir(ctx, nil, homeContext, false)
 	time.Sleep(50 * time.Millisecond)
 }
 
 func TestNavigator_globalNavInputCapture(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = &mockNavigatorStore{
 		rootURL: url.URL{Scheme: "mock", Path: "/"},
 	}

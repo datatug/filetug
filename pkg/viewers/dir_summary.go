@@ -164,7 +164,7 @@ func (d *DirSummaryPreviewer) SetDirEntries(dirContext *files.DirContext) {
 	var dirPath string
 	var entries []os.DirEntry
 	if dirContext != nil {
-		dirPath = dirContext.Path
+		dirPath = dirContext.Path()
 		entries = dirContext.Children()
 	}
 	if dirPath == d.dirPath {

@@ -16,8 +16,7 @@ import (
 )
 
 func TestTree(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	t.Run("onStoreChange", func(t *testing.T) {
@@ -69,7 +68,7 @@ func TestTree(t *testing.T) {
 	})
 
 	t.Run("doLoadingAnimation_queueUpdateDrawExecutes", func(t *testing.T) {
-		nav := NewNavigator(app)
+		nav := NewNavigator(nil)
 		tree := NewTree(nav)
 		loading := tview.NewTreeNode(" Loading...")
 		tree.rootNode.ClearChildren()

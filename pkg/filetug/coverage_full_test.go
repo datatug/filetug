@@ -15,6 +15,7 @@ import (
 	"unsafe"
 
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/filetug/filetug/pkg/filetug/ftfav"
 	"github.com/filetug/filetug/pkg/filetug/ftstate"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
@@ -148,8 +149,7 @@ func (f *failingStore) Delete(ctx context.Context, p string) error {
 }
 
 func TestBottomGetAltMenuItemsExitAction(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	stopCalled := false
 	nav.stopApp = func() {
@@ -183,8 +183,7 @@ func TestBottomGetAltMenuItemsExitAction(t *testing.T) {
 }
 
 func TestDirSummary_UpdateTableAndGetSizes_Coverage(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 
 	emptyExt := &viewers.ExtStat{
@@ -239,11 +238,10 @@ func TestDirSummary_UpdateTableAndGetSizes_Coverage(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_MoreCoverage(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
-	nav.files.rows = NewFileRows(&files.DirContext{Path: "/test"})
+	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
 
 	entries := []os.DirEntry{
 		mockDirEntry{name: "a.txt", isDir: false},
@@ -281,8 +279,7 @@ func TestDirSummary_InputCapture_MoreCoverage(t *testing.T) {
 }
 
 func TestFavorites_SetItems_ExtraBranches(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	f := newFavoritesPanel(nav)
 	fileURL := url.URL{Scheme: "file"}
 	httpURL, err := url.Parse("https://www.example.com")
@@ -391,29 +388,29 @@ func TestFilesPanel_UpdateGitStatuses_Coverage(t *testing.T) {
 	ctx := context.Background()
 
 	fp.nav = nil
-	fp.updateGitStatuses(ctx, &files.DirContext{})
+	fp.updateGitStatuses(ctx, files.NewDirContext(nil, "", nil))
 
 	fp.nav = nav
 	fp.rows = nil
-	fp.updateGitStatuses(ctx, &files.DirContext{})
+	fp.updateGitStatuses(ctx, files.NewDirContext(nil, "", nil))
 
-	fp.rows = NewFileRows(&files.DirContext{})
+	fp.rows = NewFileRows(files.NewDirContext(nil, "", nil))
 	fp.updateGitStatuses(ctx, nil)
 
 	nav.store = mockStore{root: url.URL{Scheme: "http"}}
-	fp.rows = NewFileRows(&files.DirContext{})
-	nonFileDir := &files.DirContext{Path: t.TempDir()}
+	fp.rows = NewFileRows(files.NewDirContext(nil, "", nil))
+	nonFileDir := files.NewDirContext(nil, t.TempDir(), nil)
 	fp.updateGitStatuses(ctx, nonFileDir)
 
 	nav.store = mockStore{root: url.URL{Scheme: "file", Path: "/"}}
-	noRepoDir := &files.DirContext{Path: t.TempDir()}
+	noRepoDir := files.NewDirContext(nil, t.TempDir(), nil)
 	fp.updateGitStatuses(ctx, noRepoDir)
 
 	badRepoDir := t.TempDir()
 	gitDir := filepath.Join(badRepoDir, ".git")
 	mkdirErr := os.Mkdir(gitDir, 0755)
 	assert.NoError(t, mkdirErr)
-	badRepoContext := &files.DirContext{Path: badRepoDir}
+	badRepoContext := files.NewDirContext(nil, badRepoDir, nil)
 	fp.updateGitStatuses(ctx, badRepoContext)
 
 	repoDir := t.TempDir()
@@ -424,7 +421,7 @@ func TestFilesPanel_UpdateGitStatuses_Coverage(t *testing.T) {
 	writeErr := os.WriteFile(filePath, []byte("content"), 0644)
 	assert.NoError(t, writeErr)
 
-	dirContext := &files.DirContext{Path: repoDir}
+	dirContext := files.NewDirContext(nil, repoDir, nil)
 	rows := NewFileRows(dirContext)
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("file.txt", false), repoDir)
 	rows.AllEntries = []files.EntryWithDirPath{entry}
@@ -470,7 +467,7 @@ func TestFilesPanel_UpdateGitStatuses_Branches(t *testing.T) {
 	writeErr := os.WriteFile(filePath, []byte("content"), 0644)
 	assert.NoError(t, writeErr)
 
-	dirContext := &files.DirContext{Path: repoDir}
+	dirContext := files.NewDirContext(nil, repoDir, nil)
 	rows := NewFileRows(dirContext)
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("file.txt", false), repoDir)
 	rows.AllEntries = []files.EntryWithDirPath{entry}
@@ -539,8 +536,7 @@ func TestFilesPanel_UpdateGitStatuses_Branches(t *testing.T) {
 }
 
 func TestFilesPanel_SelectionChanged_ExtraBranches(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	fp := nav.files
 
 	tempDir := t.TempDir()
@@ -554,7 +550,7 @@ func TestFilesPanel_SelectionChanged_ExtraBranches(t *testing.T) {
 	dirEntry := files.NewDirEntry("sub", true)
 	modTime := files.ModTime(time.Now())
 	fileEntry := files.NewDirEntry("file.txt", false, files.Size(1), modTime)
-	rows := NewFileRows(&files.DirContext{Path: tempDir})
+	rows := NewFileRows(files.NewDirContext(nil, tempDir, nil))
 	rows.AllEntries = []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(dirEntry, tempDir),
 		files.NewEntryWithDirPath(fileEntry, tempDir),
@@ -579,8 +575,7 @@ func TestFilesPanel_SelectionChanged_ExtraBranches(t *testing.T) {
 }
 
 func TestHelpModal_InputCapture(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	rootCalled := false
 	focusCalled := false
@@ -631,8 +626,7 @@ func TestHelpModal_InputCapture(t *testing.T) {
 }
 
 func TestCreateLeft_FocusFuncs(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.activeCol = -1
 
 	nav.favorites.flex.Box.Focus(func(p tview.Primitive) {})
@@ -644,8 +638,7 @@ func TestCreateLeft_FocusFuncs(t *testing.T) {
 }
 
 func TestNavigator_InputCapture_ExtraBranches(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	f7 := tcell.NewEventKey(tcell.KeyF7, 0, tcell.ModNone)
 	res := nav.inputCapture(f7)
@@ -678,14 +671,12 @@ func TestNewNavigator_StateError(t *testing.T) {
 		}, errors.New("state error")
 	}
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	assert.NotNil(t, nav)
 }
 
 func TestNavigator_InputCapture_MoreKeys(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.setAppRoot = func(root tview.Primitive, fullscreen bool) {
 		_, _ = root, fullscreen
 	}
@@ -717,16 +708,14 @@ func TestNavigator_InputCapture_MoreKeys(t *testing.T) {
 }
 
 func TestNavigator_GetCurrentBrowser_DefaultBranch(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.activeCol = 2
 	browser := nav.getCurrentBrowser()
 	assert.Nil(t, browser)
 }
 
 func TestNavigator_GetGitStatus_Coverage(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	cached := &gitutils.RepoStatus{Branch: "main"}
 	fullPath := "/cached/path"
@@ -780,8 +769,7 @@ func TestNavigator_GetGitStatus_Coverage(t *testing.T) {
 }
 
 func TestNavigator_GetGitStatus_OpenRepo(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	repoDir := t.TempDir()
 	repo, initErr := git.PlainInit(repoDir, false)
@@ -803,8 +791,7 @@ func TestNavigator_GetGitStatus_OpenRepo(t *testing.T) {
 }
 
 func TestNavigator_GitStatusText_Coverage(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	empty := nav.gitStatusText(nil, "/tmp", true)
 	assert.Equal(t, "", empty)
@@ -815,16 +802,14 @@ func TestNavigator_GitStatusText_Coverage(t *testing.T) {
 }
 
 func TestNavigator_SetBreadcrumbs_EmptyPath(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = mockStore{root: url.URL{}}
-	nav.current.dir = "/"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/", nil))
 	nav.setBreadcrumbs()
 }
 
 func TestScriptsPanel_And_NestedDirsGenerator(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	nav.showScriptsPanel()
 	panel := nav.right.content
@@ -860,12 +845,11 @@ func TestGeneratedNestedDirs_Coverage(t *testing.T) {
 }
 
 func TestNewPanel_InputCapture_Create(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	store := &mockStoreWithHooks{root: url.URL{Scheme: "file", Path: "/"}}
 	nav.store = store
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/tmp", nil))
 
 	panel := NewNewPanel(nav)
 	var focused tview.Primitive
@@ -941,8 +925,7 @@ func TestNewPanel_InputCapture_Create(t *testing.T) {
 }
 
 func TestTree_InputCapture_SetSearch_GetCurrentEntry_Coverage(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	root := tree.tv.GetRoot()
@@ -1022,8 +1005,7 @@ func TestTree_InputCapture_SetSearch_GetCurrentEntry_Coverage(t *testing.T) {
 }
 
 func TestTree_SetCurrentDir_And_DoLoadingAnimation_Coverage(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	nav.store = mockStore{root: url.URL{Scheme: "file", Path: "/"}}
@@ -1112,7 +1094,7 @@ func TestFilesPanel_InputCapture_KeyUp_NoMoveFocus(t *testing.T) {
 	nav.setAppFocus = func(p tview.Primitive) {
 		_ = p
 	}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(osfile.NewLocalDir("/tmp"))
 	fp := newFiles(nav)
 
 	cell := tview.NewTableCell("..")
@@ -1125,8 +1107,7 @@ func TestFilesPanel_InputCapture_KeyUp_NoMoveFocus(t *testing.T) {
 }
 
 func TestFilesPanel_InputCapture_KeyEnterEntry(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	fp := nav.files
 
 	dirEntry := files.NewDirEntry("tmp", true)
@@ -1153,8 +1134,7 @@ func TestFilesPanel_SelectionChangedNavFunc_RefNil(t *testing.T) {
 }
 
 func TestShowNestedDirsGenerator_PanelCancel(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	nav.setAppFocus = func(p tview.Primitive) {
 		_ = p
@@ -1175,21 +1155,18 @@ func TestShowNestedDirsGenerator_PanelCancel(t *testing.T) {
 }
 
 func TestNavigator_ShowNewPanel(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.showNewPanel()
 	assert.NotNil(t, nav.right.content)
 }
 
 func TestNavigator_UpdateGitStatus_NodeNil(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.updateGitStatus(context.Background(), nil, "/tmp", nil, "prefix")
 }
 
 func TestNavigator_ShowDir_NodeNil(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.queueUpdateDraw = func(f func()) {
 		f()
 	}
@@ -1201,8 +1178,7 @@ func TestNavigator_ShowDir_NodeNil(t *testing.T) {
 }
 
 func TestPreviewerPanel_SetPreviewer_Switch(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	panel := newPreviewerPanel(nav)
 
 	first := viewers.NewTextPreviewer()
@@ -1231,8 +1207,7 @@ func TestNavigator_DeleteEntries_Error(t *testing.T) {
 }
 
 func TestNavigator_GitStatusText_HasChanges(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	status := &gitutils.RepoStatus{
 		Branch: "main",
@@ -1245,32 +1220,29 @@ func TestNavigator_GitStatusText_HasChanges(t *testing.T) {
 }
 
 func TestNavigator_SetBreadcrumbs_PathItems(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = mockStore{root: url.URL{Path: "/root"}}
-	nav.current.dir = "/root/dir//child"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/root/dir//child", nil))
 	nav.setBreadcrumbs()
 }
 
 func TestNavigator_SetBreadcrumbs_TitleTrim(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = &mockStoreWithHooks{
 		root:      url.URL{Path: "/root"},
 		rootTitle: "Root/",
 	}
-	nav.current.dir = "/root/child"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/root/child", nil))
 	nav.setBreadcrumbs()
 }
 
 func TestNavigator_BreadcrumbActions(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	err := nav.breadcrumbs.GoHome()
 	assert.NoError(t, err)
 
 	nav.store = mockStore{root: url.URL{Path: "/"}}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/tmp", nil))
 	nav.setBreadcrumbs()
 	err = nav.breadcrumbs.GoHome()
 	assert.NoError(t, err)
@@ -1286,8 +1258,7 @@ func TestNavigator_BreadcrumbActions(t *testing.T) {
 }
 
 func TestNavigator_GetGitStatus_ContextCancel(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	oldGetDirStatus := getDirStatus
 	defer func() {
@@ -1315,7 +1286,7 @@ func TestFilesPanel_SelectionChanged_ErrorPath(t *testing.T) {
 	nav := setupNavigatorForFilesTest(app)
 	fp := newFiles(nav)
 
-	rows := NewFileRows(&files.DirContext{Path: "/non-existent"})
+	rows := NewFileRows(files.NewDirContext(nil, "/non-existent", nil))
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("missing.txt", false), "/non-existent")
 	rows.VisibleEntries = []files.EntryWithDirPath{entry}
 	fp.rows = rows
@@ -1335,8 +1306,7 @@ func TestFilesPanel_SelectionChangedNavFunc_RefMissing(t *testing.T) {
 }
 
 func TestTree_InputCapture_Default(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 	other := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModNone)
 	res := tree.inputCapture(other)
@@ -1344,8 +1314,7 @@ func TestTree_InputCapture_Default(t *testing.T) {
 }
 
 func TestTree_InputCapture_DefaultKey(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 	key := tcell.NewEventKey(tcell.KeyF2, 0, tcell.ModNone)
 	res := tree.inputCapture(key)
@@ -1353,8 +1322,7 @@ func TestTree_InputCapture_DefaultKey(t *testing.T) {
 }
 
 func TestTree_InputCapture_KeyUp_NotRoot(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	root := tree.tv.GetRoot()
@@ -1379,16 +1347,14 @@ func TestGeneratedNestedDirs_Recursive(t *testing.T) {
 }
 
 func TestNavigator_SetBreadcrumbs_RootTitle(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = mockStore{root: url.URL{Path: "/root"}}
-	nav.current.dir = "/root"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/root", nil))
 	nav.setBreadcrumbs()
 }
 
 func TestNavigator_ShowScriptsPanel_Selection(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.showScriptsPanel()
 	panel := nav.right.content
 	scripts, ok := panel.(*scriptsPanel)
@@ -1400,8 +1366,7 @@ func TestNavigator_ShowScriptsPanel_Selection(t *testing.T) {
 }
 
 func TestTree_SetSearch_Recursion(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	root := tree.tv.GetRoot()
@@ -1417,8 +1382,7 @@ func TestTree_SetSearch_Recursion(t *testing.T) {
 }
 
 func TestDirSummary_GetSizes_Error(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 
 	entries := []os.DirEntry{
@@ -1431,8 +1395,7 @@ func TestDirSummary_GetSizes_Error(t *testing.T) {
 }
 
 func TestFilesPanel_SelectionChangedNavFunc_SetsPreview(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	fp := nav.files
 
 	modTime := files.ModTime(time.Now())
@@ -1445,8 +1408,7 @@ func TestFilesPanel_SelectionChangedNavFunc_SetsPreview(t *testing.T) {
 }
 
 func TestNavigator_ShowDir_Error(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	nav.queueUpdateDraw = func(f func()) {
 		f()
@@ -1455,7 +1417,7 @@ func TestNavigator_ShowDir_Error(t *testing.T) {
 	nav.store = &mockStoreWithHooks{
 		root: url.URL{Scheme: "file", Path: "/"},
 	}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/tmp", nil))
 
 	node := tview.NewTreeNode("node")
 	nodeContext := newTestDirContext(nav.store, "/tmp", nil)
@@ -1468,8 +1430,7 @@ func TestNavigator_ShowDir_Error(t *testing.T) {
 }
 
 func TestNavigator_ShowDir_ReadError(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	nav.queueUpdateDraw = func(f func()) {
 		f()
@@ -1478,7 +1439,7 @@ func TestNavigator_ShowDir_ReadError(t *testing.T) {
 		root:       url.URL{Scheme: "file", Path: "/"},
 		readDirErr: errors.New("read error"),
 	}
-	nav.current.dir = "/other"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/other", nil))
 
 	node := tview.NewTreeNode("node")
 	nodeContext := newTestDirContext(nav.store, "/tmp", nil)
@@ -1501,11 +1462,10 @@ func TestFilesPanel_SelectionChangedNavFunc_RefNilReuse(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_Left(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
-	nav.files.rows = NewFileRows(&files.DirContext{Path: "/test"})
+	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
 
 	entries := []os.DirEntry{
 		mockDirEntry{name: "image.png", isDir: false},
@@ -1519,8 +1479,7 @@ func TestDirSummary_InputCapture_Left(t *testing.T) {
 }
 
 func TestNewPanel_ShowAndFocus(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	panel := NewNewPanel(nav)
 	panel.Show()
@@ -1528,8 +1487,7 @@ func TestNewPanel_ShowAndFocus(t *testing.T) {
 }
 
 func TestNavigator_ShowScriptsPanel_InputCapture(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	nav.showScriptsPanel()
 	panel := nav.right.content
@@ -1552,8 +1510,7 @@ func TestFilesPanel_SelectionChanged_NilRef(t *testing.T) {
 }
 
 func TestDirSummary_UpdateTable_SingleExtGroup(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 
 	ext := &viewers.ExtStat{
@@ -1574,8 +1531,7 @@ func TestDirSummary_UpdateTable_SingleExtGroup(t *testing.T) {
 }
 
 func TestTree_GetCurrentEntry_RefNil(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	root := tree.tv.GetRoot()
@@ -1587,8 +1543,7 @@ func TestTree_GetCurrentEntry_RefNil(t *testing.T) {
 }
 
 func TestTree_InputCapture_LeftWithRoot(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	root := tree.tv.GetRoot()
@@ -1602,16 +1557,14 @@ func TestTree_InputCapture_LeftWithRoot(t *testing.T) {
 }
 
 func TestNavigator_Delete_NoCurrentEntry(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.activeCol = 1
 	nav.files.rows = &FileRows{}
 	nav.delete()
 }
 
 func TestNavigator_Delete_WithError(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	errStore := &mockStoreWithHooks{
 		root:      url.URL{Scheme: "file", Path: "/"},
@@ -1620,7 +1573,7 @@ func TestNavigator_Delete_WithError(t *testing.T) {
 	nav.store = errStore
 	nav.activeCol = 1
 
-	dirContext := &files.DirContext{Path: "/tmp", Store: errStore}
+	dirContext := files.NewDirContext(errStore, "/tmp", nil)
 	rows := NewFileRows(dirContext)
 	dirEntry := files.NewDirEntry("file.txt", false)
 	entry := files.NewEntryWithDirPath(dirEntry, "/tmp")
@@ -1643,8 +1596,7 @@ func TestNavigator_DeleteEntries_Success(t *testing.T) {
 }
 
 func TestNavigator_GitStatusText_IsRepoRoot(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	status := &gitutils.RepoStatus{Branch: "main"}
 	repoDir := t.TempDir()
@@ -1657,8 +1609,7 @@ func TestNavigator_GitStatusText_IsRepoRoot(t *testing.T) {
 }
 
 func TestDirSummary_GetSizes_NilInfo(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 
 	entries := []os.DirEntry{
@@ -1671,8 +1622,7 @@ func TestDirSummary_GetSizes_NilInfo(t *testing.T) {
 }
 
 func TestNavigator_ShowDir_NoNode(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = mockStore{root: url.URL{Scheme: "file", Path: "/"}}
 
 	ctx := context.Background()
@@ -1692,8 +1642,7 @@ func TestFilesPanel_SelectionChangedNavFunc_NilRef_Extra(t *testing.T) {
 }
 
 func TestNavigator_ShowScriptsPanel_ListShortcut(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.showScriptsPanel()
 	panel := nav.right.content
 	scripts, ok := panel.(*scriptsPanel)
@@ -1705,8 +1654,7 @@ func TestNavigator_ShowScriptsPanel_ListShortcut(t *testing.T) {
 }
 
 func TestTree_InputCapture_SpaceWithSearch(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 	tree.searchPattern = "a"
 	space := tcell.NewEventKey(tcell.KeyRune, ' ', tcell.ModNone)
@@ -1715,8 +1663,7 @@ func TestTree_InputCapture_SpaceWithSearch(t *testing.T) {
 }
 
 func TestNavigator_ShowDir_SetsBreadcrumbs(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.queueUpdateDraw = func(f func()) {
 		f()
 	}
@@ -1731,8 +1678,7 @@ func TestNavigator_ShowDir_SetsBreadcrumbs(t *testing.T) {
 }
 
 func TestFilesPanel_SelectionChanged_WithDirAndFile(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	fp := nav.files
 
 	tempDir := t.TempDir()
@@ -1746,7 +1692,7 @@ func TestFilesPanel_SelectionChanged_WithDirAndFile(t *testing.T) {
 	dirEntry := files.NewDirEntry("dir", true)
 	modTime := files.ModTime(time.Now())
 	fileEntry := files.NewDirEntry("file.txt", false, files.Size(1), modTime)
-	rows := NewFileRows(&files.DirContext{Path: tempDir})
+	rows := NewFileRows(files.NewDirContext(nil, tempDir, nil))
 	rows.VisibleEntries = []files.EntryWithDirPath{
 		files.NewEntryWithDirPath(dirEntry, tempDir),
 		files.NewEntryWithDirPath(fileEntry, tempDir),
@@ -1759,11 +1705,10 @@ func TestFilesPanel_SelectionChanged_WithDirAndFile(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_NoGroupRefs(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
-	nav.files.rows = NewFileRows(&files.DirContext{Path: "/test"})
+	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
 
 	cell := tview.NewTableCell("no-ref")
 	ds.ExtTable.SetCell(0, 1, cell)
@@ -1774,8 +1719,7 @@ func TestDirSummary_InputCapture_NoGroupRefs(t *testing.T) {
 }
 
 func TestNavigator_GetGitStatus_CacheStore(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	oldGetDirStatus := getDirStatus
 	defer func() {
@@ -1800,8 +1744,7 @@ func TestNavigator_GetGitStatus_CacheStore(t *testing.T) {
 }
 
 func TestPreviewerPanel_SetPreviewer_RemoveMeta(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	panel := newPreviewerPanel(nav)
 
 	meta := tview.NewTextView()
@@ -1827,8 +1770,7 @@ func (m *mockPreviewer) Main() tview.Primitive { return m.main }
 func (m *mockPreviewer) Meta() tview.Primitive { return m.meta }
 
 func TestNavigator_ShowDir_ErrorNode(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.queueUpdateDraw = func(f func()) {
 		f()
 	}
@@ -1836,7 +1778,7 @@ func TestNavigator_ShowDir_ErrorNode(t *testing.T) {
 	nav.store = &mockStoreWithHooks{
 		root: url.URL{Scheme: "file", Path: "/"},
 	}
-	nav.current.dir = "/tmp"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/tmp", nil))
 	node := tview.NewTreeNode("node")
 	nodeContext := newTestDirContext(nav.store, "/tmp", nil)
 	node.SetReference(nodeContext)
@@ -1848,16 +1790,14 @@ func TestNavigator_ShowDir_ErrorNode(t *testing.T) {
 }
 
 func TestNavigator_SetBreadcrumbs_EmptyRelativePath(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.store = mockStore{root: url.URL{Path: "/"}}
-	nav.current.dir = "/"
+	nav.current.SetDir(files.NewDirContext(nav.store, "/", nil))
 	nav.setBreadcrumbs()
 }
 
 func TestTree_SetSearch_FirstPrefixed(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	root := tree.tv.GetRoot()
@@ -1873,8 +1813,7 @@ func TestTree_SetSearch_FirstPrefixed(t *testing.T) {
 }
 
 func TestTree_SetSearch_FirstContains(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 
 	root := tree.tv.GetRoot()
@@ -1890,8 +1829,7 @@ func TestTree_SetSearch_FirstContains(t *testing.T) {
 }
 
 func TestNavigator_ShowScriptsPanel_ListEnter(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.showScriptsPanel()
 	panel := nav.right.content
 	scripts, ok := panel.(*scriptsPanel)
@@ -1907,7 +1845,7 @@ func TestFilesPanel_SelectionChanged_WithError(t *testing.T) {
 	nav := setupNavigatorForFilesTest(app)
 	fp := newFiles(nav)
 
-	rows := NewFileRows(&files.DirContext{Path: "/missing"})
+	rows := NewFileRows(files.NewDirContext(nil, "/missing", nil))
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("missing.txt", false), "/missing")
 	rows.VisibleEntries = []files.EntryWithDirPath{entry}
 	fp.rows = rows
@@ -1917,11 +1855,10 @@ func TestFilesPanel_SelectionChanged_WithError(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_UpAtTop(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
-	nav.files.rows = NewFileRows(&files.DirContext{Path: "/test"})
+	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
 
 	entries := []os.DirEntry{
 		mockDirEntry{name: "image.png", isDir: false},
@@ -1936,11 +1873,10 @@ func TestDirSummary_InputCapture_UpAtTop(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_DownAtBottom(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
-	nav.files.rows = NewFileRows(&files.DirContext{Path: "/test"})
+	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
 
 	entries := []os.DirEntry{
 		mockDirEntry{name: "image.png", isDir: false},
@@ -1956,11 +1892,10 @@ func TestDirSummary_InputCapture_DownAtBottom(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_AllBranches(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
-	nav.files.rows = NewFileRows(&files.DirContext{Path: "/test"})
+	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
 
 	groupOne := &viewers.ExtensionsGroup{ExtStats: []*viewers.ExtStat{{ID: ".a"}}}
 	groupTwo := &viewers.ExtensionsGroup{ExtStats: []*viewers.ExtStat{{ID: ".a"}, {ID: ".b"}}}
@@ -2043,8 +1978,7 @@ func TestDirSummary_InputCapture_AllBranches(t *testing.T) {
 }
 
 func TestNavigator_GetGitStatus_NoRepoRoot(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tempPath := t.TempDir()
 	status := nav.getGitStatus(context.Background(), nil, tempPath, true)
 	assert.Nil(t, status)
@@ -2061,8 +1995,7 @@ func TestFilesPanel_SelectionChangedNavFunc_NoRef(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_Default(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 
 	key := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModNone)
@@ -2086,8 +2019,7 @@ func TestGeneratedNestedDirs_SubdirError(t *testing.T) {
 }
 
 func TestNewPanel_InputCapture_ReturnsEvent(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	panel := NewNewPanel(nav)
 
 	event := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModAlt)
@@ -2097,14 +2029,12 @@ func TestNewPanel_InputCapture_ReturnsEvent(t *testing.T) {
 }
 
 func TestNavigator_ShowNewPanel_Focus(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	nav.showNewPanel()
 }
 
 func TestTree_SetCurrentDir_Root(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 	nav.store = mockStore{root: url.URL{Path: "/"}}
 	dirContext := newTestDirContext(nav.store, "/", nil)
@@ -2112,8 +2042,7 @@ func TestTree_SetCurrentDir_Root(t *testing.T) {
 }
 
 func TestTree_SetCurrentDir_NonSlashRoot(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 	nav.store = mockStore{root: url.URL{Path: "/root/"}}
 	dirContext := newTestDirContext(nav.store, "/root/", nil)
@@ -2121,8 +2050,7 @@ func TestTree_SetCurrentDir_NonSlashRoot(t *testing.T) {
 }
 
 func TestDirSummary_GetSizes_TypedNilInfo(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 
 	var typedNil *nilFileInfo
@@ -2146,8 +2074,7 @@ func TestFilesPanel_SelectionChangedNavFunc_RefNilAgain(t *testing.T) {
 }
 
 func TestNavigator_GetGitStatus_CancelledBeforeStatus(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 
 	oldGetFileStatus := getFileStatus
 	defer func() {
@@ -2185,7 +2112,7 @@ func TestFilesPanel_UpdateGitStatuses_WaitGroup(t *testing.T) {
 	writeErr := os.WriteFile(filePath, []byte("content"), 0644)
 	assert.NoError(t, writeErr)
 
-	dirContext := &files.DirContext{Path: repoDir}
+	dirContext := files.NewDirContext(nil, repoDir, nil)
 	rows := NewFileRows(dirContext)
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("file.txt", false), repoDir)
 	rows.AllEntries = []files.EntryWithDirPath{entry}
@@ -2212,8 +2139,7 @@ func TestFilesPanel_UpdateGitStatuses_WaitGroup(t *testing.T) {
 }
 
 func TestFilesPanel_SelectionChangedNavFunc_WithRef(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	fp := nav.files
 
 	modTime := files.ModTime(time.Now())
@@ -2226,11 +2152,10 @@ func TestFilesPanel_SelectionChangedNavFunc_WithRef(t *testing.T) {
 }
 
 func TestDirSummary_InputCapture_SkipGroupWithMultipleExt(t *testing.T) {
-	app := tview.NewApplication()
-	nav := NewNavigator(app)
+	nav := NewNavigator(nil)
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
-	nav.files.rows = NewFileRows(&files.DirContext{Path: "/test"})
+	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
 
 	entries := []os.DirEntry{
 		mockDirEntry{name: "a.go", isDir: false},
