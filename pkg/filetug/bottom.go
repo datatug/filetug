@@ -46,7 +46,7 @@ func (b *bottom) render() {
 		menuItemsText := b.renderMenuItems(b.fkMenuItems)
 		sb.WriteString(menuItemsText)
 	}
-	sb.WriteString(" | ")
+	sb.WriteString("| ")
 	{
 		sb.WriteString("[DarkGray]Alt[-]+: ")
 		menuItemsText := b.renderMenuItems(b.altMenuItems)
@@ -132,13 +132,14 @@ func (b *bottom) getCtrlMenuItems() []ftui.MenuItem {
 
 func (b *bottom) getFKMenuItems() []ftui.MenuItem {
 	return []ftui.MenuItem{
-		{Title: "F1Help", HotKeys: []string{"F1"}, Action: func() {}},
-		{Title: "F2Menu", HotKeys: []string{"F2"}, Action: func() {}},
-		{Title: "F3View", HotKeys: []string{"F3"}, Action: func() {}},
-		{Title: "F4Edit", HotKeys: []string{"F4"}, Action: func() {}},
-		{Title: "F5Copy", HotKeys: []string{"F5"}, Action: func() {}},
-		{Title: "F6Rename", HotKeys: []string{"F6", "R"}, Action: func() {}},
-		{Title: "F8Delete", HotKeys: []string{"F8", "D"}, Action: func() {}},
+		{Title: "F1 Help", HotKeys: []string{"F1"}, Action: func() {}},
+		{Title: "F2 Menu", HotKeys: []string{"F2"}, Action: func() {}},
+		{Title: "F3 View", HotKeys: []string{"F3"}, Action: func() {}},
+		{Title: "F4 Edit", HotKeys: []string{"F4"}, Action: func() {}},
+		{Title: "F5 Copy", HotKeys: []string{"F5"}, Action: func() {}},
+		{Title: "F6 Rename", HotKeys: []string{"F6"}, Action: func() {}},
+		{Title: "F7 Create", HotKeys: []string{"F7"}, Action: func() {}},
+		{Title: "F8 Delete", HotKeys: []string{"F8"}, Action: func() {}},
 	}
 }
 
