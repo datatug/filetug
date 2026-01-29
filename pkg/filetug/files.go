@@ -36,7 +36,7 @@ func (f *filesPanel) GetCurrentEntry() files.EntryWithDirPath {
 	if row >= len(f.rows.VisibleEntries) {
 		return nil
 	}
-	entry := f.rows.VisibleEntries[row]
+	entry := f.rows.VisibleEntries[row-1]
 	if entry.DirPath() == "" {
 		if f.rows.Dir == nil {
 			_, _ = fmt.Fprintf(os.Stderr, "files panel missing dir path for entry %q\n", entry.Name())
