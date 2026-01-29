@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFavorites_GetFavorites_InvalidYaml(t *testing.T) {
+func Test_GetFavorites_InvalidYaml(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "favorites.yaml")
 	oldPath := favoritesFilePath
@@ -25,7 +25,7 @@ func TestFavorites_GetFavorites_InvalidYaml(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestFavorites_GetFavorites_InvalidStoreURL(t *testing.T) {
+func Test_GetFavorites_InvalidStoreURL(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "favorites.yaml")
 	oldPath := favoritesFilePath
@@ -43,7 +43,7 @@ func TestFavorites_GetFavorites_InvalidStoreURL(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestFavorites_GetFavorites_FileNotExists(t *testing.T) {
+func Test_GetFavorites_FileNotExists(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "missing.yaml")
 	oldPath := favoritesFilePath
@@ -64,7 +64,7 @@ func TestFavorites_GetFavorites_FileNotExists(t *testing.T) {
 	assert.Equal(t, "https", favorites[2].Store.Scheme)
 }
 
-func TestFavorites_GetFavorites_EmptyFile(t *testing.T) {
+func Test_GetFavorites_EmptyFile(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "favorites.yaml")
 	oldPath := favoritesFilePath
@@ -81,7 +81,7 @@ func TestFavorites_GetFavorites_EmptyFile(t *testing.T) {
 	assert.Len(t, favorites, 0)
 }
 
-func TestFavorites_GetFavorites_FileExists_NoDefaults(t *testing.T) {
+func Test_GetFavorites_FileExists_NoDefaults(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "favorites.yaml")
 	oldPath := favoritesFilePath
@@ -107,7 +107,7 @@ func TestFavorites_GetFavorites_FileExists_NoDefaults(t *testing.T) {
 	assert.Equal(t, before, after)
 }
 
-func TestFavorites_GetFavorites_DefaultWriteError(t *testing.T) {
+func Test_GetFavorites_DefaultWriteError(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "missing.yaml")
 	oldPath := favoritesFilePath
@@ -130,7 +130,7 @@ func TestFavorites_GetFavorites_DefaultWriteError(t *testing.T) {
 	assert.Error(t, statErr)
 }
 
-func TestFavorites_AddDelete_EmptyPath(t *testing.T) {
+func Test_AddDelete_EmptyPath(t *testing.T) {
 	oldPath := favoritesFilePath
 	favoritesFilePath = ""
 	defer func() {
@@ -144,7 +144,7 @@ func TestFavorites_AddDelete_EmptyPath(t *testing.T) {
 	assert.ErrorIs(t, deleteErr, errUserHomeDirIsUnknown)
 }
 
-func TestFavorites_AddDelete_GetFavoritesError(t *testing.T) {
+func Test_AddDelete_GetFavoritesError(t *testing.T) {
 	tempDir := t.TempDir()
 	oldPath := favoritesFilePath
 	favoritesFilePath = tempDir
@@ -159,7 +159,7 @@ func TestFavorites_AddDelete_GetFavoritesError(t *testing.T) {
 	assert.Error(t, deleteErr)
 }
 
-func TestFavorites_WriteFavorites_MkdirError(t *testing.T) {
+func Test_WriteFavorites_MkdirError(t *testing.T) {
 	tempDir := t.TempDir()
 	parentFile := filepath.Join(tempDir, "parent")
 	oldPath := favoritesFilePath
@@ -175,7 +175,7 @@ func TestFavorites_WriteFavorites_MkdirError(t *testing.T) {
 	assert.Error(t, writeErr)
 }
 
-func TestFavorites_WriteFavorites_MarshalError(t *testing.T) {
+func Test_WriteFavorites_MarshalError(t *testing.T) {
 	oldPath := favoritesFilePath
 	oldMarshal := yamlMarshal
 	favoritesFilePath = filepath.Join(t.TempDir(), "favorites.yaml")
@@ -193,7 +193,7 @@ func TestFavorites_WriteFavorites_MarshalError(t *testing.T) {
 	assert.Error(t, writeErr)
 }
 
-func TestFavorites_DeleteFavorite_KeepsOtherItems(t *testing.T) {
+func Test_DeleteFavorite_KeepsOtherItems(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "favorites.yaml")
 	oldPath := favoritesFilePath
