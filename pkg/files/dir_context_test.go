@@ -101,3 +101,9 @@ func TestDirContextChildrenReturnsCopy(t *testing.T) {
 		assert.Equal(t, "a.txt", updatedChildren[0].Name())
 	}
 }
+
+func TestDirContextChildrenNil(t *testing.T) {
+	dir := NewDirContext(nil, "", nil)
+
+	assert.Nil(t, dir.Children())
+}
