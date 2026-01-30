@@ -24,6 +24,9 @@ type TextPreviewer struct {
 }
 
 func NewTextPreviewer(queueUpdateDraw func(func())) *TextPreviewer {
+	if queueUpdateDraw == nil {
+		panic("queueUpdateDraw is nil")
+	}
 	return &TextPreviewer{
 		queueUpdateDraw: queueUpdateDraw,
 		TextView: tview.NewTextView().
@@ -37,6 +40,9 @@ func NewTextPreviewer(queueUpdateDraw func(func())) *TextPreviewer {
 func (p *TextPreviewer) PreviewSingle(entry files.EntryWithDirPath, data []byte, dataErr error) {
 	previewID := atomic.AddUint64(&p.previewID, 1)
 	go func(previewID uint64) {
+		if p.queueUpdateDraw == nil {
+			return
+		}
 		if data == nil {
 			var err error
 			data, err = p.readFile(entry, 10*1024) // First 10KB
