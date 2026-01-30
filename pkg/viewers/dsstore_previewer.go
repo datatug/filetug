@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/fsutils"
 	"github.com/strongo/dsstore"
 )
@@ -16,7 +17,7 @@ type DsstorePreviewer struct {
 	TextPreviewer
 }
 
-func NewDsstorePreviewer(queueUpdateDraw UpdateDrawQueuer) *DsstorePreviewer {
+func NewDsstorePreviewer(queueUpdateDraw navigator.UpdateDrawQueuer) *DsstorePreviewer {
 	previewer := NewTextPreviewer(queueUpdateDraw)
 	return &DsstorePreviewer{
 		TextPreviewer: *previewer,

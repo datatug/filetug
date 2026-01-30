@@ -11,6 +11,7 @@ import (
 
 	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/fsutils"
 	"github.com/filetug/filetug/pkg/gitutils"
 	"github.com/filetug/filetug/pkg/sneatv"
@@ -32,7 +33,7 @@ func WithDirSummaryFocusLeft(setter func()) DirSummaryOption {
 	}
 }
 
-func WithDirSummaryQueueUpdateDraw(setter UpdateDrawQueuer) DirSummaryOption {
+func WithDirSummaryQueueUpdateDraw(setter navigator.UpdateDrawQueuer) DirSummaryOption {
 	return func(d *DirPreviewer) {
 		d.queueUpdateDraw = setter
 	}
@@ -68,7 +69,7 @@ type DirPreviewer struct {
 
 	setFilter       func(ftui.Filter)
 	focusLeft       func()
-	queueUpdateDraw UpdateDrawQueuer
+	queueUpdateDraw navigator.UpdateDrawQueuer
 	colorByExt      func(string) tcell.Color
 }
 

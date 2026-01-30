@@ -15,6 +15,7 @@ import (
 	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/filetug/filetug/pkg/filetug/ftstate"
 	"github.com/filetug/filetug/pkg/filetug/masks"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/fsutils"
 	"github.com/filetug/filetug/pkg/gitutils"
 	"github.com/filetug/filetug/pkg/sneatv/crumbs"
@@ -109,7 +110,7 @@ var getState = ftstate.GetState
 var getDirStatus = gitutils.GetDirStatus
 var getFileStatus = gitutils.GetFileStatus
 
-func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator {
+func NewNavigator(app navigator.App, options ...NavigatorOption) *Navigator {
 	defaultStore := osfile.NewStore("/")
 	rootBreadcrumb := crumbs.NewBreadcrumb("FileTug: ", func() error {
 		return nil
@@ -152,7 +153,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 	} else {
 		nav.queueUpdateDraw = func(f func()) {
 			if app != nil {
-				_ = app.QueueUpdateDraw(f)
+				app.QueueUpdateDraw(f)
 			} else {
 				f()
 			}
@@ -168,7 +169,7 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 	copy(nav.proportions, defaultProportions)
 
 	nav.files = newFiles(nav)
-	nav.previewer = newPreviewerPanel(nav, ftApp{Application: app})
+	nav.previewer = newPreviewerPanel(nav, app)
 
 	nav.right.SetContent(nav.previewer)
 

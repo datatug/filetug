@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/gitutils"
 	"github.com/filetug/filetug/pkg/sneatv"
 	"github.com/gdamore/tcell/v2"
@@ -33,7 +34,7 @@ type GitDirStatusPreviewer struct {
 
 	entries []gitDirStatusEntry
 
-	queueUpdateDraw UpdateDrawQueuer
+	queueUpdateDraw navigator.UpdateDrawQueuer
 	statusLoader    func(string) (gitDirStatusResult, error)
 	stageFile       func(string) error
 	unstageFile     func(string) error
@@ -78,7 +79,7 @@ func NewGitDirStatusPreviewer() *GitDirStatusPreviewer {
 	return p
 }
 
-func (p *GitDirStatusPreviewer) PreviewSingle(entry files.EntryWithDirPath, _ []byte, _ error, queueUpdateDraw UpdateDrawQueuer) {
+func (p *GitDirStatusPreviewer) PreviewSingle(entry files.EntryWithDirPath, _ []byte, _ error, queueUpdateDraw navigator.UpdateDrawQueuer) {
 	dirContext, ok := entry.(*files.DirContext)
 	if !ok {
 		dirPath := entry.DirPath()
@@ -98,7 +99,7 @@ func (p *GitDirStatusPreviewer) Meta() tview.Primitive {
 	return nil
 }
 
-func (p *GitDirStatusPreviewer) SetDir(dirContext *files.DirContext, queueUpdateDraw UpdateDrawQueuer) {
+func (p *GitDirStatusPreviewer) SetDir(dirContext *files.DirContext, queueUpdateDraw navigator.UpdateDrawQueuer) {
 	p.dirContext = dirContext
 	p.queueUpdateDraw = queueUpdateDraw
 	p.setMessage("Loading...", tcell.ColorLightGray)

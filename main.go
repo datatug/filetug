@@ -9,6 +9,7 @@ import (
 	"runtime/pprof"
 
 	"github.com/filetug/filetug/pkg/filetug"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/profiling"
 	"github.com/rivo/tview"
 )
@@ -28,7 +29,7 @@ func main() {
 	run(app)
 }
 
-func newFileTugApp() (app *tview.Application) {
+func newFileTugApp() (app navigator.App) {
 	flag.Parse()
 
 	if *pprofAddr != "" {
@@ -64,8 +65,9 @@ func newFileTugApp() (app *tview.Application) {
 
 var setupApp = filetug.SetupApp
 
-var newApp = func() *tview.Application {
-	app := tview.NewApplication()
+var newApp = func() navigator.App {
+	tvApp := tview.NewApplication()
+	app := navigator.NewApp(tvApp)
 	setupApp(app)
 	return app
 }

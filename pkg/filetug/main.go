@@ -1,10 +1,10 @@
 package filetug
 
 import (
-	"github.com/rivo/tview"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 )
 
-func SetupApp(app *tview.Application) {
+func SetupApp(app navigator.App) {
 	app.EnableMouse(true)
 	nav := NewNavigator(app)
 	app.SetRoot(nav, true)

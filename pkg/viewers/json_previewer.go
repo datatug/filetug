@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 )
 
 var _ Previewer = (*JsonPreviewer)(nil)
@@ -14,7 +15,7 @@ type JsonPreviewer struct {
 	TextPreviewer
 }
 
-func NewJsonPreviewer(queueUpdateDraw UpdateDrawQueuer) *JsonPreviewer {
+func NewJsonPreviewer(queueUpdateDraw navigator.UpdateDrawQueuer) *JsonPreviewer {
 	textPreviewer := NewTextPreviewer(queueUpdateDraw)
 	return &JsonPreviewer{
 		TextPreviewer: *textPreviewer,

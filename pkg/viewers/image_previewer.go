@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/rivo/tview"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/riff"
@@ -22,10 +23,10 @@ var _ Previewer = (*ImagePreviewer)(nil)
 
 type ImagePreviewer struct {
 	metaTable       *MetaTable
-	queueUpdateDraw UpdateDrawQueuer
+	queueUpdateDraw navigator.UpdateDrawQueuer
 }
 
-func NewImagePreviewer(queueUpdateDraw UpdateDrawQueuer) *ImagePreviewer {
+func NewImagePreviewer(queueUpdateDraw navigator.UpdateDrawQueuer) *ImagePreviewer {
 	previewer := &ImagePreviewer{
 		metaTable:       NewMetaTable(),
 		queueUpdateDraw: queueUpdateDraw,

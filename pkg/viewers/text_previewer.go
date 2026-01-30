@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/filetug/filetug/pkg/chroma2tcell"
 	"github.com/filetug/filetug/pkg/files"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/fsutils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -20,10 +21,10 @@ var _ Previewer = (*TextPreviewer)(nil)
 type TextPreviewer struct {
 	*tview.TextView
 	previewID       uint64
-	queueUpdateDraw UpdateDrawQueuer
+	queueUpdateDraw navigator.UpdateDrawQueuer
 }
 
-func NewTextPreviewer(queueUpdateDraw UpdateDrawQueuer) *TextPreviewer {
+func NewTextPreviewer(queueUpdateDraw navigator.UpdateDrawQueuer) *TextPreviewer {
 	if queueUpdateDraw == nil {
 		queueUpdateDraw = func(f func()) {}
 	}

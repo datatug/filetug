@@ -16,6 +16,7 @@ import (
 
 type previewerPanel struct {
 	*sneatv.Boxed
+	app          PreviewerApp
 	rows         *tview.Flex
 	nav          *Navigator
 	attrsRow     *tview.Flex
@@ -26,7 +27,6 @@ type previewerPanel struct {
 	previewer    viewers.Previewer
 	textView     *tview.TextView
 	dirPreviewer *viewers.DirPreviewer
-	app          PreviewerApp
 }
 
 func newPreviewerPanel(nav *Navigator, app PreviewerApp) *previewerPanel {

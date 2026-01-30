@@ -3,6 +3,7 @@ package filetug
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -46,25 +47,36 @@ func TestNavigator(t *testing.T) {
 		nav.SetFocus()
 	})
 
-	t.Run("NavigatorInputCapture", func(t *testing.T) {
-		altKey := func(r rune) *tcell.EventKey {
-			return tcell.NewEventKey(tcell.KeyRune, r, tcell.ModAlt)
+	altKey := func(r rune) *tcell.EventKey {
+		return tcell.NewEventKey(tcell.KeyRune, r, tcell.ModAlt)
+	}
+
+	for activeCol := 0; activeCol < 3; activeCol++ {
+		for _, r := range []rune{
+			'+',
+			'0',
+			'-',
+		} {
+			t.Run(fmt.Sprintf("col=%d;r=%s", activeCol, r), func(t *testing.T) {
+				nav.GetInputCapture()(altKey(r))
+			})
 		}
-		nav.GetInputCapture()(altKey('0'))
-		nav.GetInputCapture()(altKey('+'))
-		nav.GetInputCapture()(altKey('-'))
+	}
 
-		nav.activeCol = 1
-		nav.GetInputCapture()(altKey('+'))
-		nav.GetInputCapture()(altKey('-'))
+	for _, r := range []rune{
+		'f',
+		'm',
+		'r',
+		'h',
+		'?',
+		'z',
+	} {
+		t.Run(string(r), func(t *testing.T) {
+			nav.GetInputCapture()(altKey(r))
+		})
+	}
 
-		nav.activeCol = 2
-		nav.GetInputCapture()(altKey('+'))
-		nav.GetInputCapture()(altKey('-'))
-
-		nav.activeCol = -1
-		nav.GetInputCapture()(altKey('+'))
-		nav.GetInputCapture()(altKey('-'))
+	t.Run("NavigatorInputCapture", func(t *testing.T) {
 
 		nav.GetInputCapture()(altKey('f'))
 		nav.GetInputCapture()(altKey('m'))
