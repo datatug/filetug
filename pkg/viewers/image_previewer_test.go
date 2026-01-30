@@ -137,7 +137,14 @@ func TestImagePreviewer_GetMeta(t *testing.T) {
 }
 
 func TestImagePreviewerNewAndPreview(t *testing.T) {
-	previewer := NewImagePreviewer()
+	done := make(chan struct{})
+
+	queueUpdateDraw := func(fn func()) {
+		fn()
+		close(done)
+	}
+
+	previewer := NewImagePreviewer(queueUpdateDraw)
 	meta := previewer.Meta()
 	main := previewer.Main()
 	if meta != nil {
@@ -152,13 +159,7 @@ func TestImagePreviewerNewAndPreview(t *testing.T) {
 	_ = path
 	entry := files.NewEntryWithDirPath(mockDirEntry{name: "preview.png"}, tmpDir)
 
-	done := make(chan struct{})
-	queueUpdateDraw := func(fn func()) {
-		fn()
-		close(done)
-	}
-
-	previewer.PreviewSingle(entry, nil, nil, queueUpdateDraw)
+	previewer.PreviewSingle(entry, nil, nil)
 	waitForUpdate(t, done)
 
 	rowCount := previewer.metaTable.GetRowCount()

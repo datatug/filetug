@@ -11,6 +11,7 @@ import (
 	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
+	"github.com/filetug/filetug/pkg/viewers"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +20,7 @@ import (
 
 func setupNavigatorForFilesTest(app *tview.Application) *Navigator {
 	nav := &Navigator{
+		queueUpdateDraw: func(f func()) { f() },
 		setAppFocus: func(p tview.Primitive) {
 			if app != nil {
 				app.SetFocus(p)
@@ -26,9 +28,16 @@ func setupNavigatorForFilesTest(app *tview.Application) *Navigator {
 		},
 	}
 	nav.right = NewContainer(2, nav)
-	nav.previewer = newPreviewerPanel(nav)
+	nav.previewer = newPreviewerPanel(nav, ftApp{app})
 	nav.dirsTree = &Tree{tv: tview.NewTreeView()}
 	return nav
+}
+
+func getDirSummary(nav *Navigator) *viewers.DirPreviewer {
+	if nav.previewer == nil {
+		return nil
+	}
+	return nav.previewer.dirPreviewer
 }
 
 func TestNewFiles(t *testing.T) {
@@ -278,10 +287,8 @@ func TestFilesPanel_SelectionChanged(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
 	nav.current.SetDir(osfile.NewLocalDir("/test"))
-	nav.dirSummary = newTestDirSummary(nav)
-
-	fp := newFiles(nav)
-	nav.files = fp
+	nav.files = newFiles(nav)
+	fp := nav.files
 
 	readDirPath := ""
 	dirEntries := map[string][]os.DirEntry{
@@ -309,12 +316,12 @@ func TestFilesPanel_SelectionChanged(t *testing.T) {
 
 	// Test row 0 (parent dir)
 	fp.selectionChanged(0, 0)
-	assert.Equal(t, nav.dirSummary, nav.right.content)
+	assert.Equal(t, getDirSummary(nav), nav.right.content)
 	assert.Equal(t, "/", readDirPath)
 
 	// Test dir row
 	fp.selectionChanged(1, 0)
-	assert.Equal(t, nav.dirSummary, nav.right.content)
+	assert.Equal(t, getDirSummary(nav), nav.right.content)
 	assert.Equal(t, "/test/child", readDirPath)
 }
 
@@ -389,7 +396,9 @@ func TestFilesPanel_updatePreviewForEntry_FileWithPreviewer(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
 	nav.right = NewContainer(2, nav)
-	nav.previewer = newPreviewerPanel(nav)
+	ctrl := gomock.NewController(nil)
+	appMock := viewers.NewMockDirPreviewerApp(ctrl)
+	nav.previewer = newPreviewerPanel(nav, appMock)
 	fp := newFiles(nav)
 
 	tempDir := t.TempDir()
@@ -422,12 +431,11 @@ func TestFilesPanel_updatePreviewForEntry_Dir(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
 	nav.right = NewContainer(2, nav)
-	nav.dirSummary = newTestDirSummary(nav)
 	fp := newFiles(nav)
 
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("dir", true), "/tmp")
 	fp.updatePreviewForEntry(entry)
-	assert.Equal(t, nav.dirSummary, nav.right.content)
+	assert.Equal(t, getDirSummary(nav), nav.right.content)
 }
 
 func TestFilesPanel_updatePreviewForEntry_NoNav(t *testing.T) {
@@ -440,20 +448,18 @@ func TestFilesPanel_showDirSummary_StoreNil(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
 	nav.right = NewContainer(2, nav)
-	nav.dirSummary = newTestDirSummary(nav)
 	fp := newFiles(nav)
 
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("dir", true), "/tmp")
 	fp.showDirSummary(entry)
-	assert.Equal(t, nav.dirSummary, nav.right.content)
-	assert.Len(t, nav.dirSummary.ExtStats, 0)
+	assert.Equal(t, getDirSummary(nav), nav.right.content)
+	assert.Len(t, getDirSummary(nav).ExtStats, 0)
 }
 
 func TestFilesPanel_showDirSummary_ReadDirError(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
 	nav.right = NewContainer(2, nav)
-	nav.dirSummary = newTestDirSummary(nav)
 	readDirPath := ""
 	store := newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	store.EXPECT().ReadDir(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -467,8 +473,8 @@ func TestFilesPanel_showDirSummary_ReadDirError(t *testing.T) {
 
 	entry := files.NewEntryWithDirPath(files.NewDirEntry("dir", true), "/tmp")
 	fp.showDirSummary(entry)
-	assert.Equal(t, nav.dirSummary, nav.right.content)
-	assert.Len(t, nav.dirSummary.ExtStats, 0)
+	assert.Equal(t, getDirSummary(nav), nav.right.content)
+	assert.Len(t, getDirSummary(nav).ExtStats, 0)
 	assert.Equal(t, "/tmp/dir", readDirPath)
 }
 
@@ -476,7 +482,6 @@ func TestFilesPanel_showDirSummary_Symlink(t *testing.T) {
 	app := tview.NewApplication()
 	nav := setupNavigatorForFilesTest(app)
 	nav.right = NewContainer(2, nav)
-	nav.dirSummary = newTestDirSummary(nav)
 	fp := newFiles(nav)
 
 	tempDir := t.TempDir()

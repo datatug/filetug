@@ -135,8 +135,7 @@ func TestTabs_Navigation(t *testing.T) {
 }
 
 func TestTabs_UpdateTextView(t *testing.T) {
-	app := tview.NewApplication()
-	tabs := NewTabs(app, RadioTabsStyle, WithLabel("Tabs:"))
+	tabs := NewTabs(nil, RadioTabsStyle, WithLabel("Tabs:"))
 	tabs.AddTabs(
 		&Tab{ID: "1", Title: "T1", Primitive: tview.NewBox(), Closable: true},
 		&Tab{ID: "2", Title: "T2", Primitive: tview.NewBox()},
@@ -166,8 +165,7 @@ func TestTabs_UpdateTextView(t *testing.T) {
 }
 
 func TestTabs_Callbacks(t *testing.T) {
-	app := tview.NewApplication()
-	tabs := NewTabs(app, UnderlineTabsStyle)
+	tabs := NewTabs(nil, UnderlineTabsStyle)
 	tabs.AddTabs(&Tab{ID: "1", Title: "T1", Primitive: tview.NewBox()})
 
 	// Since we can't get the functions back, we can only verify they don't crash
@@ -184,8 +182,7 @@ func TestTabs_Options(t *testing.T) {
 	focusLeftCalled := false
 	focusRightCalled := false
 
-	app := tview.NewApplication()
-	tabs := NewTabs(app, UnderlineTabsStyle,
+	tabs := NewTabs(nil, UnderlineTabsStyle,
 		FocusUp(func(current tview.Primitive) { focusUpCalled = true }),
 		FocusDown(func(current tview.Primitive) { focusDownCalled = true }),
 		FocusLeft(func(current tview.Primitive) { focusLeftCalled = true }),
@@ -203,8 +200,7 @@ func TestTabs_Options(t *testing.T) {
 }
 
 func TestTabs_FocusCallbacks(t *testing.T) {
-	app := tview.NewApplication()
-	tabs := NewTabs(app, UnderlineTabsStyle)
+	tabs := NewTabs(nil, UnderlineTabsStyle)
 
 	// Test FocusFunc
 	if tabs.focusFunc != nil {
@@ -226,7 +222,7 @@ func TestTabs_FocusCallbacks(t *testing.T) {
 
 func TestTabs_SetIsFocused_WithApp(t *testing.T) {
 	app := &fakeTabsApp{updated: make(chan struct{}, 1)}
-	tabs := NewTabs(app, UnderlineTabsStyle)
+	tabs := NewTabs(nil, UnderlineTabsStyle)
 	tabs.AddTabs(&Tab{ID: "1", Title: "T1", Primitive: tview.NewBox()})
 
 	tabs.setIsFocused(true)
@@ -249,8 +245,7 @@ func TestTabs_SetIsFocused_NoApp(t *testing.T) {
 }
 
 func TestTabs_HighlightedFunc(t *testing.T) {
-	app := tview.NewApplication()
-	tabs := NewTabs(app, UnderlineTabsStyle)
+	tabs := NewTabs(nil, UnderlineTabsStyle)
 	tab1 := &Tab{ID: "1", Title: "Tab 1", Primitive: tview.NewBox()}
 	tab2 := &Tab{ID: "2", Title: "Tab 2", Primitive: tview.NewBox()}
 	tabs.AddTabs(tab1, tab2)
