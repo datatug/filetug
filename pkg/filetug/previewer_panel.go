@@ -29,10 +29,6 @@ type previewerPanel struct {
 	app          PreviewerApp
 }
 
-type PreviewerApp interface {
-	viewers.DirPreviewerApp
-}
-
 func newPreviewerPanel(nav *Navigator, app PreviewerApp) *previewerPanel {
 	flex := tview.NewFlex()
 	flex.SetDirection(tview.FlexRow)
