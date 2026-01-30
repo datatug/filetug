@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/rivo/tview"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewContainer(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	index := 1
 	c := NewContainer(index, nav)
 
@@ -26,7 +27,7 @@ func TestNewContainer(t *testing.T) {
 }
 
 func TestContainer_SetContent(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	c := NewContainer(1, nav)
 
 	p := tview.NewBox()
@@ -53,28 +54,28 @@ func TestContainer_SetContent(t *testing.T) {
 }
 
 func TestContainer_Focus(t *testing.T) {
-	app := tview.NewApplication()
-	nav := &Navigator{
-		setAppFocus: func(p tview.Primitive) {
-			app.SetFocus(p)
-		},
-	}
-	c := NewContainer(1, nav)
 
-	p := tview.NewBox()
-	c.SetContent(p)
+	t.Run("non_nil_content", func(t *testing.T) {
+		b := tview.NewBox()
 
-	// Test case when content is not nil
-	c.Focus(func(p tview.Primitive) {})
-	if app.GetFocus() != p {
-		t.Errorf("Expected focus to be set to content primitive, got %v", app.GetFocus())
-	}
+		nav, app, _ := newNavigatorForTest(t)
+		app.EXPECT().SetFocus(b).AnyTimes()
 
-	// Test case when content is nil
-	app.SetFocus(nil)
-	c.content = nil
-	c.Focus(func(p tview.Primitive) {})
-	if app.GetFocus() != nil {
-		t.Errorf("Expected focus to remain nil when content is nil, got %v", app.GetFocus())
-	}
+		c := NewContainer(1, nav)
+		c.SetContent(b)
+
+		c.Focus(func(p tview.Primitive) {
+			assert.Equal(t, b, p)
+		})
+	})
+
+	t.Run("nil_content", func(t *testing.T) {
+		nav, app, _ := newNavigatorForTest(t)
+		c := NewContainer(1, nav)
+		app.EXPECT().SetFocus(c).AnyTimes()
+
+		c.Focus(func(p tview.Primitive) {
+			assert.Equal(t, c, p)
+		})
+	})
 }

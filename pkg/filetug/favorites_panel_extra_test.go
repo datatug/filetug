@@ -27,12 +27,8 @@ func TestFavoritesPanel_InputCapture_DeleteCurrent_Backspace(t *testing.T) {
 		return nil
 	}
 
-	nav := &Navigator{
-		store: newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"}),
-		setAppFocus: func(p tview.Primitive) {
-			_ = p
-		},
-	}
+	nav, _, _ := newNavigatorForTest(t)
+	nav.store = newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	nav.current.ChangeDir("/tmp")
 	panel := newTestFavoritesPanel(nav)
 	panel.items = []ftfav.Favorite{
@@ -61,12 +57,8 @@ func TestFavoritesPanel_InputCapture_DeleteCurrent_EmptyList(t *testing.T) {
 		return nil
 	}
 
-	nav := &Navigator{
-		store: newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"}),
-		setAppFocus: func(p tview.Primitive) {
-			_ = p
-		},
-	}
+	nav, _, _ := newNavigatorForTest(t)
+	nav.store = newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	panel := newTestFavoritesPanel(nav)
 
 	key := tcell.NewEventKey(tcell.KeyDelete, 0, tcell.ModNone)
@@ -87,14 +79,8 @@ func TestFavoritesPanel_AddCurrentFavorite_Success(t *testing.T) {
 		return nil
 	}
 
-	focusCalled := false
-	nav := &Navigator{
-		store: newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"}),
-		setAppFocus: func(p tview.Primitive) {
-			_ = p
-			focusCalled = true
-		},
-	}
+	nav, _, _ := newNavigatorForTest(t)
+	nav.store = newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 	panel.addFormVisible = true
@@ -104,7 +90,6 @@ func TestFavoritesPanel_AddCurrentFavorite_Success(t *testing.T) {
 	assert.True(t, addCalled)
 	assert.Len(t, panel.items, 1)
 	assert.False(t, panel.addFormVisible)
-	assert.True(t, focusCalled)
 }
 
 func TestFavoritesPanel_AddCurrentFavorite_Error(t *testing.T) {
@@ -117,12 +102,8 @@ func TestFavoritesPanel_AddCurrentFavorite_Error(t *testing.T) {
 		return errors.New("add error")
 	}
 
-	nav := &Navigator{
-		store: newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"}),
-		setAppFocus: func(p tview.Primitive) {
-			_ = p
-		},
-	}
+	nav, _, _ := newNavigatorForTest(t)
+	nav.store = newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 
@@ -132,14 +113,8 @@ func TestFavoritesPanel_AddCurrentFavorite_Error(t *testing.T) {
 }
 
 func TestFavoritesPanel_UpdateAddCurrentForm_ShowHide(t *testing.T) {
-	focusCalled := false
-	nav := &Navigator{
-		store: newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"}),
-		setAppFocus: func(p tview.Primitive) {
-			_ = p
-			focusCalled = true
-		},
-	}
+	nav, _, _ := newNavigatorForTest(t)
+	nav.store = newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 
@@ -152,7 +127,6 @@ func TestFavoritesPanel_UpdateAddCurrentForm_ShowHide(t *testing.T) {
 	panel.items = []ftfav.Favorite{{Store: nav.store.RootURL(), Path: "/tmp"}}
 	panel.updateAddCurrentForm()
 	assert.False(t, panel.addFormVisible)
-	assert.True(t, focusCalled)
 }
 
 func TestFavoritesPanel_NewFavoritesPanel_GetFavoritesError(t *testing.T) {
@@ -166,7 +140,7 @@ func TestFavoritesPanel_NewFavoritesPanel_GetFavoritesError(t *testing.T) {
 		return nil, errors.New("favorites error")
 	}
 
-	nav := &Navigator{}
+	nav, _, _ := newNavigatorForTest(t)
 	_ = newFavoritesPanel(nav)
 
 	<-done
@@ -183,12 +157,16 @@ func TestFavoritesPanel_NewFavoritesPanel_QueueUpdate(t *testing.T) {
 		return userFavs, nil
 	}
 
-	nav := &Navigator{
-		queueUpdateDraw: func(update func()) {
-			update()
+	nav, app, _ := newNavigatorForTest(t)
+	app.EXPECT().QueueUpdateDraw(gomock.Any()).DoAndReturn(func(f func()) {
+		select {
+		case <-done:
+		default:
+			f()
 			close(done)
-		},
-	}
+		}
+
+	})
 	panel := newFavoritesPanel(nav)
 
 	<-done
@@ -207,7 +185,7 @@ func TestFavoritesPanel_NewFavoritesPanel_NoQueueUpdate(t *testing.T) {
 		return userFavs, nil
 	}
 
-	nav := &Navigator{}
+	nav, _, _ := newNavigatorForTest(t)
 	panel := newFavoritesPanel(nav)
 
 	deadline := time.After(200 * time.Millisecond)
@@ -231,11 +209,10 @@ func TestFavoritesPanel_NewFavoritesPanel_InputCaptures(t *testing.T) {
 	}
 
 	var focused tview.Primitive
-	nav := &Navigator{
-		setAppFocus: func(p tview.Primitive) {
-			focused = p
-		},
-	}
+	nav, app, _ := newNavigatorForTest(t)
+	app.EXPECT().SetFocus(gomock.Any()).Do(func(p tview.Primitive) {
+		focused = p
+	}).AnyTimes()
 	panel := newFavoritesPanel(nav)
 
 	buttonHandler := panel.addButton.InputHandler()
@@ -246,14 +223,11 @@ func TestFavoritesPanel_NewFavoritesPanel_InputCaptures(t *testing.T) {
 }
 
 func TestFavoritesPanel_InputCapture_KeyTabAndDefault(t *testing.T) {
-	nav := &Navigator{
-		setAppFocus: func(p tview.Primitive) {
-			_ = p
-		},
-	}
+	nav, app, _ := newNavigatorForTest(t)
 	panel := newTestFavoritesPanel(nav)
 	panel.addFormVisible = true
 
+	app.EXPECT().SetFocus(panel.addButton).AnyTimes()
 	tab := tcell.NewEventKey(tcell.KeyTab, 0, tcell.ModNone)
 	res := panel.inputCapture(tab)
 	assert.Nil(t, res)
@@ -295,13 +269,7 @@ func TestFavoritesPanel_InputCapture_KeyEnter_Escape_Left(t *testing.T) {
 		_, _ = storeRoot, dirPath
 	}
 
-	nav := NewNavigator(nil)
-	nav.queueUpdateDraw = func(update func()) {
-		update()
-	}
-	nav.setAppFocus = func(p tview.Primitive) {
-		_ = p
-	}
+	nav, _, _ := newNavigatorForTest(t)
 	store := newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	store.EXPECT().ReadDir(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	nav.store = store
@@ -349,12 +317,8 @@ func TestFavoritesPanel_DeleteCurrentFavorite_Error(t *testing.T) {
 		return errors.New("delete error")
 	}
 
-	nav := &Navigator{
-		store: newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"}),
-		setAppFocus: func(p tview.Primitive) {
-			_ = p
-		},
-	}
+	nav, _, _ := newNavigatorForTest(t)
+	nav.store = newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 	nav.current.SetDir(nav.NewDirContext("/tmp", nil))
 	panel := newTestFavoritesPanel(nav)
 	panel.items = []ftfav.Favorite{

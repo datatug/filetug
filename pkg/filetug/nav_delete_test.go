@@ -16,7 +16,7 @@ import (
 )
 
 func TestNavigator_Delete_And_Operations(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 
 	// Setup a temporary file to delete
 	tmpDir := t.TempDir()
@@ -93,7 +93,7 @@ func TestNavigator_Delete_And_Operations(t *testing.T) {
 }
 
 func TestFilesPanel_GetCurrentEntry_EdgeCases(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	fp := newFiles(nav)
 
 	t.Run("empty_rows", func(t *testing.T) {

@@ -62,11 +62,7 @@ func (t *Tree) doLoadingAnimation(loading *tview.TreeNode) {
 		q, r := t.loadingProgress/len(spinner), t.loadingProgress%len(spinner)
 		progressBar := strings.Repeat("█", q) + string(spinner[r])
 		update := loadingUpdater{node: loading, text: " Loading... " + progressBar}
-		if t.nav != nil && t.nav.queueUpdateDraw != nil {
-			t.nav.queueUpdateDraw(update.Update)
-		} else {
-			update.Update()
-		}
+		t.nav.app.QueueUpdateDraw(update.Update)
 		t.loadingProgress += 1
 		t.doLoadingAnimation(loading)
 	}
@@ -97,7 +93,6 @@ func NewTree(nav *Navigator) *Tree {
 	tv.SetInputCapture(t.inputCapture)
 	tv.SetFocusFunc(t.focus)
 	tv.SetBlurFunc(t.blur)
-	t.nav.queueUpdateDraw = nav.queueUpdateDraw
 	return t
 }
 
@@ -167,7 +162,7 @@ func (t *Tree) blur() {
 func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyRight:
-		t.nav.setAppFocus(t.nav.files)
+		t.nav.app.SetFocus(t.nav.files)
 		return nil
 	case tcell.KeyLeft:
 		currentNode := t.tv.GetCurrentNode()
@@ -202,7 +197,7 @@ func (t *Tree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyUp:
 		if t.tv.GetCurrentNode() == t.tv.GetRoot() {
 			t.nav.breadcrumbs.TakeFocus(t.tv)
-			t.nav.setAppFocus(t.nav.breadcrumbs)
+			t.nav.app.SetFocus(t.nav.breadcrumbs)
 			return nil
 		}
 		return event

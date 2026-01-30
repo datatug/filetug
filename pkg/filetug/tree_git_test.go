@@ -34,13 +34,8 @@ func TestTree_SetDirContext_GitOptimization(t *testing.T) {
 	_ = os.Mkdir(subDir1, 0755)
 	_ = os.Mkdir(subDir2, 0755)
 
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	nav.store = osfile.NewStore(tempDir)
-
-	// Mock queueUpdateDraw to avoid hanging
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
 
 	tree := NewTree(nav)
 	node := tview.NewTreeNode("root")
@@ -85,13 +80,8 @@ func TestNavigator_ShowDir_GitStatusText(t *testing.T) {
 	subDirPath := filepath.Join(tempDir, subDirName)
 	_ = os.Mkdir(subDirPath, 0755)
 
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	nav.store = osfile.NewStore(tempDir)
-
-	// Mock queueUpdateDraw to execute immediately
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
 
 	// Create a tree node for the subdirectory as it would be in the tree
 	// In the tree, it would have a prefix like "📁subdir1"
@@ -144,9 +134,8 @@ func TestNavigator_UpdateGitStatus_NoChanges(t *testing.T) {
 	dirtyFile := filepath.Join(dirtySubDirPath, "file.txt")
 	_ = os.WriteFile(dirtyFile, []byte("content"), 0644)
 
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	nav.store = osfile.NewStore(tempDir)
-	nav.queueUpdateDraw = func(f func()) { f() }
 
 	ctx := context.Background()
 

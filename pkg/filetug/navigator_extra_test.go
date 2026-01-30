@@ -14,6 +14,7 @@ import (
 	"github.com/filetug/filetug/pkg/viewers"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"go.uber.org/mock/gomock"
 )
 
 func getDirSummarySafe(nav *Navigator) *viewers.DirPreviewer {
@@ -24,7 +25,7 @@ func getDirSummarySafe(nav *Navigator) *viewers.DirPreviewer {
 }
 
 func TestNavigator_SetStore(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -34,7 +35,7 @@ func TestNavigator_SetStore(t *testing.T) {
 }
 
 func TestNavigator_SetFocusToContainer(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 
 	// Test index 1 (files)
 	nav.SetFocusToContainer(1)
@@ -52,13 +53,13 @@ func TestNewNavigator_InvalidURL(t *testing.T) {
 				CurrentDir: "https:// invalid-url",
 			}, nil
 		}
-		nav := NewNavigator(nil)
+		nav, _, _ := newNavigatorForTest(t)
 		assert.True(t, nav != nil)
 	})
 }
 
 func TestNavigator_InputCapture_Extra(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 
 	t.Run("AltX", func(t *testing.T) {
 		event := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModAlt)
@@ -80,7 +81,7 @@ func TestNavigator_InputCapture_Extra(t *testing.T) {
 }
 
 func TestNavigator_Resize_Extra(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 
 	t.Run("Resize_ActiveCol0", func(t *testing.T) {
 		nav.activeCol = 0
@@ -104,7 +105,7 @@ func TestNavigator_Resize_Extra(t *testing.T) {
 }
 
 func TestNavigator_SetBreadcrumbs_EmptyRelative(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -116,7 +117,7 @@ func TestNavigator_SetBreadcrumbs_EmptyRelative(t *testing.T) {
 }
 
 func TestNavigator_SetBreadcrumbs_NoCurrentDir(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -126,14 +127,14 @@ func TestNavigator_SetBreadcrumbs_NoCurrentDir(t *testing.T) {
 }
 
 func TestNavigator_DirSummary_FocusLeft(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, app, _ := newNavigatorForTest(t)
 
 	focused := false
-	nav.setAppFocus = func(p tview.Primitive) {
+	app.EXPECT().SetFocus(gomock.Any()).Times(1).DoAndReturn(func(p tview.Primitive) {
 		if p == nav.files {
 			focused = true
 		}
-	}
+	})
 
 	event := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
 	res := getDirSummarySafe(nav).InputCapture(event)
@@ -145,13 +146,7 @@ func TestNavigator_DirSummary_FocusLeft(t *testing.T) {
 func TestNavigator_UpdateGitStatus_RealCall(t *testing.T) {
 	// This is hard to test without real git, but we can at least try to call it
 	// and see it doesn't crash.
-	nav := NewNavigator(nil)
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
-	nav.setAppFocus = func(p tview.Primitive) {
-		// do nothing
-	}
+	nav, _, _ := newNavigatorForTest(t)
 	node := tview.NewTreeNode("test")
 	ctx := context.Background()
 
@@ -167,13 +162,12 @@ func TestNavigator_UpdateGitStatus_RealCall(t *testing.T) {
 }
 
 func TestNavigator_ShowNodeError_Extra(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
 	nav.right = NewContainer(2, nav)
-	app := TviewDirPreviewerApp{tview.NewApplication()}
-	nav.previewer = newPreviewerPanel(nav, app)
+	nav.previewer = newPreviewerPanel(nav)
 
 	nodeContext := files.NewDirContext(nil, "/test", nil)
 	node := tview.NewTreeNode("test").SetReference(nodeContext)
@@ -182,7 +176,7 @@ func TestNavigator_ShowNodeError_Extra(t *testing.T) {
 }
 
 func TestNavigator_ShowDir_GitStatusCall(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
@@ -205,7 +199,7 @@ func TestNewNavigator_EmptyState(t *testing.T) {
 		getState = func() (*ftstate.State, error) {
 			return &ftstate.State{}, nil
 		}
-		nav := NewNavigator(nil)
+		nav, _, _ := newNavigatorForTest(t)
 		assert.True(t, nav != nil)
 		assert.Equal(t, "file:", nav.store.RootURL().Scheme+":")
 	})

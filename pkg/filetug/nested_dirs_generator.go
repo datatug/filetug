@@ -33,7 +33,7 @@ func newNestedDirsGeneratorPanel(nav *Navigator, active tview.Primitive) tview.P
 	form.AddButton("Cancel", func() {
 		nav.right.SetContent(nav.previewer)
 		if active != nil {
-			nav.setAppFocus(active)
+			nav.app.SetFocus(active)
 		}
 	})
 

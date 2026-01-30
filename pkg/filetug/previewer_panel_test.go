@@ -38,12 +38,11 @@ func TestPreviewer(t *testing.T) {
 		getState = oldGetState
 	}()
 
-	app := tview.NewApplication()
-	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("navigator is nil")
 	}
-	nav.queueUpdateDraw = func(f func()) { f() }
+
 	p := nav.previewer
 
 	previewFile := func(name, fullName string) {

@@ -20,12 +20,12 @@ func (nav *Navigator) showScriptsPanel() {
 		list:  list,
 	}
 	nav.right.SetContent(p)
-	nav.setAppFocus(p)
+	nav.app.SetFocus(p)
 }
 
 func showNestedDirsGenerator(nav *Navigator) {
 	currentBrowser := nav.getCurrentBrowser()
 	p := newNestedDirsGeneratorPanel(nav, currentBrowser)
 	nav.right.SetContent(p)
-	nav.setAppFocus(p)
+	nav.app.SetFocus(p)
 }

@@ -145,7 +145,7 @@ func (b *bottom) getFKMenuItems() []ftui.MenuItem {
 
 func (b *bottom) getAltMenuItems() []ftui.MenuItem {
 	return []ftui.MenuItem{
-		{Title: "Exit", HotKeys: []string{"x"}, Action: func() { b.nav.stopApp(); osExit(0) }},
+		{Title: "Exit", HotKeys: []string{"x"}, Action: func() { b.nav.app.Stop(); osExit(0) }},
 		{Title: "Go", HotKeys: []string{"o"}, Action: func() {}},
 		{Title: "/root", HotKeys: []string{"/"}, Action: func() {}},
 		{Title: "~Home", HotKeys: []string{"~"}, Action: func() {}},

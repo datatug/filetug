@@ -78,7 +78,7 @@ func TestGeneratedNestedDirs_DepthZero(t *testing.T) {
 }
 
 func TestNestedDirsGeneratorPanel_GenerateButton(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 
 	panel := newNestedDirsGeneratorPanel(nav, nil)
 	p, ok := panel.(*nestedDirsGeneratorPanel)

@@ -17,7 +17,7 @@ import (
 )
 
 func TestTree(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, app, _ := newNavigatorForTest(t)
 	tree := NewTree(nav)
 
 	t.Run("onStoreChange", func(t *testing.T) {
@@ -46,15 +46,11 @@ func TestTree(t *testing.T) {
 		// However, we can check if the text changed after a short delay.
 
 		drawUpdatesCount := 0
-		oldQueueUpdateDraw := nav.queueUpdateDraw
-		defer func() {
-			nav.queueUpdateDraw = oldQueueUpdateDraw
-		}()
-		tree.nav.queueUpdateDraw = func(f func()) {
+		app.EXPECT().QueueUpdateDraw(gomock.Any()).AnyTimes().DoAndReturn(func(f func()) {
 			drawUpdatesCount++
 			f()
 			tree.rootNode.ClearChildren()
-		}
+		})
 
 		go func() {
 			tree.doLoadingAnimation(loading)
@@ -65,7 +61,7 @@ func TestTree(t *testing.T) {
 	})
 
 	t.Run("doLoadingAnimation_queueUpdateDrawExecutes", func(t *testing.T) {
-		nav := NewNavigator(nil)
+		nav, app, _ := newNavigatorForTest(t)
 		tree := NewTree(nav)
 		loading := tview.NewTreeNode(" Loading...")
 		tree.rootNode.ClearChildren()
@@ -74,14 +70,14 @@ func TestTree(t *testing.T) {
 		queued := false
 		done := make(chan struct{})
 		var once sync.Once
-		nav.queueUpdateDraw = func(f func()) {
+		app.EXPECT().QueueUpdateDraw(gomock.Any()).AnyTimes().DoAndReturn(func(f func()) {
 			queued = true
 			f()
 			tree.rootNode.ClearChildren()
 			once.Do(func() {
 				close(done)
 			})
-		}
+		})
 
 		go tree.doLoadingAnimation(loading)
 		select {
@@ -212,9 +208,6 @@ func TestTree(t *testing.T) {
 		store := newMockStoreWithRootTitle(t, url.URL{Scheme: "mock", Path: "/"}, "Root")
 		store.EXPECT().ReadDir(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 		tree.nav.store = store
-		tree.nav.queueUpdateDraw = func(f func()) {
-			f()
-		}
 		eventRune := tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModNone)
 		res := tree.inputCapture(eventRune)
 		assert.Nil(t, res)

@@ -16,8 +16,10 @@ func NewContainer(index int, nav *Navigator) *Container {
 		nav:   nav,
 	}
 	r.SetFocusFunc(func() {
-		if r.content != nil {
-			r.nav.setAppFocus(r.content)
+		if r.content == nil {
+			r.nav.app.SetFocus(r)
+		} else {
+			r.nav.app.SetFocus(r.content)
 		}
 	})
 	return r

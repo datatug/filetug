@@ -29,7 +29,7 @@ type previewerPanel struct {
 	dirPreviewer *viewers.DirPreviewer
 }
 
-func newPreviewerPanel(nav *Navigator, app PreviewerApp) *previewerPanel {
+func newPreviewerPanel(nav *Navigator) *previewerPanel {
 	flex := tview.NewFlex()
 	flex.SetDirection(tview.FlexRow)
 	separator := tview.NewTextView()
@@ -38,16 +38,16 @@ func newPreviewerPanel(nav *Navigator, app PreviewerApp) *previewerPanel {
 
 	filterSetter := viewers.WithDirSummaryFilterSetter(nav.files.SetFilter)
 	focusLeft := viewers.WithDirSummaryFocusLeft(func() {
-		nav.setAppFocus(nav.files)
+		nav.app.SetFocus(nav.files)
 	})
-	queueUpdateDraw := viewers.WithDirSummaryQueueUpdateDraw(nav.queueUpdateDraw)
+	queueUpdateDraw := viewers.WithDirSummaryQueueUpdateDraw(nav.app.QueueUpdateDraw)
 	p := previewerPanel{
-		app: app,
+		app: nav.app,
 		Boxed: sneatv.NewBoxed(
 			flex,
 			sneatv.WithLeftBorder(0, -1),
 		),
-		dirPreviewer: viewers.NewDirPreviewer(app, filterSetter, focusLeft, queueUpdateDraw),
+		dirPreviewer: viewers.NewDirPreviewer(nav.app, filterSetter, focusLeft, queueUpdateDraw),
 		rows:         flex,
 		attrsRow:     tview.NewFlex(),
 		separator:    separator,
@@ -89,7 +89,7 @@ func newPreviewerPanel(nav *Navigator, app PreviewerApp) *previewerPanel {
 	p.rows.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyLeft:
-			nav.setAppFocus(nav.files)
+			nav.app.SetFocus(nav.files)
 			return nil
 		case tcell.KeyUp:
 			//nav.o.moveFocusUp(p.fsAttrs)

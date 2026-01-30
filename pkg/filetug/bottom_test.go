@@ -16,7 +16,7 @@ func Test_bottom_getCtrlMenuItems(t *testing.T) {
 }
 
 func TestNewBottom(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	b := newBottom(nav)
 	assert.NotNil(t, b)
 	assert.NotNil(t, b.TextView)
@@ -24,7 +24,7 @@ func TestNewBottom(t *testing.T) {
 }
 
 func TestBottom_Render(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	b := newBottom(nav)
 	b.render()
 	text := b.GetText(false)
@@ -34,7 +34,7 @@ func TestBottom_Render(t *testing.T) {
 }
 
 func TestBottom_Highlighted(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	b := newBottom(nav)
 
 	actionCalled := false
@@ -61,7 +61,7 @@ func TestBottom_Highlighted(t *testing.T) {
 }
 
 func TestBottom_GetAltMenuItems(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	b := newBottom(nav)
 	items := b.getAltMenuItems()
 	assert.NotEmpty(t, items)
@@ -86,7 +86,7 @@ func TestBottom_GetAltMenuItems(t *testing.T) {
 }
 
 func TestBottom_GetAltMenuItems_Actions(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	b := newBottom(nav)
 	items := b.getAltMenuItems()
 
@@ -102,11 +102,10 @@ func TestBottom_GetAltMenuItems_Actions(t *testing.T) {
 }
 
 func TestBottom_GetAltMenuItems_ExitAction(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, app, _ := newNavigatorForTest(t)
 	b := newBottom(nav)
 
-	stopCalled := false
-	nav.stopApp = func() { stopCalled = true }
+	app.EXPECT().Stop().Times(1)
 
 	exitCode := -1
 	oldOsExit := osExit
@@ -126,7 +125,6 @@ func TestBottom_GetAltMenuItems_ExitAction(t *testing.T) {
 
 	exitAction()
 
-	assert.True(t, stopCalled)
 	assert.Equal(t, 0, exitCode)
 }
 
@@ -149,7 +147,7 @@ func TestBottom_RenderMenuItems_ReplacesHotkeysAndRegions(t *testing.T) {
 }
 
 func TestBottom_Highlighted_Ctrl(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	b := newBottom(nav)
 	b.isCtrl = true
 

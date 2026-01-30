@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/filetug/filetug/pkg/filetug/ftui"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/viewers"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -18,22 +20,20 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func setupNavigatorForFilesTest(app *tview.Application) *Navigator {
-	nav := &Navigator{
-		queueUpdateDraw: func(f func()) { f() },
-		setAppFocus: func(p tview.Primitive) {
-			if app != nil {
-				app.SetFocus(p)
-			}
-		},
-	}
+func setupNavigatorForFilesTest(ctrl *gomock.Controller) (*Navigator, *navigator.MockApp) {
+	app := navigator.NewMockApp(ctrl)
+	app.EXPECT().QueueUpdateDraw(gomock.Any()).AnyTimes().DoAndReturn(func(f func()) {
+		f()
+	})
+	app.EXPECT().SetFocus(gomock.Any()).AnyTimes()
+	nav := NewNavigator(app)
 	nav.current.SetDir(osfile.NewLocalDir("/"))
 	nav.right = NewContainer(2, nav)
 	// Use ftApp wrapper to handle QueueUpdateDraw in tests
-	nav.previewer = newPreviewerPanel(nav, ftApp{app})
+	nav.previewer = newPreviewerPanel(nav)
 	nav.dirsTree = NewTree(nav)
 	nav.files = newFiles(nav)
-	return nav
+	return nav, app
 }
 
 type TviewDirPreviewerApp struct {
@@ -60,8 +60,9 @@ func getDirSummary(nav *Navigator) *viewers.DirPreviewer {
 }
 
 func TestNewFiles(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 
 	fp := newFiles(nav)
 	assert.NotNil(t, fp)
@@ -70,8 +71,8 @@ func TestNewFiles(t *testing.T) {
 }
 
 func TestFilesPanel_SetRows(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	fp := newFiles(nav)
 
 	dir := files.NewDirContext(nil, "/test", nil)
@@ -84,8 +85,8 @@ func TestFilesPanel_SetRows(t *testing.T) {
 }
 
 func TestFilesPanel_SetFilter(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	fp := newFiles(nav)
 	fp.rows = NewFileRows(files.NewDirContext(nil, "", nil))
 
@@ -94,8 +95,8 @@ func TestFilesPanel_SetFilter(t *testing.T) {
 }
 
 func TestFilesPanel_Selection(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.current.SetDir(osfile.NewLocalDir("/test"))
 	fp := newFiles(nav)
 
@@ -128,8 +129,8 @@ func TestFilesPanel_Selection(t *testing.T) {
 }
 
 func TestFilesPanel_InputCapture(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	fp := newFiles(nav)
 
 	t.Run("Space_Toggle", func(t *testing.T) {
@@ -196,9 +197,6 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 	})
 
 	t.Run("KeyLeft", func(t *testing.T) {
-		fp.nav.setAppFocus = func(p tview.Primitive) {
-			_, _ = p, p
-		}
 		event := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
 		res := fp.inputCapture(event)
 		assert.Nil(t, res)
@@ -218,7 +216,7 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 		// but it's a method. We'll use a real Navigator for this test if possible,
 		// or just accept it might be hard to test this branch without a full setup.
 		// For now, let's use NewNavigator to get a properly initialized Tree.
-		fullNav := NewNavigator(nil)
+		fullNav, _, _ := newNavigatorForTest(t)
 		fp.nav = fullNav
 
 		event := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
@@ -287,7 +285,7 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 		if !assert.NotNil(t, linkEntry) {
 			return
 		}
-		fullNav := NewNavigator(nil)
+		fullNav, _, _ := newNavigatorForTest(t)
 		fp.nav = fullNav
 		store := newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
 		fp.rows = NewFileRows(files.NewDirContext(store, tempDir, nil))
@@ -303,11 +301,11 @@ func TestFilesPanel_InputCapture(t *testing.T) {
 }
 
 func TestFilesPanel_SelectionChanged(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.current.SetDir(osfile.NewLocalDir("/different"))
 	// Synchronous for consistent testing
-	nav.queueUpdateDraw = func(f func()) { f() }
+
 	fp := nav.files
 
 	readDirPath := ""
@@ -338,17 +336,30 @@ func TestFilesPanel_SelectionChanged(t *testing.T) {
 	// Test row 0 (parent dir)
 	nav.current.SetDir(files.NewDirContext(store, "/test", nil))
 	fp.selectionChanged(0, 0)
+	// We use polling because selectionChanged starts a goroutine in showDir
+	for i := 0; i < 100; i++ {
+		if readDirPath == "/" {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	assert.Equal(t, "/", readDirPath)
 
 	// Test dir row
 	fp.selectionChanged(1, 0)
+	for i := 0; i < 100; i++ {
+		if readDirPath == "/test/child" {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	assert.Equal(t, "/test/child", readDirPath)
 }
 
 func TestFilesPanel_OnStoreChange(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
-	nav.previewer = newPreviewerPanel(nav, ftApp{app})
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
+	nav.previewer = newPreviewerPanel(nav)
 	fp := newFiles(nav)
 
 	fp.onStoreChange()
@@ -357,8 +368,8 @@ func TestFilesPanel_OnStoreChange(t *testing.T) {
 }
 
 func TestFilesPanel_selectionChangedNavFunc(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	fp := newFiles(nav)
 
 	fp.table.SetCell(1, 0, tview.NewTableCell(" file1.txt"))
@@ -366,8 +377,8 @@ func TestFilesPanel_selectionChangedNavFunc(t *testing.T) {
 }
 
 func TestFilesPanel_entryFromRow_MissingData(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	fp := newFiles(nav)
 
 	fp.table = nil
@@ -395,8 +406,8 @@ func TestFilesPanel_entryFromRow_MissingData(t *testing.T) {
 }
 
 func TestFilesPanel_updatePreviewForEntry_FileNoPreviewer(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.previewer = nil
 	nav.right = NewContainer(2, nav)
 	fp := newFiles(nav)
@@ -408,10 +419,10 @@ func TestFilesPanel_updatePreviewForEntry_FileNoPreviewer(t *testing.T) {
 }
 
 func TestFilesPanel_updatePreviewForEntry_FileWithPreviewer(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.right = NewContainer(2, nav)
-	nav.previewer = newPreviewerPanel(nav, ftApp{app})
+	nav.previewer = newPreviewerPanel(nav)
 	fp := newFiles(nav)
 
 	tempDir := t.TempDir()
@@ -441,8 +452,8 @@ func TestFilesPanel_updatePreviewForEntry_FileWithPreviewer(t *testing.T) {
 }
 
 func TestFilesPanel_updatePreviewForEntry_Dir(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.right = NewContainer(2, nav)
 	fp := newFiles(nav)
 
@@ -458,8 +469,8 @@ func TestFilesPanel_updatePreviewForEntry_NoNav(t *testing.T) {
 }
 
 func TestFilesPanel_showDirSummary_StoreNil(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.right = NewContainer(2, nav)
 	fp := newFiles(nav)
 
@@ -470,11 +481,10 @@ func TestFilesPanel_showDirSummary_StoreNil(t *testing.T) {
 }
 
 func TestFilesPanel_showDirSummary_ReadDirError(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.right = NewContainer(2, nav)
 	// Use synchronous queueUpdateDraw
-	nav.queueUpdateDraw = func(f func()) { f() }
 
 	readDirPath := ""
 	store := newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
@@ -494,11 +504,10 @@ func TestFilesPanel_showDirSummary_ReadDirError(t *testing.T) {
 }
 
 func TestFilesPanel_showDirSummary_Symlink(t *testing.T) {
-	app := tview.NewApplication()
-	nav := setupNavigatorForFilesTest(app)
+	ctrl := gomock.NewController(t)
+	nav, _ := setupNavigatorForFilesTest(ctrl)
 	nav.right = NewContainer(2, nav)
 	// Use synchronous queueUpdateDraw
-	nav.queueUpdateDraw = func(f func()) { f() }
 
 	tempDir := t.TempDir()
 	readDirPath := ""

@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewPanel_Coverage(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	tmpDir := t.TempDir()
 	nav.store = osfile.NewStore(tmpDir)
 	nav.current.SetDir(nav.NewDirContext(tmpDir, nil))
@@ -91,7 +91,7 @@ func TestNewPanel_Coverage(t *testing.T) {
 }
 
 func TestScripts_And_NestedDirs(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 
 	t.Run("showScriptsPanel", func(t *testing.T) {
 		nav.showScriptsPanel()

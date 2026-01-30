@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/profiling"
-	"github.com/rivo/tview"
+	"go.uber.org/mock/gomock"
 )
 
 func TestMainRoot(t *testing.T) {
@@ -41,7 +42,7 @@ func Test_newApp(t *testing.T) {
 		setupApp = oldSetupApp
 	}()
 	setupAppCalled := false
-	setupApp = func(app *tview.Application) {
+	setupApp = func(app navigator.App) {
 		setupAppCalled = true
 	}
 
@@ -117,8 +118,11 @@ func Test_newFileTugApp(t *testing.T) {
 	defer func() {
 		newApp = oldNewApp
 	}()
-	newApp = func() *tview.Application {
-		return tview.NewApplication()
+
+	ctrl := gomock.NewController(t)
+
+	newApp = func() navigator.App {
+		return navigator.NewMockApp(ctrl)
 	}
 
 	t.Run("default", func(t *testing.T) {
@@ -205,8 +209,11 @@ func Test_newFileTugApp_pprofError(t *testing.T) {
 		newApp = oldNewApp
 		httpListenAndServe = oldListenAndServe
 	}()
-	newApp = func() *tview.Application {
-		return tview.NewApplication()
+
+	ctrl := gomock.NewController(t)
+
+	newApp = func() navigator.App {
+		return navigator.NewMockApp(ctrl)
 	}
 
 	oldStderr := os.Stderr
@@ -283,7 +290,7 @@ func Test_newFileTugApp_panicRecovery(t *testing.T) {
 		osExit = oldExit
 		pprofStopCPUProfile = oldStop
 	}()
-	newApp = func() *tview.Application {
+	newApp = func() navigator.App {
 		panic("boom")
 	}
 

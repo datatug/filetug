@@ -10,7 +10,7 @@ import (
 )
 
 func TestFavorites(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	f := newFavoritesPanel(nav)
 
 	if f == nil {
@@ -124,7 +124,7 @@ func TestNewFavorites_NilNav(t *testing.T) {
 }
 
 func TestFavorites_SetStore_InvalidURL(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	f := newFavoritesPanel(nav)
 
 	dirPath := f.setStore(ftfav.Favorite{Store: url.URL{Scheme: ":invalid:"}, Path: ""})

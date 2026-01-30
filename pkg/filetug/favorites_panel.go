@@ -41,7 +41,9 @@ func (f *favoritesPanel) ShowFavorites() {
 	f.prev = f.nav.current
 	f.nav.left.SetContent(f)
 	f.updateAddCurrentForm()
-	f.nav.setAppFocus(f.list)
+	if f.nav != nil && f.nav.app != nil {
+		f.nav.app.SetFocus(f.list)
+	}
 }
 
 func builtInFavorites() []ftfav.Favorite {
@@ -76,8 +78,8 @@ func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 	addButton.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyEscape:
-			if f.nav != nil {
-				f.nav.setAppFocus(f.list)
+			if f.nav != nil && f.nav.app != nil {
+				f.nav.app.SetFocus(f.list)
 			}
 			return nil
 		default:
@@ -104,11 +106,7 @@ func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 			f.setItems()
 			f.updateAddCurrentForm()
 		}
-		if f.nav != nil && f.nav.queueUpdateDraw != nil {
-			f.nav.queueUpdateDraw(update)
-		} else {
-			update()
-		}
+		f.nav.app.QueueUpdateDraw(update)
 	}()
 	return f
 }
@@ -171,6 +169,9 @@ func (f *favoritesPanel) changed(index int, _ string, _ string, _ rune) {
 }
 
 func (f *favoritesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+	if f.nav == nil || f.nav.app == nil {
+		return event
+	}
 	switch event.Key() {
 	case tcell.KeyEnter:
 		currentFav := f.items[f.list.GetCurrentItem()]
@@ -178,7 +179,7 @@ func (f *favoritesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case tcell.KeyTab:
 		if f.addFormVisible {
-			f.nav.setAppFocus(f.addButton)
+			f.nav.app.SetFocus(f.addButton)
 			return nil
 		}
 		return event
@@ -186,15 +187,14 @@ func (f *favoritesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		f.deleteCurrentFavorite()
 		return nil
 	case tcell.KeyEscape:
-		prevDir := f.prev.Dir()
-		if prevDir != nil {
-			f.nav.goDir(prevDir)
+		if f.prev.Dir() != nil {
+			f.nav.goDir(f.prev.Dir())
 		}
 		f.nav.left.SetContent(f.nav.dirsTree)
-		f.nav.setAppFocus(f.nav.dirsTree)
+		f.nav.app.SetFocus(f.nav.dirsTree)
 		return nil
 	case tcell.KeyLeft:
-		f.nav.setAppFocus(f.nav.files.table)
+		f.nav.app.SetFocus(f.nav.files.table)
 		return nil
 	case tcell.KeyUp, tcell.KeyDown:
 		return event
@@ -215,8 +215,8 @@ func (f *favoritesPanel) updateAddCurrentForm() {
 	}
 	f.flex.RemoveItem(f.addContainer)
 	f.addFormVisible = false
-	if f.nav != nil {
-		f.nav.setAppFocus(f.list)
+	if f.nav != nil && f.nav.app != nil {
+		f.nav.app.SetFocus(f.list)
 	}
 }
 
@@ -313,7 +313,7 @@ func (f *favoritesPanel) activateFavorite(item ftfav.Favorite, previewMode bool)
 		dirContext := files.NewDirContext(f.nav.store, dirPath, nil)
 		f.nav.goDir(dirContext)
 		f.nav.left.SetContent(f.nav.dirsTree)
-		f.nav.setAppFocus(f.nav.dirsTree)
+		f.nav.app.SetFocus(f.nav.dirsTree)
 	}
 }
 

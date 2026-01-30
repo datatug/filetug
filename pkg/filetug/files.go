@@ -70,7 +70,7 @@ func (f *filesPanel) onStoreChange() {
 	f.table.SetCell(1, 0, progressCell)
 	f.table.SetSelectable(false, false)
 	// We only start animation if we have a real app running.
-	// In tests, NewNavigator(nil) uses a sync QueueUpdateDraw which we check in doLoadingAnimation.
+	// In tests, NewNavigator(app) uses a sync QueueUpdateDraw which we check in doLoadingAnimation.
 	go func() {
 		f.doLoadingAnimation(progressCell)
 	}()
@@ -78,23 +78,15 @@ func (f *filesPanel) onStoreChange() {
 
 func (f *filesPanel) doLoadingAnimation(loading *tview.TableCell) {
 	// Simple heuristic: if we are in a test (no real app), don't loop
-	if f.nav != nil && f.nav.queueUpdateDraw == nil {
-		return
-	}
 	time.Sleep(10 * time.Millisecond)
 	if f.table.GetCell(1, 0) == loading {
 		q, r := f.loadingProgress/len(spinner), f.loadingProgress%len(spinner)
 		progressBar := strings.Repeat("█", q) + string(spinner[r])
-		if f.nav != nil && f.nav.queueUpdateDraw != nil {
-			f.nav.queueUpdateDraw(func() {
-				loading.SetText(progressBar)
-			})
-			f.loadingProgress += 1
-			f.doLoadingAnimation(loading)
-		} else {
-			// If no queueUpdateDraw, don't loop indefinitely in tests
+		f.nav.app.QueueUpdateDraw(func() {
 			loading.SetText(progressBar)
-		}
+		})
+		f.loadingProgress += 1
+		f.doLoadingAnimation(loading)
 	}
 }
 
@@ -109,8 +101,8 @@ func (f *filesPanel) SetRows(rows *FileRows, showDirs bool) {
 	}
 	go func() {
 		time.Sleep(time.Millisecond)
-		if f.nav != nil && f.nav.queueUpdateDraw != nil {
-			f.nav.queueUpdateDraw(func() {
+		if f.nav != nil && f.nav.app != nil {
+			f.nav.app.QueueUpdateDraw(func() {
 				f.table.ScrollToBeginning()
 			})
 		}
@@ -136,7 +128,7 @@ func (f *filesPanel) updateGitStatuses(ctx context.Context, dirContext *files.Di
 
 	rows := f.rows
 	table := f.table
-	queueUpdateDraw := f.nav.queueUpdateDraw
+	queueUpdateDraw := f.nav.app.QueueUpdateDraw
 	for _, entry := range rows.AllEntries {
 		entry := entry
 		fullPath := entry.FullName()
@@ -206,10 +198,10 @@ func (f *filesPanel) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 	}
 	switch event.Key() {
 	case tcell.KeyLeft:
-		f.nav.setAppFocus(f.nav.dirsTree)
+		f.nav.app.SetFocus(f.nav.dirsTree)
 		return nil
 	case tcell.KeyRight:
-		f.nav.setAppFocus(f.nav.right)
+		f.nav.app.SetFocus(f.nav.right)
 		return nil
 	case tcell.KeyUp:
 		row, _ := table.GetSelection()

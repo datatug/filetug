@@ -68,11 +68,11 @@ func NewNewPanel(nav *Navigator) *NewPanel {
 	p.input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
 			if p.createDirBtn.HasFocus() {
-				p.nav.setAppFocus(p.createFileBtn)
+				p.nav.app.SetFocus(p.createFileBtn)
 			} else if p.createFileBtn.HasFocus() {
-				p.nav.setAppFocus(p.input)
+				p.nav.app.SetFocus(p.input)
 			} else {
-				p.nav.setAppFocus(p.createDirBtn)
+				p.nav.app.SetFocus(p.createDirBtn)
 			}
 			return nil
 		}
@@ -101,7 +101,7 @@ func NewNewPanel(nav *Navigator) *NewPanel {
 func (p *NewPanel) Show() {
 	p.input.SetText("")
 	p.nav.right.SetContent(p)
-	p.nav.setAppFocus(p)
+	p.nav.app.SetFocus(p)
 }
 
 func (p *NewPanel) Focus(delegate func(p tview.Primitive)) {
@@ -155,5 +155,5 @@ func (p *NewPanel) createFile() {
 	dirContext := files.NewDirContext(p.nav.store, currentDir, nil)
 	p.nav.showDir(ctx, p.nav.dirsTree.rootNode, dirContext, false)
 	p.nav.files.SetCurrentFile(name)
-	p.nav.setAppFocus(p.nav.files.Boxed)
+	p.nav.app.SetFocus(p.nav.files.Boxed)
 }

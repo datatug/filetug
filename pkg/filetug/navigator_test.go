@@ -15,6 +15,7 @@ import (
 	"github.com/filetug/filetug/pkg/files"
 	"github.com/filetug/filetug/pkg/files/osfile"
 	"github.com/filetug/filetug/pkg/filetug/ftstate"
+	"github.com/filetug/filetug/pkg/filetug/navigator"
 	"github.com/filetug/filetug/pkg/gitutils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -37,7 +38,8 @@ func TestOnMoveFocusUp(t *testing.T) {
 }
 
 func TestNavigator(t *testing.T) {
-	app := tview.NewApplication()
+	ctrl := gomock.NewController(t)
+	app := navigator.NewMockApp(ctrl)
 	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
 	if nav == nil {
 		t.Fatal("nav is nil")
@@ -57,7 +59,7 @@ func TestNavigator(t *testing.T) {
 			'0',
 			'-',
 		} {
-			t.Run(fmt.Sprintf("col=%d;r=%s", activeCol, r), func(t *testing.T) {
+			t.Run(fmt.Sprintf("col=%d;r=%c", activeCol, r), func(t *testing.T) {
 				nav.GetInputCapture()(altKey(r))
 			})
 		}
@@ -98,20 +100,11 @@ func TestNavigator(t *testing.T) {
 }
 
 func TestNavigator_GitStatus(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("nav is nil")
 	}
 	node := tview.NewTreeNode("test")
-
-	drawUpdatesCount := 0
-	oldQueueUpdateDraw := nav.queueUpdateDraw
-	defer func() {
-		nav.queueUpdateDraw = oldQueueUpdateDraw
-	}()
-	nav.queueUpdateDraw = func(f func()) {
-		drawUpdatesCount++
-	}
 
 	// Use background context for tests
 	ctx := context.Background()
@@ -134,7 +127,8 @@ func TestNavigator_GitStatus(t *testing.T) {
 
 func TestNavigator_goDir(t *testing.T) {
 	saveCurrentDir = func(string, string) {}
-	app := tview.NewApplication()
+	ctrl := gomock.NewController(t)
+	app := navigator.NewMockApp(ctrl)
 	nav := NewNavigator(app, OnMoveFocusUp(func(source tview.Primitive) {}))
 
 	t.Run("goDir_Success", func(t *testing.T) {
@@ -197,7 +191,7 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 		saveCurrentDir = oldSaveCurrentDir
 	}()
 
-	nav := NewNavigator(nil)
+	nav, app, _ := newNavigatorForTest(t)
 	entries := []os.DirEntry{
 		mockDirEntry{name: "child", isDir: true},
 	}
@@ -215,14 +209,15 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 
 	done := make(chan struct{})
 	var once sync.Once
-	nav.queueUpdateDraw = func(f func()) {
+
+	app.EXPECT().QueueUpdateDraw(gomock.Any()).AnyTimes().DoAndReturn(func(f func()) {
 		f()
 		if len(nav.dirsTree.rootNode.GetChildren()) > 0 {
 			once.Do(func() {
 				close(done)
 			})
 		}
-	}
+	})
 
 	dirContext := nav.NewDirContext("/root", nil)
 	nav.goDir(dirContext)
@@ -246,7 +241,7 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 		getState = oldGetState
 	}()
 
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 
 	firstEntries := []os.DirEntry{mockDirEntry{name: "firstChild", isDir: true}}
 	secondEntries := []os.DirEntry{mockDirEntry{name: "secondChild", isDir: true}}
@@ -270,9 +265,6 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 		},
 	).AnyTimes()
 	nav.store = store
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
 
 	ctx := context.Background()
 	nodeFirst := tview.NewTreeNode("first")
@@ -299,7 +291,7 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 }
 
 func TestNavigator_onDataLoaded_isTreeRootChanged(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	nodeContext := nav.NewDirContext("/test", nil)
 	node := tview.NewTreeNode("test").SetReference(nodeContext)
 	dirContext := files.NewDirContext(nil, "/test", []os.DirEntry{mockDirEntry{name: "file.txt", isDir: false}})
@@ -308,7 +300,7 @@ func TestNavigator_onDataLoaded_isTreeRootChanged(t *testing.T) {
 }
 
 func TestNavigator_setBreadcrumbs_Complex(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("nav is nil")
 	}
@@ -340,7 +332,7 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDir: "http://example.com/path",
 			}, nil
 		}
-		nav := NewNavigator(nil)
+		nav, _, _ := newNavigatorForTest(t)
 		assert.True(t, nav != nil)
 	})
 
@@ -351,7 +343,7 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDir: "/path",
 			}, nil
 		}
-		nav := NewNavigator(nil)
+		nav, _, _ := newNavigatorForTest(t)
 		assert.True(t, nav != nil)
 	})
 
@@ -363,7 +355,7 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDirEntry: "test.txt",
 			}, nil
 		}
-		nav := NewNavigator(nil)
+		nav, _, _ := newNavigatorForTest(t)
 		assert.True(t, nav != nil)
 		if nav.current.Dir() == nil {
 			t.Fatal("Current dir is nil")
@@ -377,7 +369,7 @@ func TestNewNavigator_States(t *testing.T) {
 				CurrentDir: "https://example.com/path",
 			}, nil
 		}
-		nav := NewNavigator(nil)
+		nav, _, _ := newNavigatorForTest(t)
 		assert.True(t, nav != nil)
 	})
 
@@ -387,13 +379,13 @@ func TestNewNavigator_States(t *testing.T) {
 				Store: "http",
 			}, nil
 		}
-		nav := NewNavigator(nil)
+		nav, _, _ := newNavigatorForTest(t)
 		assert.True(t, nav != nil)
 	})
 }
 
 func TestNavigator_updateGitStatus_Success(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	node := tview.NewTreeNode("test")
 
 	// Mock git status
@@ -404,12 +396,6 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 	// Or we can just test the "app == nil" branch which is easy.
 
 	t.Run("NoApp", func(t *testing.T) {
-		oldQueueUpdateDraw := nav.queueUpdateDraw
-		nav.queueUpdateDraw = func(f func()) {
-			f()
-		}
-		defer func() { nav.queueUpdateDraw = oldQueueUpdateDraw }()
-
 		status := &gitutils.RepoStatus{Branch: "main"}
 		// Dir matches repo root to ensure status is shown even if clean
 		path := "/repo"
@@ -428,11 +414,6 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 	})
 
 	t.Run("WithAppCached", func(t *testing.T) {
-		oldQueueUpdateDraw := nav.queueUpdateDraw
-		nav.queueUpdateDraw = func(f func()) {
-			f()
-		}
-		defer func() { nav.queueUpdateDraw = oldQueueUpdateDraw }()
 
 		status := &gitutils.RepoStatus{Branch: "main"}
 		// Dir matches repo root to ensure status is shown even if clean
@@ -452,11 +433,6 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 	})
 
 	t.Run("PrefixAlreadyHasStatus", func(t *testing.T) {
-		oldQueueUpdateDraw := nav.queueUpdateDraw
-		nav.queueUpdateDraw = func(f func()) {
-			f()
-		}
-		defer func() { nav.queueUpdateDraw = oldQueueUpdateDraw }()
 
 		status := &gitutils.RepoStatus{Branch: "main"}
 		path := "/repo"
@@ -479,12 +455,9 @@ func TestNavigator_updateGitStatus_Success(t *testing.T) {
 }
 
 func TestNavigator_showDir_FileScheme(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	if nav == nil {
 		t.Fatal("navigator is nil")
-	}
-	nav.queueUpdateDraw = func(f func()) {
-		f()
 	}
 	node := tview.NewTreeNode("test")
 
@@ -502,10 +475,7 @@ func TestNavigator_showDir_FileScheme(t *testing.T) {
 }
 
 func TestNavigator_showDir_EarlyReturnAndExpandHome(t *testing.T) {
-	nav := NewNavigator(nil)
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
+	nav, _, _ := newNavigatorForTest(t)
 	store := newMockStoreWithRootTitle(t, url.URL{Scheme: "file", Path: "/"}, "Root")
 	store.EXPECT().ReadDir(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	nav.store = store
@@ -523,13 +493,10 @@ func TestNavigator_showDir_EarlyReturnAndExpandHome(t *testing.T) {
 }
 
 func TestNavigator_globalNavInputCapture(t *testing.T) {
-	nav := NewNavigator(nil)
+	nav, _, _ := newNavigatorForTest(t)
 	store := newMockStoreWithRootTitle(t, url.URL{Scheme: "mock", Path: "/"}, "Root")
 	store.EXPECT().ReadDir(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	nav.store = store
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
 
 	eventSlash := tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModNone)
 	res := nav.globalNavInputCapture(eventSlash)

@@ -2,6 +2,7 @@ package filetug
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"os"
 	"path"
@@ -25,13 +26,21 @@ import (
 )
 
 type Navigator struct {
-	//app *tview.Application // We do not want to have refence to the tview.Application any more.
+	app navigator.App
 
-	queueUpdateDraw func(f func())                              // replaced with mock in tests
-	setAppFocus     func(p tview.Primitive)                     // replaced with mock in tests
-	setAppRoot      func(root tview.Primitive, fullscreen bool) // replaced with mock in tests
-	stopApp         func()
+	// Deprecated, use Navigator.app.QueueUpdateDraw
+	//queueUpdateDraw func(f func()) // replaced with mock in tests
 
+	// Deprecated, use Navigator.app.SetFocus
+	//setAppFocus func(p tview.Primitive) // replaced with mock in tests
+
+	// Deprecated, use Navigator.app.SetRoot
+	//setAppRoot func(root tview.Primitive, fullscreen bool) // replaced with mock in tests
+
+	// Deprecated
+	//stopApp func()
+
+	// o - navigatorOptions
 	o navigatorOptions
 
 	store files.Store
@@ -80,17 +89,22 @@ func (nav *Navigator) SetStore(store files.Store) {
 }
 
 func (nav *Navigator) SetFocus() {
-	nav.setAppFocus(nav.dirsTree.tv)
+	if nav.app != nil {
+		nav.app.SetFocus(nav.dirsTree.tv)
+	}
 }
 
 func (nav *Navigator) SetFocusToContainer(index int) {
+	if nav.app == nil {
+		return
+	}
 	switch index {
 	case nav.left.index:
-		nav.setAppFocus(nav.left.Flex)
+		nav.app.SetFocus(nav.left.Flex)
 	case nav.right.index:
-		nav.setAppFocus(nav.right.Flex)
+		nav.app.SetFocus(nav.right.Flex)
 	case 1:
-		nav.setAppFocus(nav.files.Boxed)
+		nav.app.SetFocus(nav.files.Boxed)
 	}
 }
 
@@ -111,6 +125,9 @@ var getDirStatus = gitutils.GetDirStatus
 var getFileStatus = gitutils.GetFileStatus
 
 func NewNavigator(app navigator.App, options ...NavigatorOption) *Navigator {
+	if app == nil {
+		panic("app cannot be nil")
+	}
 	defaultStore := osfile.NewStore("/")
 	rootBreadcrumb := crumbs.NewBreadcrumb("FileTug: ", func() error {
 		return nil
@@ -120,21 +137,7 @@ func NewNavigator(app navigator.App, options ...NavigatorOption) *Navigator {
 	flex.SetDirection(tview.FlexRow)
 
 	nav := &Navigator{
-		setAppFocus: func(p tview.Primitive) {
-			if app != nil {
-				app.SetFocus(p)
-			}
-		},
-		setAppRoot: func(root tview.Primitive, fullscreen bool) {
-			if app != nil {
-				app.SetRoot(root, fullscreen)
-			}
-		},
-		stopApp: func() {
-			if app != nil {
-				app.Stop()
-			}
-		},
+		app:   app,
 		store: defaultStore,
 		breadcrumbs: crumbs.NewBreadcrumbs(
 			rootBreadcrumb,
@@ -146,19 +149,6 @@ func NewNavigator(app navigator.App, options ...NavigatorOption) *Navigator {
 		proportions:    make([]int, 3),
 		gitStatusCache: make(map[string]*gitutils.RepoStatus),
 	}
-	if app == nil {
-		nav.queueUpdateDraw = func(f func()) {
-			f()
-		}
-	} else {
-		nav.queueUpdateDraw = func(f func()) {
-			if app != nil {
-				app.QueueUpdateDraw(f)
-			} else {
-				f()
-			}
-		}
-	}
 	nav.bottom = newBottom(nav)
 	nav.right = NewContainer(2, nav)
 	nav.favorites = newFavoritesPanel(nav)
@@ -169,7 +159,7 @@ func NewNavigator(app navigator.App, options ...NavigatorOption) *Navigator {
 	copy(nav.proportions, defaultProportions)
 
 	nav.files = newFiles(nav)
-	nav.previewer = newPreviewerPanel(nav, app)
+	nav.previewer = newPreviewerPanel(nav)
 
 	nav.right.SetContent(nav.previewer)
 
@@ -270,6 +260,9 @@ func (nav *Navigator) getCurrentBrowser() browser {
 }
 
 func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
+	if nav.app == nil {
+		return event
+	}
 	nav.bottom.isCtrl = event.Modifiers()&tcell.ModCtrl != 0
 	switch event.Key() {
 	case tcell.KeyF1:
@@ -309,7 +302,7 @@ func (nav *Navigator) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 				nav.goHome()
 				return nil
 			case 'x', 'X':
-				nav.stopApp()
+				nav.app.Stop()
 				return nil
 			default:
 				return event
@@ -336,6 +329,9 @@ func (nav *Navigator) goDirByPath(dirPath string) {
 
 // globalNavInputCapture should be invoked only from specific boxes like Tree and filesPanel.
 func (nav *Navigator) globalNavInputCapture(event *tcell.EventKey) *tcell.EventKey {
+	if nav.app == nil {
+		return event
+	}
 	if event.Key() == tcell.KeyRune {
 		switch event.Rune() {
 		case '/':
@@ -391,7 +387,7 @@ func (nav *Navigator) updateGitStatus(ctx context.Context, repo *git.Repository,
 		return
 	}
 	statusText := nav.gitStatusText(status, fullPath, true)
-	nav.queueUpdateDraw(func() {
+	nav.app.QueueUpdateDraw(func() {
 		node.SetText(cleanPrefix + statusText)
 	})
 }
@@ -497,7 +493,7 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dirCont
 	if node != nil {
 		node.SetReference(dirContext)
 	}
-	if nav.store.RootURL().Scheme == "file" && node != nil {
+	if nav.store != nil && nav.store.RootURL().Scheme == "file" && node != nil {
 		name := node.GetText()
 		currentDir := nav.current.Dir()
 		if currentDir != nil {
@@ -512,23 +508,21 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dirCont
 	}
 
 	nav.setBreadcrumbs()
-	nav.right.SetContent(nav.previewer)
+	if nav.right != nil {
+		nav.right.SetContent(nav.previewer)
+	}
 
 	dirPath := expandedDir
 	go func() {
 		dirContext, err := nav.getDirData(ctx, dirPath)
-		if nav.queueUpdateDraw != nil {
-			nav.queueUpdateDraw(func() {
+		if nav.app != nil {
+			nav.app.QueueUpdateDraw(func() {
 				if err != nil {
 					nav.showNodeError(node, err)
 					return
 				}
 				nav.onDataLoaded(ctx, node, dirContext, isTreeRootChanged)
 			})
-		} else {
-			if err == nil {
-				nav.onDataLoaded(ctx, node, dirContext, isTreeRootChanged)
-			}
 		}
 	}()
 }
@@ -558,17 +552,31 @@ func (nav *Navigator) showNodeError(node *tview.TreeNode, err error) {
 	if node == nil {
 		return
 	}
-	nav.dirsTree.setError(node, err)
-	dirRecords := NewFileRows(files.NewDirContext(nav.store, getNodePath(node), nil))
-	nav.files.SetRows(dirRecords, false)
-	text := err.Error()
-	nav.previewer.textView.SetText(text).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
-	nav.right.SetContent(nav.previewer)
+	if nav.dirsTree != nil {
+		nav.dirsTree.setError(node, err)
+	}
+	if nav.files != nil {
+		dirRecords := NewFileRows(files.NewDirContext(nav.store, getNodePath(node), nil))
+		nav.files.SetRows(dirRecords, false)
+	}
+	if nav.previewer != nil {
+		text := err.Error()
+		nav.previewer.textView.SetText(text).SetWrap(true).SetTextColor(tcell.ColorOrangeRed)
+	}
+	if nav.right != nil {
+		nav.right.SetContent(nav.previewer)
+	}
 }
 
 func (nav *Navigator) setBreadcrumbs() {
+	if nav.breadcrumbs == nil {
+		return
+	}
 	nav.breadcrumbs.Clear()
 
+	if nav.store == nil {
+		return
+	}
 	rootPath := nav.store.RootURL().Path
 	if rootPath == "" {
 		rootPath = "/"
@@ -613,6 +621,9 @@ func (nav *Navigator) setBreadcrumbs() {
 }
 
 func (nav *Navigator) getDirData(ctx context.Context, dirPath string) (dirContext *files.DirContext, err error) {
+	if nav.store == nil {
+		return nil, errors.New("store not set")
+	}
 	dirContext = files.NewDirContext(nav.store, dirPath, nil)
 	var children []os.DirEntry
 	children, err = nav.store.ReadDir(ctx, dirPath)
@@ -645,9 +656,13 @@ func (nav *Navigator) showMasks() {
 	if nav.masks == nil {
 		nav.masks = masks.NewPanel()
 	}
-	nav.right.SetContent(nav.masks)
+	if nav.right != nil {
+		nav.right.SetContent(nav.masks)
+	}
 }
 
 func (nav *Navigator) showNewPanel() {
-	nav.newPanel.Show()
+	if nav.newPanel != nil {
+		nav.newPanel.Show()
+	}
 }
