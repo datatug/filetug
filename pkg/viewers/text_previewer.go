@@ -20,12 +20,12 @@ var _ Previewer = (*TextPreviewer)(nil)
 type TextPreviewer struct {
 	*tview.TextView
 	previewID       uint64
-	queueUpdateDraw func(func())
+	queueUpdateDraw UpdateDrawQueuer
 }
 
-func NewTextPreviewer(queueUpdateDraw func(func())) *TextPreviewer {
+func NewTextPreviewer(queueUpdateDraw UpdateDrawQueuer) *TextPreviewer {
 	if queueUpdateDraw == nil {
-		panic("queueUpdateDraw is nil")
+		queueUpdateDraw = func(f func()) {}
 	}
 	return &TextPreviewer{
 		queueUpdateDraw: queueUpdateDraw,

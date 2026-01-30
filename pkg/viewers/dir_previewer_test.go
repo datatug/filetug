@@ -41,8 +41,21 @@ func tabsActiveIndex(t *testing.T, tabs *sneatv.Tabs) int {
 	return int(value.Int())
 }
 
+type tviewDirPreviewerApp struct {
+	*tview.Application
+}
+
+func (a tviewDirPreviewerApp) QueueUpdateDraw(f func()) {
+	_ = a.Application.QueueUpdateDraw(f)
+}
+
+func (a tviewDirPreviewerApp) SetFocus(p tview.Primitive) {
+	_ = a.Application.SetFocus(p)
+}
+
 func TestNewDirSummary(t *testing.T) {
-	ds := NewDirPreviewer(nil)
+	app := tview.NewApplication()
+	ds := NewDirPreviewer(tviewDirPreviewerApp{app})
 	assert.NotNil(t, ds)
 	assert.NotNil(t, ds.ExtTable)
 }
@@ -129,6 +142,7 @@ func TestDirSummary_Extra(t *testing.T) {
 	ds := NewDirPreviewer(nil, filterSetter, focusLeft)
 
 	t.Run("Focus", func(t *testing.T) {
+		app := tview.NewApplication()
 		ds.Focus(func(p tview.Primitive) {
 			app.SetFocus(p)
 		})

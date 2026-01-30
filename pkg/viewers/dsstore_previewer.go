@@ -16,7 +16,7 @@ type DsstorePreviewer struct {
 	TextPreviewer
 }
 
-func NewDsstorePreviewer(queueUpdateDraw func(func())) *DsstorePreviewer {
+func NewDsstorePreviewer(queueUpdateDraw UpdateDrawQueuer) *DsstorePreviewer {
 	previewer := NewTextPreviewer(queueUpdateDraw)
 	return &DsstorePreviewer{
 		TextPreviewer: *previewer,

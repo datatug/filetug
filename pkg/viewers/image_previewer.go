@@ -22,10 +22,10 @@ var _ Previewer = (*ImagePreviewer)(nil)
 
 type ImagePreviewer struct {
 	metaTable       *MetaTable
-	queueUpdateDraw func(func())
+	queueUpdateDraw UpdateDrawQueuer
 }
 
-func NewImagePreviewer(queueUpdateDraw func(func())) *ImagePreviewer {
+func NewImagePreviewer(queueUpdateDraw UpdateDrawQueuer) *ImagePreviewer {
 	previewer := &ImagePreviewer{
 		metaTable:       NewMetaTable(),
 		queueUpdateDraw: queueUpdateDraw,

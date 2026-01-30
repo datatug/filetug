@@ -14,7 +14,7 @@ type JsonPreviewer struct {
 	TextPreviewer
 }
 
-func NewJsonPreviewer(queueUpdateDraw func(func())) *JsonPreviewer {
+func NewJsonPreviewer(queueUpdateDraw UpdateDrawQueuer) *JsonPreviewer {
 	textPreviewer := NewTextPreviewer(queueUpdateDraw)
 	return &JsonPreviewer{
 		TextPreviewer: *textPreviewer,

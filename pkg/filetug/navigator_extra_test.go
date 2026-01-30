@@ -14,8 +14,14 @@ import (
 	"github.com/filetug/filetug/pkg/viewers"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"go.uber.org/mock/gomock"
 )
+
+func getDirSummarySafe(nav *Navigator) *viewers.DirPreviewer {
+	if nav.previewer == nil {
+		return nil
+	}
+	return nav.previewer.dirPreviewer
+}
 
 func TestNavigator_SetStore(t *testing.T) {
 	nav := NewNavigator(nil)
@@ -130,7 +136,7 @@ func TestNavigator_DirSummary_FocusLeft(t *testing.T) {
 	}
 
 	event := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModNone)
-	res := getDirSummary(nav).InputCapture(event)
+	res := getDirSummarySafe(nav).InputCapture(event)
 
 	assert.True(t, focused)
 	assert.Equal(t, (*tcell.EventKey)(nil), res)
@@ -166,12 +172,8 @@ func TestNavigator_ShowNodeError_Extra(t *testing.T) {
 		t.Fatal("navigator is nil")
 	}
 	nav.right = NewContainer(2, nav)
-	ctrl := gomock.NewController(t)
-	appMock := viewers.NewMockDirPreviewerApp(ctrl)
-	appMock.EXPECT().QueueUpdateDraw(gomock.Any()).Do(func(f func()) {
-		// No-op
-	}).AnyTimes()
-	nav.previewer = newPreviewerPanel(nav, appMock)
+	app := TviewDirPreviewerApp{tview.NewApplication()}
+	nav.previewer = newPreviewerPanel(nav, app)
 
 	nodeContext := files.NewDirContext(nil, "/test", nil)
 	node := tview.NewTreeNode("test").SetReference(nodeContext)

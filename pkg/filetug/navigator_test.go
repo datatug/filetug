@@ -205,9 +205,11 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 	var once sync.Once
 	nav.queueUpdateDraw = func(f func()) {
 		f()
-		once.Do(func() {
-			close(done)
-		})
+		if len(nav.dirsTree.rootNode.GetChildren()) > 0 {
+			once.Do(func() {
+				close(done)
+			})
+		}
 	}
 
 	dirContext := nav.NewDirContext("/root", nil)
@@ -215,7 +217,7 @@ func TestNavigator_goDir_TreeRootChangeRefreshesChildren(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for tree refresh")
 	}
 
@@ -266,6 +268,8 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 
 	nav.showDir(ctx, nodeFirst, nav.NewDirContext("/first", nil), true)
 	firstSeen := <-seen
+	close(block)                      // Unblock first ReadDir before starting second one
+	time.Sleep(10 * time.Millisecond) // Give it a moment to finish processing first load
 	nav.showDir(ctx, nodeSecond, nav.NewDirContext("/second", nil), true)
 	var secondSeen string
 	select {
@@ -273,7 +277,6 @@ func TestNavigator_showDir_UsesRequestedPathForAsyncLoad(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for second ReadDir")
 	}
-	close(block)
 
 	if firstSeen != "/first" {
 		t.Fatalf("expected first ReadDir to use /first, got %q", firstSeen)

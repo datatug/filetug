@@ -7,9 +7,15 @@ type ftApp struct {
 }
 
 func (a ftApp) QueueUpdateDraw(f func()) {
-	_ = a.Application.QueueUpdateDraw(f)
+	if a.Application != nil {
+		_ = a.Application.QueueUpdateDraw(f)
+	} else {
+		f()
+	}
 }
 
 func (a ftApp) SetFocus(p tview.Primitive) {
-	_ = a.Application.SetFocus(p)
+	if a.Application != nil {
+		_ = a.Application.SetFocus(p)
+	}
 }

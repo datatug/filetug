@@ -32,7 +32,7 @@ func WithDirSummaryFocusLeft(setter func()) DirSummaryOption {
 	}
 }
 
-func WithDirSummaryQueueUpdateDraw(setter func(func())) DirSummaryOption {
+func WithDirSummaryQueueUpdateDraw(setter UpdateDrawQueuer) DirSummaryOption {
 	return func(d *DirPreviewer) {
 		d.queueUpdateDraw = setter
 	}
@@ -68,7 +68,7 @@ type DirPreviewer struct {
 
 	setFilter       func(ftui.Filter)
 	focusLeft       func()
-	queueUpdateDraw func(func())
+	queueUpdateDraw UpdateDrawQueuer
 	colorByExt      func(string) tcell.Color
 }
 
@@ -167,9 +167,6 @@ func (d *DirPreviewer) SetDirEntries(dirContext *files.DirContext) {
 	if dirContext != nil {
 		dirPath = dirContext.Path()
 		entries = dirContext.Children()
-	}
-	if dirPath == d.dirPath {
-		return
 	}
 	d.dirPath = dirPath
 

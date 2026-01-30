@@ -33,7 +33,7 @@ type GitDirStatusPreviewer struct {
 
 	entries []gitDirStatusEntry
 
-	queueUpdateDraw func(func())
+	queueUpdateDraw UpdateDrawQueuer
 	statusLoader    func(string) (gitDirStatusResult, error)
 	stageFile       func(string) error
 	unstageFile     func(string) error
@@ -78,7 +78,7 @@ func NewGitDirStatusPreviewer() *GitDirStatusPreviewer {
 	return p
 }
 
-func (p *GitDirStatusPreviewer) PreviewSingle(entry files.EntryWithDirPath, _ []byte, _ error, queueUpdateDraw func(func())) {
+func (p *GitDirStatusPreviewer) PreviewSingle(entry files.EntryWithDirPath, _ []byte, _ error, queueUpdateDraw UpdateDrawQueuer) {
 	dirContext, ok := entry.(*files.DirContext)
 	if !ok {
 		dirPath := entry.DirPath()
@@ -98,7 +98,7 @@ func (p *GitDirStatusPreviewer) Meta() tview.Primitive {
 	return nil
 }
 
-func (p *GitDirStatusPreviewer) SetDir(dirContext *files.DirContext, queueUpdateDraw func(func())) {
+func (p *GitDirStatusPreviewer) SetDir(dirContext *files.DirContext, queueUpdateDraw UpdateDrawQueuer) {
 	p.dirContext = dirContext
 	p.queueUpdateDraw = queueUpdateDraw
 	p.setMessage("Loading...", tcell.ColorLightGray)
@@ -164,6 +164,9 @@ func (p *GitDirStatusPreviewer) refresh() {
 }
 
 func (p *GitDirStatusPreviewer) renderEntries() {
+	if p.table == nil {
+		return
+	}
 	p.table.Clear()
 	for row, entry := range p.entries {
 		checkbox := " "
@@ -184,6 +187,9 @@ func (p *GitDirStatusPreviewer) renderEntries() {
 }
 
 func (p *GitDirStatusPreviewer) setMessage(text string, color tcell.Color) {
+	if p.table == nil {
+		return
+	}
 	p.table.Clear()
 	cell := tview.NewTableCell(text)
 	cell.SetTextColor(color)

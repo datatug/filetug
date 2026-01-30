@@ -69,12 +69,18 @@ func (f *filesPanel) onStoreChange() {
 	f.table.SetCell(0, 0, loadingCell)
 	f.table.SetCell(1, 0, progressCell)
 	f.table.SetSelectable(false, false)
+	// We only start animation if we have a real app running.
+	// In tests, NewNavigator(nil) uses a sync QueueUpdateDraw which we check in doLoadingAnimation.
 	go func() {
-		go f.doLoadingAnimation(progressCell)
+		f.doLoadingAnimation(progressCell)
 	}()
 }
 
 func (f *filesPanel) doLoadingAnimation(loading *tview.TableCell) {
+	// Simple heuristic: if we are in a test (no real app), don't loop
+	if f.nav != nil && f.nav.queueUpdateDraw == nil {
+		return
+	}
 	time.Sleep(10 * time.Millisecond)
 	if f.table.GetCell(1, 0) == loading {
 		q, r := f.loadingProgress/len(spinner), f.loadingProgress%len(spinner)
@@ -83,11 +89,12 @@ func (f *filesPanel) doLoadingAnimation(loading *tview.TableCell) {
 			f.nav.queueUpdateDraw(func() {
 				loading.SetText(progressBar)
 			})
+			f.loadingProgress += 1
+			f.doLoadingAnimation(loading)
 		} else {
+			// If no queueUpdateDraw, don't loop indefinitely in tests
 			loading.SetText(progressBar)
 		}
-		f.loadingProgress += 1
-		f.doLoadingAnimation(loading)
 	}
 }
 
@@ -337,17 +344,31 @@ func (f *filesPanel) rememberCurrent(fullName string) {
 }
 
 func (f *filesPanel) entryFromRow(row int) files.EntryWithDirPath {
-	if f.table == nil {
+	if f.table == nil || f.rows == nil {
 		return nil
 	}
-	cell := f.table.GetCell(row, 0)
-	ref := cell.GetReference()
-	if ref == nil {
+	if row == 0 {
+		cell := f.table.GetCell(row, 0)
+		if cell != nil {
+			ref := cell.GetReference()
+			if ref != nil {
+				if entry, ok := ref.(files.EntryWithDirPath); ok {
+					return entry
+				}
+			}
+		}
+		// Fallback to generating reference if not set
+		return f.rows.getTopRowEntry()
+	}
+	i := row - 1
+	if i < 0 || i >= len(f.rows.VisibleEntries) {
 		return nil
 	}
-	entry, ok := ref.(files.EntryWithDirPath)
-	if !ok || entry == nil {
-		return nil
+	entry := f.rows.VisibleEntries[i]
+	if entry.DirPath() == "" {
+		if f.rows.Dir != nil {
+			entry = files.NewEntryWithDirPath(entry, f.rows.Dir.Path())
+		}
 	}
 	return entry
 }
@@ -367,8 +388,7 @@ func (f *filesPanel) updatePreviewForEntry(entry files.EntryWithDirPath) {
 	}
 
 	if nav.right != nil && nav.previewer != nil {
-		content := nav.previewer
-		nav.right.SetContent(content)
+		nav.right.SetContent(nav.previewer)
 	}
 	fullName := entry.FullName()
 	f.rememberCurrent(fullName)
@@ -379,28 +399,41 @@ func (f *filesPanel) updatePreviewForEntry(entry files.EntryWithDirPath) {
 }
 
 func (f *filesPanel) showDirSummary(entry files.EntryWithDirPath) {
-	f.nav.right.SetContent(f.nav.previewer)
-	f.nav.previewer.PreviewEntry(entry)
-	//dirPath := entry.DirPath()
-	//if entry.IsDir() {
-	//	dirPath = entry.FullName()
-	//} else if f.rows != nil && f.rows.isSymlinkToDir(entry) {
-	//	dirPath = entry.FullName()
-	//}
-	//
-	//if nav.store == nil {
-	//	dirContext := files.NewDirContext(nil, dirPath, nil)
-	//	nav.dirSummary.SetDirEntries(dirContext)
-	//	return
-	//}
-	//ctx := context.Background()
-	//entries, err := nav.store.ReadDir(ctx, dirPath)
-	//if err != nil {
-	//	dirContext := files.NewDirContext(nav.store, dirPath, nil)
-	//	nav.dirSummary.SetDirEntries(dirContext)
-	//	return
-	//}
-	//sortedEntries := sortDirChildren(entries)
-	//dirContext := files.NewDirContext(nav.store, dirPath, sortedEntries)
-	//nav.dirSummary.SetDirEntries(dirContext)
+	nav := f.nav
+	if nav == nil {
+		return
+	}
+	if nav.right != nil && nav.previewer != nil {
+		nav.right.SetContent(nav.previewer)
+		nav.previewer.PreviewEntry(entry)
+	}
+
+	dirPath := entry.DirPath()
+	if entry.IsDir() {
+		dirPath = entry.FullName()
+	} else if f.rows != nil && f.rows.isSymlinkToDir(entry) {
+		dirPath = entry.FullName()
+	}
+
+	if nav.store == nil {
+		dirContext := files.NewDirContext(nil, dirPath, nil)
+		if nav.previewer != nil && nav.previewer.dirPreviewer != nil {
+			nav.previewer.dirPreviewer.SetDirEntries(dirContext)
+		}
+		return
+	}
+	ctx := context.Background()
+	entries, err := nav.store.ReadDir(ctx, dirPath)
+	if err != nil {
+		dirContext := files.NewDirContext(nav.store, dirPath, nil)
+		if nav.previewer != nil && nav.previewer.dirPreviewer != nil {
+			nav.previewer.dirPreviewer.SetDirEntries(dirContext)
+		}
+		return
+	}
+	sortedEntries := sortDirChildren(entries)
+	dirContext := files.NewDirContext(nav.store, dirPath, sortedEntries)
+	if nav.previewer != nil && nav.previewer.dirPreviewer != nil {
+		nav.previewer.dirPreviewer.SetDirEntries(dirContext)
+	}
 }

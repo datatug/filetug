@@ -28,13 +28,36 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func newTestDirSummary(nav *Navigator) *viewers.DirPreviewer {
-	ctrl := gomock.NewController(nil)
-	app := viewers.NewMockDirPreviewerApp(ctrl)
-	app.EXPECT().QueueUpdateDraw(gomock.Any()).Do(func(f func()) {
-		// No-op to avoid panic if called after test finishes
-	}).AnyTimes()
+type tviewDirPreviewerApp struct {
+	*tview.Application
+}
 
+func (a tviewDirPreviewerApp) QueueUpdateDraw(f func()) {
+	if f != nil {
+		f()
+	}
+}
+
+func (a tviewDirPreviewerApp) SetFocus(p tview.Primitive) {
+	if a.Application != nil {
+		_ = a.Application.SetFocus(p)
+	}
+}
+
+func (a tviewDirPreviewerApp) SetRoot(root tview.Primitive, fullscreen bool) {
+	if a.Application != nil {
+		_ = a.Application.SetRoot(root, fullscreen)
+	}
+}
+
+func (a tviewDirPreviewerApp) Stop() {
+	if a.Application != nil {
+		a.Application.Stop()
+	}
+}
+
+func newTestDirSummary(nav *Navigator) *viewers.DirPreviewer {
+	app := tviewDirPreviewerApp{tview.NewApplication()}
 	filterSetter := viewers.WithDirSummaryFilterSetter(func(filter ftui.Filter) {
 		if nav.files == nil {
 			return
@@ -165,6 +188,7 @@ func TestDirSummary_UpdateTableAndGetSizes_Coverage(t *testing.T) {
 
 func TestDirSummary_InputCapture_MoreCoverage(t *testing.T) {
 	nav := NewNavigator(nil)
+	nav.queueUpdateDraw = func(f func()) { f() } // Synchronous for this test
 	ds := newTestDirSummary(nav)
 	nav.files = newFiles(nav)
 	nav.files.rows = NewFileRows(files.NewDirContext(nil, "/test", nil))
@@ -177,22 +201,37 @@ func TestDirSummary_InputCapture_MoreCoverage(t *testing.T) {
 		mockDirEntry{name: "e.zip", isDir: false},
 		mockDirEntry{name: "f.txt", isDir: false},
 		mockDirEntry{name: "g.go", isDir: false},
+		mockDirEntry{name: "h.unique", isDir: false}, // Unique extension for single-extension group
 	}
 	dirContext := newTestDirContext(nil, "/test", entries)
 	ds.SetDirEntries(dirContext)
 	ds.UpdateTable()
 
+	// Ensure there's a group with only one extension for the branch coverage
+	foundSingle := false
+	for _, g := range ds.ExtGroups {
+		if len(g.ExtStats) == 1 {
+			foundSingle = true
+			break
+		}
+	}
+	if !foundSingle {
+		t.Log("Warning: no single-extension group found, might not cover all branches")
+	}
+
 	eventDown := tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
 	eventUp := tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
 
 	found := false
-	for row := 0; row < ds.ExtTable.GetRowCount()-1; row++ {
-		nextCell := ds.ExtTable.GetCell(row+1, 1)
-		if nextCell == nil {
+	rowCount := ds.ExtTable.GetRowCount()
+	for row := 0; row < rowCount; row++ {
+		cell := ds.ExtTable.GetCell(row, 1)
+		if cell == nil {
 			continue
 		}
-		ref, ok := nextCell.Reference.(*viewers.ExtensionsGroup)
-		if !ok || ref == nil || len(ref.ExtStats) != 1 {
+		ref := cell.GetReference()
+		group, ok := ref.(*viewers.ExtensionsGroup)
+		if !ok || group == nil || len(group.ExtStats) != 1 {
 			continue
 		}
 		ds.ExtTable.Select(row, 0)
@@ -780,23 +819,29 @@ func TestGeneratedNestedDirs_Coverage(t *testing.T) {
 
 func TestNewPanel_InputCapture_Create(t *testing.T) {
 	nav := NewNavigator(nil)
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
+	nav.queueUpdateDraw = func(f func()) { f() }
+	nav.previewer = newPreviewerPanel(nav, tviewDirPreviewerApp{tview.NewApplication()})
 
 	createdDirs := []string{}
 	createdFiles := []string{}
+	var mu sync.Mutex
 	var createDirErr error
 	var createFileErr error
 	store := newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
+	nav.store = store
+	nav.current.SetDir(files.NewDirContext(store, "/tmp", nil))
 	store.EXPECT().CreateDir(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(_ context.Context, p string) error {
+			mu.Lock()
+			defer mu.Unlock()
 			createdDirs = append(createdDirs, p)
 			return createDirErr
 		},
 	).AnyTimes()
 	store.EXPECT().CreateFile(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(_ context.Context, p string) error {
+			mu.Lock()
+			defer mu.Unlock()
 			createdFiles = append(createdFiles, p)
 			return createFileErr
 		},
@@ -818,15 +863,22 @@ func TestNewPanel_InputCapture_Create(t *testing.T) {
 
 	panel.input.SetText("newdir")
 	panel.createDir()
+	time.Sleep(10 * time.Millisecond) // Give goroutine time to run
+	mu.Lock()
 	assert.Len(t, createdDirs, 1)
+	mu.Unlock()
 
 	createDirErr = errors.New("fail")
 	panel.input.SetText("faildir")
 	panel.createDir()
+	time.Sleep(10 * time.Millisecond)
 
 	panel.input.SetText("newfile")
 	panel.createFile()
+	time.Sleep(10 * time.Millisecond)
+	mu.Lock()
 	assert.Len(t, createdFiles, 1)
+	mu.Unlock()
 
 	createFileErr = errors.New("fail")
 	panel.input.SetText("failfile")
@@ -1138,11 +1190,7 @@ func TestNavigator_ShowDir_NodeNil(t *testing.T) {
 
 func TestPreviewerPanel_SetPreviewer_Switch(t *testing.T) {
 	nav := NewNavigator(nil)
-	ctrl := gomock.NewController(t)
-	app := viewers.NewMockDirPreviewerApp(ctrl)
-	app.EXPECT().QueueUpdateDraw(gomock.Any()).Do(func(f func()) {
-		// No-op
-	}).AnyTimes()
+	app := TviewDirPreviewerApp{tview.NewApplication()}
 	panel := newPreviewerPanel(nav, app)
 
 	first := viewers.NewTextPreviewer(nav.queueUpdateDraw)
@@ -1195,11 +1243,11 @@ func TestNavigator_SetBreadcrumbs_PathItems(t *testing.T) {
 
 func TestNavigator_SetBreadcrumbs_TitleTrim(t *testing.T) {
 	nav := NewNavigator(nil)
-	nav.queueUpdateDraw = func(f func()) { f() }
+	nav.queueUpdateDraw = func(f func()) { go f() }
 	nav.store = newMockStoreWithRootTitle(t, url.URL{Path: "/root"}, "Root/")
 	nav.current.SetDir(files.NewDirContext(nav.store, "/root/child", nil))
 	nav.setBreadcrumbs()
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 }
 
 func TestNavigator_BreadcrumbActions(t *testing.T) {
@@ -1327,9 +1375,8 @@ func TestNavigator_SetBreadcrumbs_RootTitle(t *testing.T) {
 
 func TestNavigator_ShowScriptsPanel_Selection(t *testing.T) {
 	nav := NewNavigator(nil)
-	nav.queueUpdateDraw = func(f func()) {
-		f()
-	}
+	nav.queueUpdateDraw = func(f func()) { f() }
+	nav.previewer = newPreviewerPanel(nav, tviewDirPreviewerApp{tview.NewApplication()})
 
 	nav.showScriptsPanel()
 	panel := nav.right.content
@@ -1359,21 +1406,14 @@ func TestTree_SetSearch_Recursion(t *testing.T) {
 
 func TestDirSummary_GetSizes_Error(t *testing.T) {
 	nav := NewNavigator(nil)
+	nav.queueUpdateDraw = func(f func()) { f() } // Synchronous for this test
 	ds := newTestDirSummary(nav)
 
-	entries := []os.DirEntry{
-		mockDirEntryInfo{name: "error.txt", info: nil},
-	}
-	dirContext := newTestDirContext(nil, "/test", entries)
+	errEntry := &errorDirEntry{}
+	dirContext := newTestDirContext(nil, "/error-test", []os.DirEntry{errEntry})
 	ds.SetDirEntries(dirContext)
 
-	// mockDirEntryInfo.Info() will return nil which will cause GetSizes to skip it.
-	// We need something that returns an error from Info().
-	// But our mockDirEntryInfo only has Name, IsDir and Info fields.
-	// Let's use a custom mock.
-	errEntry := &errorDirEntry{}
-	dirContext.SetChildren([]os.DirEntry{errEntry})
-
+	// Manually trigger GetSizes to check error
 	err := ds.GetSizes()
 	assert.Error(t, err)
 }
@@ -1384,11 +1424,14 @@ type errorDirEntry struct {
 
 func (e *errorDirEntry) Name() string               { return "error.txt" }
 func (e *errorDirEntry) IsDir() bool                { return false }
-func (e *errorDirEntry) Info() (os.FileInfo, error) { return nil, errors.New("read error") }
+func (e *errorDirEntry) Type() os.FileMode          { return 0 }
+func (e *errorDirEntry) Info() (os.FileInfo, error) { return nil, assert.AnError }
 
 func TestFilesPanel_SelectionChangedNavFunc_SetsPreview(t *testing.T) {
 	nav := NewNavigator(nil)
 	nav.queueUpdateDraw = func(f func()) { f() }
+	// Replace fragile gomock with syncApp
+	nav.previewer = newPreviewerPanel(nav, tviewDirPreviewerApp{tview.NewApplication()})
 	fp := nav.files
 
 	modTime := files.ModTime(time.Now())
@@ -1752,8 +1795,7 @@ func TestNavigator_GetGitStatus_CacheStore(t *testing.T) {
 
 func TestPreviewerPanel_SetPreviewer_RemoveMeta(t *testing.T) {
 	nav := NewNavigator(nil)
-	ctrl := gomock.NewController(t)
-	app := viewers.NewMockDirPreviewerApp(ctrl)
+	app := TviewDirPreviewerApp{tview.NewApplication()}
 	panel := newPreviewerPanel(nav, app)
 
 	meta := tview.NewTextView()

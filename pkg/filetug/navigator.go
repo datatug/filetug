@@ -110,10 +110,6 @@ var getDirStatus = gitutils.GetDirStatus
 var getFileStatus = gitutils.GetFileStatus
 
 func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator {
-	isInTest := app == nil
-	if isInTest {
-		app = tview.NewApplication()
-	}
 	defaultStore := osfile.NewStore("/")
 	rootBreadcrumb := crumbs.NewBreadcrumb("FileTug: ", func() error {
 		return nil
@@ -149,13 +145,17 @@ func NewNavigator(app *tview.Application, options ...NavigatorOption) *Navigator
 		proportions:    make([]int, 3),
 		gitStatusCache: make(map[string]*gitutils.RepoStatus),
 	}
-	if isInTest {
+	if app == nil {
 		nav.queueUpdateDraw = func(f func()) {
 			f()
 		}
 	} else {
 		nav.queueUpdateDraw = func(f func()) {
-			_ = app.QueueUpdateDraw(f)
+			if app != nil {
+				_ = app.QueueUpdateDraw(f)
+			} else {
+				f()
+			}
 		}
 	}
 	nav.bottom = newBottom(nav)
@@ -516,13 +516,19 @@ func (nav *Navigator) showDir(ctx context.Context, node *tview.TreeNode, dirCont
 	dirPath := expandedDir
 	go func() {
 		dirContext, err := nav.getDirData(ctx, dirPath)
-		nav.queueUpdateDraw(func() {
-			if err != nil {
-				nav.showNodeError(node, err)
-				return
+		if nav.queueUpdateDraw != nil {
+			nav.queueUpdateDraw(func() {
+				if err != nil {
+					nav.showNodeError(node, err)
+					return
+				}
+				nav.onDataLoaded(ctx, node, dirContext, isTreeRootChanged)
+			})
+		} else {
+			if err == nil {
+				nav.onDataLoaded(ctx, node, dirContext, isTreeRootChanged)
 			}
-			nav.onDataLoaded(ctx, node, dirContext, isTreeRootChanged)
-		})
+		}
 	}()
 }
 

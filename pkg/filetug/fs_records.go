@@ -263,6 +263,25 @@ func (r *FileRows) getTopRow(col int) *tview.TableCell {
 	}
 }
 
+func (r *FileRows) getTopRowEntry() files.EntryWithDirPath {
+	if r.store == nil {
+		parentDirEntry := files.NewDirEntry("", true)
+		return files.NewEntryWithDirPath(parentDirEntry, "")
+	}
+	var parentDir string
+	if r.Dir.Path() == "~" {
+		parentDir = fsutils.ExpandHome("~")
+	} else {
+		parentDir, _ = path.Split(r.Dir.Path())
+	}
+	if parentDir != "/" {
+		parentDir = strings.TrimSuffix(parentDir, "/")
+	}
+	parentDirPath, parentDirName := path.Split(parentDir)
+	parentDirEntry := files.NewDirEntry(parentDirName, true)
+	return files.NewEntryWithDirPath(parentDirEntry, parentDirPath)
+}
+
 func (r *FileRows) getTopRowName() *tview.TableCell {
 	var cellText string
 	if r.store == nil {
@@ -279,17 +298,6 @@ func (r *FileRows) getTopRowName() *tview.TableCell {
 	}
 	cell := tview.NewTableCell(cellText)
 	cell.SetExpansion(1)
-	var parentDir string
-	if r.Dir.Path() == "~" {
-		parentDir = fsutils.ExpandHome("~")
-	} else {
-		parentDir, _ = path.Split(r.Dir.Path())
-	}
-	if parentDir != "/" {
-		parentDir = strings.TrimSuffix(parentDir, "/")
-	}
-	parentDirPath, parentDirName := path.Split(parentDir)
-	parentDirEntry := files.NewDirEntry(parentDirName, true)
-	ref := files.NewEntryWithDirPath(parentDirEntry, parentDirPath)
+	ref := r.getTopRowEntry()
 	return cell.SetReference(ref)
 }

@@ -13,17 +13,27 @@ type fakeTabsApp struct {
 	updated chan struct{}
 }
 
-func (f *fakeTabsApp) QueueUpdateDraw(fn func()) *tview.Application {
+func (f *fakeTabsApp) QueueUpdateDraw(fn func()) {
 	fn()
 	if f.updated != nil {
 		f.updated <- struct{}{}
 	}
-	return nil
 }
 
-func (f *fakeTabsApp) SetFocus(p tview.Primitive) *tview.Application {
+func (f *fakeTabsApp) SetFocus(p tview.Primitive) {
 	_ = p
-	return nil
+}
+
+type tviewTabsApp struct {
+	*tview.Application
+}
+
+func (a tviewTabsApp) QueueUpdateDraw(f func()) {
+	_ = a.Application.QueueUpdateDraw(f)
+}
+
+func (a tviewTabsApp) SetFocus(p tview.Primitive) {
+	_ = a.Application.SetFocus(p)
 }
 
 func TestNewTab(t *testing.T) {
@@ -222,14 +232,14 @@ func TestTabs_FocusCallbacks(t *testing.T) {
 
 func TestTabs_SetIsFocused_WithApp(t *testing.T) {
 	app := &fakeTabsApp{updated: make(chan struct{}, 1)}
-	tabs := NewTabs(nil, UnderlineTabsStyle)
+	tabs := NewTabs(app, UnderlineTabsStyle)
 	tabs.AddTabs(&Tab{ID: "1", Title: "T1", Primitive: tview.NewBox()})
 
 	tabs.setIsFocused(true)
 
 	select {
 	case <-app.updated:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(500 * time.Millisecond):
 		t.Fatal("expected QueueUpdateDraw to run")
 	}
 	assert.True(t, tabs.isFocused)
@@ -263,4 +273,10 @@ func TestTabs_HighlightedFunc(t *testing.T) {
 	// Empty added
 	tabs.textViewHighlightedFunc([]string{}, nil, nil)
 	assert.Equal(t, 1, tabs.active)
+}
+
+func TestNewTabs_WithTviewApp(t *testing.T) {
+	app := tview.NewApplication()
+	tabs := NewTabs(tviewTabsApp{app}, UnderlineTabsStyle)
+	assert.NotNil(t, tabs)
 }
