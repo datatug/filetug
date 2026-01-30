@@ -52,6 +52,7 @@ func builtInFavorites() []ftfav.Favorite {
 		{Store: url.URL{Scheme: "file"}, Path: "~", Shortcut: 'h', Description: "User's home directory"},
 	}
 }
+
 func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 	flex := tview.NewFlex().SetDirection(tview.FlexRow)
 	flex.SetTitle(" Favorites ")
@@ -106,7 +107,9 @@ func newFavoritesPanel(nav *Navigator) *favoritesPanel {
 			f.setItems()
 			f.updateAddCurrentForm()
 		}
-		f.nav.app.QueueUpdateDraw(update)
+		if f.nav != nil && f.nav.app != nil {
+			f.nav.app.QueueUpdateDraw(update)
+		}
 	}()
 	return f
 }

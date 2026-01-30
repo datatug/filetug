@@ -34,8 +34,10 @@ func TestBreadcrumbs_Draw_EdgeCases(t *testing.T) {
 	bc3.Draw(s2)
 
 	line := ttestutils.ReadLine(s2, 0, width)
+
 	if !testing.Short() {
-		t.Logf("Line: %q", line)
+		_ = line
+		//t.Logf("Line: %q", line)
 	}
 }
 

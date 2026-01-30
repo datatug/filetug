@@ -10,7 +10,8 @@ import (
 func TestSetupApp(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	app := navigator.NewMockApp(ctrl)
-	app.EXPECT().EnableMouse(gomock.Any()).AnyTimes()
-	app.EXPECT().SetRoot(gomock.Any(), gomock.Any()).AnyTimes()
+	app.EXPECT().QueueUpdateDraw(gomock.Any()).MinTimes(1)
+	app.EXPECT().EnableMouse(true)
+	app.EXPECT().SetRoot(gomock.Any(), true).Times(1)
 	SetupApp(app)
 }
