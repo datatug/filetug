@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filetug/filetug/pkg/files"
 	"github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/assert"
 )
@@ -286,6 +287,8 @@ func TestStore_Create_Delete_NotImplemented(t *testing.T) {
 	assert.Error(t, s.Delete(ctx, "/path"))
 	assert.Error(t, s.CreateDir(ctx, "/path"))
 	assert.Error(t, s.CreateFile(ctx, "/path"))
+	_, err := s.GetDirReader(ctx, "/path")
+	assert.ErrorIs(t, err, files.ErrNotSupported)
 }
 
 func TestStore_ReadDir_TLS_Options(t *testing.T) {

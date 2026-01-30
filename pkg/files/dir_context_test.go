@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"net/url"
 	"os"
 	"path"
@@ -19,7 +20,27 @@ func TestDirContextMethods(t *testing.T) {
 	tempDir := filepath.ToSlash(t.TempDir())
 	store := NewMockStore(ctrl)
 	store.EXPECT().RootURL().Return(url.URL{Scheme: "file"}).AnyTimes()
+	store.EXPECT().RootTitle().Return("title").AnyTimes()
+	store.EXPECT().ReadDir(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	store.EXPECT().CreateDir(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().CreateFile(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().GetDirReader(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
 	dir := NewDirContext(store, tempDir, nil)
+
+	assert.Equal(t, "title", dir.Store().RootTitle())
+	_, _ = dir.Store().ReadDir(context.TODO(), "")
+	_ = dir.Store().CreateDir(context.TODO(), "")
+	_ = dir.Store().CreateFile(context.TODO(), "")
+	_ = dir.Store().Delete(context.TODO(), "")
+	_, _ = dir.Store().GetDirReader(context.TODO(), "")
+
+	dr := NewMockDirReader(ctrl)
+	dr.EXPECT().Close().Return(nil).AnyTimes()
+	dr.EXPECT().Readdir().Return(nil, nil).AnyTimes()
+	_ = dr.Close()
+	_, _ = dr.Readdir()
 
 	beforeSet := time.Now()
 	dir.SetChildren([]os.DirEntry{NewDirEntry("a.txt", false)})

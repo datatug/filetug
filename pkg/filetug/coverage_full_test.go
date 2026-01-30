@@ -948,6 +948,9 @@ func TestTree_SetCurrentDir_And_DoLoadingAnimation_Coverage(t *testing.T) {
 	tree := NewTree(nav)
 
 	nav.store = newMockStoreWithRoot(t, url.URL{Scheme: "file", Path: "/"})
+	mockStore := nav.store.(*files.MockStore)
+	mockStore.EXPECT().ReadDir(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
 	dirContext := newTestDirContext(nav.store, "/", nil)
 	tree.setCurrentDir(dirContext)
 
@@ -1737,6 +1740,8 @@ func TestNavigator_ShowDir_ErrorNode(t *testing.T) {
 func TestNavigator_SetBreadcrumbs_EmptyRelativePath(t *testing.T) {
 	nav := NewNavigator(nil)
 	nav.store = newMockStoreWithRoot(t, url.URL{Path: "/"})
+	mockStore := nav.store.(*files.MockStore)
+	mockStore.EXPECT().ReadDir(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	nav.current.SetDir(files.NewDirContext(nav.store, "/", nil))
 	nav.setBreadcrumbs()
 }
@@ -1998,16 +2003,22 @@ func TestTree_SetCurrentDir_Root(t *testing.T) {
 	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 	nav.store = newMockStoreWithRoot(t, url.URL{Path: "/"})
+	mockStore := nav.store.(*files.MockStore)
+	mockStore.EXPECT().ReadDir(gomock.Any(), "/").Return(nil, nil).AnyTimes()
 	dirContext := newTestDirContext(nav.store, "/", nil)
 	tree.setCurrentDir(dirContext)
+	time.Sleep(10 * time.Millisecond)
 }
 
 func TestTree_SetCurrentDir_NonSlashRoot(t *testing.T) {
 	nav := NewNavigator(nil)
 	tree := NewTree(nav)
 	nav.store = newMockStoreWithRoot(t, url.URL{Path: "/root/"})
+	mockStore := nav.store.(*files.MockStore)
+	mockStore.EXPECT().ReadDir(gomock.Any(), "/root/").Return(nil, nil).AnyTimes()
 	dirContext := newTestDirContext(nav.store, "/root/", nil)
 	tree.setCurrentDir(dirContext)
+	time.Sleep(10 * time.Millisecond)
 }
 
 func TestDirSummary_GetSizes_TypedNilInfo(t *testing.T) {

@@ -25,6 +25,5 @@ func (d dirReader) Close() error {
 }
 
 func (d dirReader) Readdir() ([]os.FileInfo, error) {
-	//TODO implement me
-	panic("implement me")
+	return d.file.Readdir(-1)
 }

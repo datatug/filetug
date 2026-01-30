@@ -191,3 +191,11 @@ func TestHttpStore_CreateFile(t *testing.T) {
 	msg := err.Error()
 	assert.Contains(t, msg, "CreateFile not implemented for HTTP")
 }
+
+func TestHttpStore_GetDirReader(t *testing.T) {
+	ctx := context.Background()
+	root, _ := url.Parse("https://example.com/pub/")
+	store := NewStore(*root)
+	_, err := store.GetDirReader(ctx, "/pub/")
+	assert.ErrorIs(t, err, files.ErrNotImplemented)
+}
