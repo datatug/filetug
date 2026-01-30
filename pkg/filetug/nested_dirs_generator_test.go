@@ -7,14 +7,21 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filetug/filetug/pkg/files"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
 )
 
+var _ files.Store = (*recordingStore)(nil)
+
 type recordingStore struct {
 	mu    sync.Mutex
 	paths []string
+}
+
+func (r *recordingStore) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented
 }
 
 func (r *recordingStore) RootTitle() string { return "recording" }

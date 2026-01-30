@@ -23,6 +23,20 @@ type Store struct {
 	root  string
 }
 
+func NewStore(root string) *Store {
+	if root == "" {
+		_, _ = fmt.Fprintf(os.Stderr, "osfile store root is empty, defaulting to /\n")
+		root = "/"
+	}
+	store := Store{root: root}
+	var err error
+	if store.title, err = osHostname(); err != nil {
+		store.title = err.Error()
+	}
+	store.title = "🖥️" + store.title
+	return &store
+}
+
 func (s Store) Delete(ctx context.Context, path string) error {
 	_ = ctx
 	return osRemove(path)
@@ -45,6 +59,10 @@ func (s Store) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error) 
 	return osReadDir(name)
 }
 
+func (s Store) GetDirReader(_ context.Context, dirPath string) (files.DirReader, error) {
+	return newDirReader(dirPath)
+}
+
 func (s Store) CreateDir(ctx context.Context, path string) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -61,18 +79,4 @@ func (s Store) CreateFile(ctx context.Context, path string) error {
 		return err
 	}
 	return f.Close()
-}
-
-func NewStore(root string) *Store {
-	if root == "" {
-		_, _ = fmt.Fprintf(os.Stderr, "osfile store root is empty, defaulting to /\n")
-		root = "/"
-	}
-	store := Store{root: root}
-	var err error
-	if store.title, err = osHostname(); err != nil {
-		store.title = err.Error()
-	}
-	store.title = "🖥️" + store.title
-	return &store
 }

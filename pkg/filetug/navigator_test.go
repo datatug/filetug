@@ -170,9 +170,15 @@ func TestNavigator_goDir(t *testing.T) {
 	})
 }
 
+var _ files.Store = (*mockReadDirStore)(nil)
+
 type mockReadDirStore struct {
 	root    url.URL
 	entries map[string][]os.DirEntry
+}
+
+func (m *mockReadDirStore) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented
 }
 
 func (m *mockReadDirStore) RootTitle() string { return "Mock" }
@@ -198,12 +204,18 @@ func (m *mockReadDirStore) Delete(ctx context.Context, path string) error {
 	return nil
 }
 
+var _ files.Store = (*blockingReadDirStore)(nil)
+
 type blockingReadDirStore struct {
 	root      url.URL
 	entries   map[string][]os.DirEntry
 	firstPath string
 	block     chan struct{}
 	seen      chan string
+}
+
+func (b *blockingReadDirStore) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented
 }
 
 func (b *blockingReadDirStore) RootTitle() string { return "Mock" }

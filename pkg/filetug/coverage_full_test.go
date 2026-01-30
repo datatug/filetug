@@ -28,6 +28,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var _ files.Store = (*mockStoreWithHooks)(nil)
+
 type mockStoreWithHooks struct {
 	root          url.URL
 	rootTitle     string
@@ -37,6 +39,10 @@ type mockStoreWithHooks struct {
 	deleteErr     error
 	createdDirs   []string
 	createdFiles  []string
+}
+
+func (m *mockStoreWithHooks) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented
 }
 
 func (m *mockStoreWithHooks) RootTitle() string {
@@ -111,11 +117,17 @@ func (n *nilFileInfo) ModTime() time.Time { return time.Time{} }
 func (n *nilFileInfo) IsDir() bool        { return false }
 func (n *nilFileInfo) Sys() interface{}   { return nil }
 
+var _ files.Store = (*failingStore)(nil)
+
 type failingStore struct {
 	root      url.URL
 	failAfter int
 	calls     int
 	failOn    string
+}
+
+func (f *failingStore) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented
 }
 
 func (f *failingStore) RootTitle() string { return "Failing" }

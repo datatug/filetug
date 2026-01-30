@@ -76,8 +76,13 @@ func (s *Store) SetTLS(explicit, implicit bool) {
 	s.implicit = implicit
 }
 
+// We can't do simply `ftpDial = ftp.Dial` as we change return type from `*ftp.ServerConn` to `FtpClient`
 var ftpDial = func(addr string, options ...ftp.DialOption) (FtpClient, error) {
 	return ftp.Dial(addr, options...)
+}
+
+func (*Store) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotSupported
 }
 
 func (s *Store) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error) {

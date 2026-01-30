@@ -53,6 +53,10 @@ func (h HttpStore) RootTitle() string {
 	return root.String()
 }
 
+func (HttpStore) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented // TODO: Needs implementation
+}
+
 func (h HttpStore) ReadDir(ctx context.Context, name string) ([]os.DirEntry, error) {
 	u := h.Root
 	u.Path = name

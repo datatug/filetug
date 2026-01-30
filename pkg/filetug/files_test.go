@@ -29,10 +29,16 @@ func setupNavigatorForFilesTest(app *tview.Application) *Navigator {
 	return nav
 }
 
+var _ files.Store = (*trackingStore)(nil)
+
 type trackingStore struct {
 	root        url.URL
 	readDirPath string
 	entries     map[string][]os.DirEntry
+}
+
+func (t *trackingStore) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented
 }
 
 func (t *trackingStore) RootTitle() string { return "Mock" }
@@ -360,10 +366,16 @@ func TestFilesPanel_selectionChangedNavFunc(t *testing.T) {
 	fp.selectionChangedNavFunc(1, 0)
 }
 
+var _ files.Store = (*errorReadDirStore)(nil)
+
 type errorReadDirStore struct {
 	root        url.URL
 	readDirPath string
 	readErr     error
+}
+
+func (e *errorReadDirStore) GetDirReader(_ context.Context, _ string) (files.DirReader, error) {
+	return nil, files.ErrNotImplemented
 }
 
 func (e *errorReadDirStore) RootTitle() string { return "Mock" }

@@ -12,8 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var _ Store = (*mockStore)(nil)
+
 type mockStore struct {
 	root url.URL
+}
+
+func (m mockStore) GetDirReader(_ context.Context, _ string) (DirReader, error) {
+	return nil, ErrNotImplemented
 }
 
 func (m mockStore) RootTitle() string { return "Mock" }

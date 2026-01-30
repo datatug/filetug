@@ -3,19 +3,25 @@ package files
 import (
 	"context"
 	"errors"
+	"io"
 	"net/url"
 	"os"
 )
 
-// type DirEntry = os.DirEntry
+var ErrNotImplemented = errors.New("not implemented")
+var ErrNotSupported = errors.New("not supported")
+
 type Store interface {
 	RootTitle() string
 	RootURL() url.URL
+	GetDirReader(ctx context.Context, path string) (DirReader, error)
 	ReadDir(ctx context.Context, path string) ([]os.DirEntry, error)
 	Delete(ctx context.Context, path string) error // TODO(unsure): should it be Remove to match os.Remove?
 	CreateDir(ctx context.Context, path string) error
 	CreateFile(ctx context.Context, path string) error
 }
 
-var ErrNotSupportedOperation = errors.New("no supported operation")
-var ErrNotImplemented = errors.New("no implemented")
+type DirReader interface {
+	io.Closer
+	Readdir() ([]os.FileInfo, error)
+}
